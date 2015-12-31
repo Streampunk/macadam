@@ -46,6 +46,7 @@
 #include <node.h>
 #include <node_object_wrap.h>
 #include <uv.h>
+#include <node_buffer.h>
 
 #include "DeckLinkAPI.h"
 
@@ -100,6 +101,8 @@ private:
 
   int value_;
   v8::Persistent<v8::Function> captureCB;
+  long asyncsize_;
+  char * asyncdata_;
 public:
   static void Init(v8::Local<v8::Object> exports);
 

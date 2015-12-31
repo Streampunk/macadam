@@ -42,6 +42,11 @@
 
 #include "Capture.h"
 
+// settings for NTSC 29.97 - UYVY pixel format
+#define BMD_DISPLAYMODE			bmdModeNTSC
+#define TCISDROPFRAME			true
+#define PIXEL_FMT				bmdFormat8BitYUV
+
 namespace streampunk {
 
 using v8::Function;
@@ -60,7 +65,7 @@ using v8::Exception;
 
 Persistent<Function> Capture::constructor;
 
-Capture::Capture(int value) : value_(value) {
+Capture::Capture(int value) : value_(value), asyncdata_(NULL), asyncsize_(0) {
   async = new uv_async_t;
   uv_async_init(uv_default_loop(), async, FrameCallback);
   async->data = this;
@@ -153,11 +158,73 @@ void Capture::DoCapture(const FunctionCallbackInfo<Value>& args) {
   obj->value_ -= 1;
   obj->captureCB.Reset(isolate, cb);
 
+  if (!obj->setupDeckLinkInput()) {
+    isolate->ThrowException(Exception::Error(
+      String::NewFromUtf8(isolate, "Could not setup the DeckLink Input interface.")));
+  }
+
   args.GetReturnValue().Set(Number::New(isolate, obj->value_));
+}
+
+bool Capture::setupDeckLinkInput() {
+  // bool result = false;
+  IDeckLinkDisplayModeIterator*	displayModeIterator = NULL;
+  IDeckLinkDisplayMode*			deckLinkDisplayMode = NULL;
+
+  m_width = -1;
+
+  // get frame scale and duration for the video mode
+  if (m_deckLinkInput->GetDisplayModeIterator(&displayModeIterator) != S_OK)
+    return false;
+
+  while (displayModeIterator->Next(&deckLinkDisplayMode) == S_OK)
+  {
+    if (deckLinkDisplayMode->GetDisplayMode() == BMD_DISPLAYMODE)
+    {
+      m_width = deckLinkDisplayMode->GetWidth();
+      m_height = deckLinkDisplayMode->GetHeight();
+      deckLinkDisplayMode->GetFrameRate(&m_frameDuration, &m_timeScale);
+      deckLinkDisplayMode->Release();
+
+      break;
+    }
+
+    deckLinkDisplayMode->Release();
+  }
+
+  printf("Width %li Height %li\n", m_width, m_height);
+
+  displayModeIterator->Release();
+
+  if (m_width == -1)
+    return false;
+
+  m_deckLinkInput->SetCallback(this);
+
+  if (m_deckLinkInput->EnableVideoInput(BMD_DISPLAYMODE, PIXEL_FMT, bmdVideoInputFlagDefault) != S_OK)
+	  return false;
+
+  if (m_deckLinkInput->StartStreams() != S_OK)
+    return false;
+
+  return true;
+}
+
+void Capture::cleanupDeckLinkInput()
+{
+	m_deckLinkInput->StopStreams();
+	m_deckLinkInput->DisableVideoInput();
+	m_deckLinkInput->SetCallback(NULL);
 }
 
 HRESULT	Capture::VideoInputFrameArrived (IDeckLinkVideoInputFrame* arrivedFrame, IDeckLinkAudioInputPacket*)
 {
+  char* new_data;
+  arrivedFrame->AddRef();
+  arrivedFrame->GetBytes((void**) &new_data);
+  asyncdata_ = new_data;
+  asyncsize_ = arrivedFrame->GetRowBytes() * arrivedFrame->GetHeight();
+  uv_async_send(async);
   return S_OK;
 }
 
@@ -169,13 +236,21 @@ void Capture::TestUV() {
   uv_async_send(async);
 }
 
+void FreeCallback(char* data, void* hint) {
+  IDeckLinkVideoInputFrame* frame = static_cast<IDeckLinkVideoInputFrame*>(hint);
+  frame->Release();
+}
+
 void Capture::FrameCallback(uv_async_t *handle) {
   Isolate* isolate = v8::Isolate::GetCurrent();
   HandleScope scope(isolate);
   Capture *capture = static_cast<Capture*>(handle->data);
   Local<Function> cb = Local<Function>::New(isolate, capture->captureCB);
-  Local<Value> argv[0];
-  cb->Call(Null(isolate), 0, argv);
+
+  Local<Object> b = node::Buffer::New(isolate, capture->asyncdata_,
+    capture->asyncsize_).ToLocalChecked();
+  Local<Value> argv[1] = { b };
+  cb->Call(Null(isolate), 1, argv);
 }
 
 }
