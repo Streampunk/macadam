@@ -45,7 +45,6 @@ INCS_Debug := \
 	-I/Users/vizigoth/.node-gyp/4.2.2/src \
 	-I/Users/vizigoth/.node-gyp/4.2.2/deps/uv/include \
 	-I/Users/vizigoth/.node-gyp/4.2.2/deps/v8/include \
-	-I$(srcdir)/node_modules/nan \
 	-I/Users/vizigoth/tools/Blackmagic\ DeckLink\ SDK\ 10.5/Mac/include
 
 DEFS_Release := \
@@ -89,11 +88,11 @@ INCS_Release := \
 	-I/Users/vizigoth/.node-gyp/4.2.2/src \
 	-I/Users/vizigoth/.node-gyp/4.2.2/deps/uv/include \
 	-I/Users/vizigoth/.node-gyp/4.2.2/deps/v8/include \
-	-I$(srcdir)/node_modules/nan \
 	-I/Users/vizigoth/tools/Blackmagic\ DeckLink\ SDK\ 10.5/Mac/include
 
 OBJS := \
-	$(obj).target/$(TARGET)/bm.o
+	$(obj).target/$(TARGET)/src/macadam.o \
+	$(obj).target/$(TARGET)/src/Capture.o
 
 # Add to the list of files we specially track dependencies for.
 all_deps += $(OBJS)

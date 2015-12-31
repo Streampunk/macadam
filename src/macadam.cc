@@ -13,20 +13,26 @@
   limitations under the License.
 */
 
-#include <nan.h>
+#include <node.h>
+#include "node_buffer.h"
 #include "DeckLinkAPI.h"
 #include <stdio.h>
 
+#include "Capture.h"
+
 using namespace v8;
 
-NAN_METHOD(DeckLinkVerison) {
+void DeckLinkVersion(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = args.GetIsolate();
+
   IDeckLinkIterator* deckLinkIterator;
   HRESULT	result;
   IDeckLinkAPIInformation*	deckLinkAPIInformation;
   deckLinkIterator = CreateDeckLinkIteratorInstance();
   result = deckLinkIterator->QueryInterface(IID_IDeckLinkAPIInformation, (void**)&deckLinkAPIInformation);
   if (result != S_OK) {
-    Nan::ThrowError("Error connecting to DeckLinkAPI.");
+    isolate->ThrowException(Exception::Error(
+      String::NewFromUtf8(isolate, "Error connecting to DeckLinkAPI.")));
   }
 
   char deckVer [80];
@@ -40,30 +46,29 @@ NAN_METHOD(DeckLinkVerison) {
   dlVerMinor = (deckLinkVersion & 0x00FF0000) >> 16;
   dlVerPoint = (deckLinkVersion & 0x0000FF00) >> 8;
 
-  sprintf(deckVer, "DeckLinkAPI version: %d.%d.%d\n", dlVerMajor, dlVerMinor, dlVerPoint);
+  sprintf(deckVer, "DeckLinkAPI version: %d.%d.%d", dlVerMajor, dlVerMinor, dlVerPoint);
 
   deckLinkAPIInformation->Release();
 
-  MaybeLocal<String> maybeStr = Nan::New<String>(deckVer);
-  v8::Local<String> str;
-  if (maybeStr.ToLocal(&str) == false) {
-    Nan::ThrowError("Error converting stupid string!");
-  };
-  info.GetReturnValue().Set(str);
+  Local<String> deckVerString = String::NewFromUtf8(isolate, deckVer);
+  args.GetReturnValue().Set(deckVerString);
 }
 
-NAN_METHOD(GetFirstDevice) {
+void GetFirstDevice(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = args.GetIsolate();
+
   IDeckLinkIterator* deckLinkIterator;
   HRESULT	result;
-  IDeckLinkAPIInformation*deckLinkAPIInformation;
+  IDeckLinkAPIInformation *deckLinkAPIInformation;
   IDeckLink* deckLink;
   deckLinkIterator = CreateDeckLinkIteratorInstance();
   result = deckLinkIterator->QueryInterface(IID_IDeckLinkAPIInformation, (void**)&deckLinkAPIInformation);
   if (result != S_OK) {
-    Nan::ThrowError("Error connecting to DeckLinkAPI.");
+    isolate->ThrowException(Exception::Error(
+      String::NewFromUtf8(isolate, "Error connecting to DeckLinkAPI.")));
   }
   if (deckLinkIterator->Next(&deckLink) != S_OK) {
-    info.GetReturnValue().Set(Nan::Undefined());
+    args.GetReturnValue().Set(Undefined(isolate));
     return;
   }
   CFStringRef deviceNameCFString = NULL;
@@ -71,18 +76,37 @@ NAN_METHOD(GetFirstDevice) {
   if (result == S_OK) {
     char deviceName [64];
     CFStringGetCString(deviceNameCFString, deviceName, sizeof(deviceName), kCFStringEncodingMacRoman);
-    info.GetReturnValue().Set(Nan::New(deviceName).ToLocalChecked());
+    args.GetReturnValue().Set(String::NewFromUtf8(isolate, deviceName));
     return;
   }
-  info.GetReturnValue().Set(Nan::Undefined());
-  return;
+  args.GetReturnValue().Set(Undefined(isolate));
+  node::Buffer::New(isolate, 42);
 }
 
-NAN_MODULE_INIT(Init) {
-  Nan::Set(target, Nan::New("deckLinkVersion").ToLocalChecked(),
-      Nan::GetFunction(Nan::New<FunctionTemplate>(DeckLinkVerison)).ToLocalChecked());
-  Nan::Set(target, Nan::New("getFirstDevice").ToLocalChecked(),
-    Nan::GetFunction(Nan::New<FunctionTemplate>(GetFirstDevice)).ToLocalChecked());
+
+
+/* static Local<Object> makeBuffer(char* data, size_t size) {
+  HandleScope scope;
+
+  // It ends up being kind of a pain to convert a slow buffer into a fast
+  // one since the fast part is implemented in JavaScript.
+  Local<Buffer> slowBuffer = Buffer::New(data, size);
+  // First get the Buffer from global scope...
+  Local<Object> global = Context::GetCurrent()->Global();
+  Local<Value> bv = global->Get(String::NewSymbol("Buffer"));
+  assert(bv->IsFunction());
+  Local<Function> b = Local<Function>::Cast(bv);
+  // ...call Buffer() with the slow buffer and get a fast buffer back...
+  Handle<Value> argv[3] = { slowBuffer->handle_, Integer::New(size), Integer::New(0) };
+  Local<Object> fastBuffer = b->NewInstance(3, argv);
+
+  return scope.Close(fastBuffer);
+} */
+
+void init(Local<Object> exports) {
+  NODE_SET_METHOD(exports, "deckLinkVersion", DeckLinkVersion);
+  NODE_SET_METHOD(exports, "getFirstDevice", GetFirstDevice);
+  streampunk::Capture::Init(exports);
 }
 
-NODE_MODULE(macadam, Init);
+NODE_MODULE(macadam, init);

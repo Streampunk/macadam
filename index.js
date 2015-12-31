@@ -18,3 +18,7 @@ var macadam = bindings('macadam');
 
 console.log(macadam.deckLinkVersion());
 console.log(macadam.getFirstDevice());
+
+var capture = new macadam.Capture(3);
+console.log(capture);
+console.log(macadam.Capture.prototype);
