@@ -43,9 +43,9 @@
 #include "Capture.h"
 
 // settings for NTSC 29.97 - UYVY pixel format
-#define BMD_DISPLAYMODE			bmdModeNTSC
+#define BMD_DISPLAYMODE			bmdModeHD1080i50
 #define TCISDROPFRAME			true
-#define PIXEL_FMT				bmdFormat8BitYUV
+#define PIXEL_FMT				bmdFormat10BitYUV
 
 namespace streampunk {
 
@@ -65,7 +65,7 @@ using v8::Exception;
 
 Persistent<Function> Capture::constructor;
 
-Capture::Capture(int value) : value_(value), asyncdata_(NULL), asyncsize_(0) {
+Capture::Capture(int value) : value_(value), latestFrame_(NULL) {
   async = new uv_async_t;
   uv_async_init(uv_default_loop(), async, FrameCallback);
   async->data = this;
@@ -85,6 +85,7 @@ void Capture::Init(Local<Object> exports) {
   // Prototype
   NODE_SET_PROTOTYPE_METHOD(tpl, "init", BMInit);
   NODE_SET_PROTOTYPE_METHOD(tpl, "doCapture", DoCapture);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "stop", StopCapture);
 
   constructor.Reset(isolate, tpl->GetFunction());
   exports->Set(String::NewFromUtf8(isolate, "Capture"),
@@ -158,12 +159,27 @@ void Capture::DoCapture(const FunctionCallbackInfo<Value>& args) {
   obj->value_ -= 1;
   obj->captureCB.Reset(isolate, cb);
 
-  if (!obj->setupDeckLinkInput()) {
-    isolate->ThrowException(Exception::Error(
-      String::NewFromUtf8(isolate, "Could not setup the DeckLink Input interface.")));
-  }
+  obj->setupDeckLinkInput();
 
-  args.GetReturnValue().Set(Number::New(isolate, obj->value_));
+  args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Capture started."));
+}
+
+void Capture::StopCapture(const v8::FunctionCallbackInfo<v8::Value>& args) {
+  Isolate* isolate = args.GetIsolate();
+
+  Capture* obj = ObjectWrap::Unwrap<Capture>(args.Holder());
+
+  obj->cleanupDeckLinkInput();
+
+  args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Capture stopped."));
+}
+
+// Stop video input
+void Capture::cleanupDeckLinkInput()
+{
+	m_deckLinkInput->StopStreams();
+	m_deckLinkInput->DisableVideoInput();
+	m_deckLinkInput->SetCallback(NULL);
 }
 
 bool Capture::setupDeckLinkInput() {
@@ -210,20 +226,10 @@ bool Capture::setupDeckLinkInput() {
   return true;
 }
 
-void Capture::cleanupDeckLinkInput()
-{
-	m_deckLinkInput->StopStreams();
-	m_deckLinkInput->DisableVideoInput();
-	m_deckLinkInput->SetCallback(NULL);
-}
-
 HRESULT	Capture::VideoInputFrameArrived (IDeckLinkVideoInputFrame* arrivedFrame, IDeckLinkAudioInputPacket*)
 {
-  char* new_data;
   arrivedFrame->AddRef();
-  arrivedFrame->GetBytes((void**) &new_data);
-  asyncdata_ = new_data;
-  asyncsize_ = arrivedFrame->GetRowBytes() * arrivedFrame->GetHeight();
+  latestFrame_ = arrivedFrame;
   uv_async_send(async);
   return S_OK;
 }
@@ -237,7 +243,9 @@ void Capture::TestUV() {
 }
 
 void FreeCallback(char* data, void* hint) {
+  Isolate* isolate = v8::Isolate::GetCurrent();
   IDeckLinkVideoInputFrame* frame = static_cast<IDeckLinkVideoInputFrame*>(hint);
+  isolate->AdjustAmountOfExternalAllocatedMemory(-(frame->GetRowBytes() * frame->GetHeight()));
   frame->Release();
 }
 
@@ -246,9 +254,16 @@ void Capture::FrameCallback(uv_async_t *handle) {
   HandleScope scope(isolate);
   Capture *capture = static_cast<Capture*>(handle->data);
   Local<Function> cb = Local<Function>::New(isolate, capture->captureCB);
-
-  Local<Object> b = node::Buffer::New(isolate, capture->asyncdata_,
-    capture->asyncsize_).ToLocalChecked();
+  char* new_data;
+  capture->latestFrame_->GetBytes((void**) &new_data);
+  long new_data_size = capture->latestFrame_->GetRowBytes() * capture->latestFrame_->GetHeight();
+  Local<Object> b = node::Buffer::New(isolate, new_data, new_data_size,
+    FreeCallback, capture->latestFrame_).ToLocalChecked();
+  long extSize = isolate->AdjustAmountOfExternalAllocatedMemory(new_data_size);
+  if (extSize > 100000000) {
+    isolate->LowMemoryNotification();
+    printf("Requesting bin collection.\n");
+  }
   Local<Value> argv[1] = { b };
   cb->Call(Null(isolate), 1, argv);
 }

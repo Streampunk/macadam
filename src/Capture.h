@@ -85,9 +85,9 @@ private:
   uint32_t					m_outPointFrameCount;
 
   // setup the IDeckLinkInput interface (video standard, pixel format, callback object, ...)
-  bool		setupDeckLinkInput();
+  bool setupDeckLinkInput();
 
-  void			cleanupDeckLinkInput();
+  void cleanupDeckLinkInput();
 
   // init() must be called after the constructor.
   // if init() fails, call the destructor
@@ -97,12 +97,13 @@ private:
   // start the capture operation. returns when the operation has completed
   static void DoCapture(const v8::FunctionCallbackInfo<v8::Value>& args);
 
+  static void StopCapture(const v8::FunctionCallbackInfo<v8::Value>& args);
+
   static void FrameCallback(uv_async_t *handle);
 
   int value_;
   v8::Persistent<v8::Function> captureCB;
-  long asyncsize_;
-  char * asyncdata_;
+  IDeckLinkVideoInputFrame* latestFrame_;
 public:
   static void Init(v8::Local<v8::Object> exports);
 
