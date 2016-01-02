@@ -42,11 +42,6 @@
 
 #include "Capture.h"
 
-// settings for NTSC 29.97 - UYVY pixel format
-#define BMD_DISPLAYMODE			bmdModeHD1080i50
-#define TCISDROPFRAME			true
-#define PIXEL_FMT				bmdFormat10BitYUV
-
 namespace streampunk {
 
 using v8::Function;
@@ -65,13 +60,17 @@ using v8::Exception;
 
 Persistent<Function> Capture::constructor;
 
-Capture::Capture(int value) : value_(value), latestFrame_(NULL) {
+Capture::Capture(uint32_t deviceIndex, uint32_t displayMode,
+    uint32_t pixelFormat) : deviceIndex_(deviceIndex),
+    displayMode_(displayMode), pixelFormat_(pixelFormat), latestFrame_(NULL) {
   async = new uv_async_t;
   uv_async_init(uv_default_loop(), async, FrameCallback);
   async->data = this;
 }
 
 Capture::~Capture() {
+  if (!captureCB_.IsEmpty())
+    captureCB_.Reset();
 }
 
 void Capture::Init(Local<Object> exports) {
@@ -97,27 +96,22 @@ void Capture::New(const FunctionCallbackInfo<Value>& args) {
 
   if (args.IsConstructCall()) {
     // Invoked as constructor: `new Capture(...)`
-    double value = args[0]->IsUndefined() ? 0 : args[0]->NumberValue();
-    Capture* obj = new Capture(value);
+    double deviceIndex = args[0]->IsUndefined() ? 0 : args[0]->NumberValue();
+    double displayMode = args[1]->IsUndefined() ? 0 : args[1]->NumberValue();
+    double pixelFormat = args[2]->IsUndefined() ? 0 : args[2]->NumberValue();
+    Capture* obj = new Capture(deviceIndex, displayMode, pixelFormat);
     obj->Wrap(args.This());
     args.GetReturnValue().Set(args.This());
   } else {
     // Invoked as plain function `Capture(...)`, turn into construct call.
-    const int argc = 1;
-    Local<Value> argv[argc] = { args[0] };
+    const int argc = 3;
+    Local<Value> argv[argc] = { args[0], args[1], args[2] };
     Local<Function> cons = Local<Function>::New(isolate, constructor);
     args.GetReturnValue().Set(cons->NewInstance(argc, argv));
   }
 }
 
 void Capture::BMInit(const FunctionCallbackInfo<Value>& args) {
-/*  Isolate* isolate = args.GetIsolate();
-
-  Capture* obj = ObjectWrap::Unwrap<Capture>(args.Holder());
-  obj->value_ += 1;
-  obj->TestUV();
-
-  args.GetReturnValue().Set(Number::New(isolate, obj->value_)); */
   Isolate* isolate = args.GetIsolate();
 
   IDeckLinkIterator* deckLinkIterator;
@@ -130,12 +124,15 @@ void Capture::BMInit(const FunctionCallbackInfo<Value>& args) {
     isolate->ThrowException(Exception::Error(
       String::NewFromUtf8(isolate, "Error connecting to DeckLinkAPI.")));
   }
-  if (deckLinkIterator->Next(&deckLink) != S_OK) {
-    args.GetReturnValue().Set(Undefined(isolate));
-    return;
+  Capture* obj = ObjectWrap::Unwrap<Capture>(args.Holder());
+
+  for ( uint32_t x = 0 ; x <= obj->deviceIndex_ ; x++ ) {
+    if (deckLinkIterator->Next(&deckLink) != S_OK) {
+      args.GetReturnValue().Set(Undefined(isolate));
+      return;
+    }
   }
 
-  Capture* obj = ObjectWrap::Unwrap<Capture>(args.Holder());
   obj->m_deckLink = deckLink;
 
   IDeckLinkInput *deckLinkInput;
@@ -156,8 +153,7 @@ void Capture::DoCapture(const FunctionCallbackInfo<Value>& args) {
 
   Local<Function> cb = Local<Function>::Cast(args[0]);
   Capture* obj = ObjectWrap::Unwrap<Capture>(args.Holder());
-  obj->value_ -= 1;
-  obj->captureCB.Reset(isolate, cb);
+  obj->captureCB_.Reset(isolate, cb);
 
   obj->setupDeckLinkInput();
 
@@ -195,7 +191,7 @@ bool Capture::setupDeckLinkInput() {
 
   while (displayModeIterator->Next(&deckLinkDisplayMode) == S_OK)
   {
-    if (deckLinkDisplayMode->GetDisplayMode() == BMD_DISPLAYMODE)
+    if (deckLinkDisplayMode->GetDisplayMode() == displayMode_)
     {
       m_width = deckLinkDisplayMode->GetWidth();
       m_height = deckLinkDisplayMode->GetHeight();
@@ -217,7 +213,7 @@ bool Capture::setupDeckLinkInput() {
 
   m_deckLinkInput->SetCallback(this);
 
-  if (m_deckLinkInput->EnableVideoInput(BMD_DISPLAYMODE, PIXEL_FMT, bmdVideoInputFlagDefault) != S_OK)
+  if (m_deckLinkInput->EnableVideoInput(displayMode_, pixelFormat_, bmdVideoInputFlagDefault) != S_OK)
 	  return false;
 
   if (m_deckLinkInput->StartStreams() != S_OK)
@@ -253,7 +249,7 @@ void Capture::FrameCallback(uv_async_t *handle) {
   Isolate* isolate = v8::Isolate::GetCurrent();
   HandleScope scope(isolate);
   Capture *capture = static_cast<Capture*>(handle->data);
-  Local<Function> cb = Local<Function>::New(isolate, capture->captureCB);
+  Local<Function> cb = Local<Function>::New(isolate, capture->captureCB_);
   char* new_data;
   capture->latestFrame_->GetBytes((void**) &new_data);
   long new_data_size = capture->latestFrame_->GetRowBytes() * capture->latestFrame_->GetHeight();

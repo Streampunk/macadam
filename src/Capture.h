@@ -55,7 +55,7 @@ namespace streampunk {
 class Capture : public IDeckLinkInputCallback, public node::ObjectWrap
 {
 private:
-  explicit Capture(int value = 0);
+  explicit Capture(uint32_t deviceIndex = 0, uint32_t displayMode = 0, uint32_t pixelFormat = 0);
   ~Capture();
 
   static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -68,11 +68,11 @@ private:
   // The mutex and condition variable are used to wait for
   // - a deck to be connected
   // - the capture to complete
-  pthread_mutex_t				m_mutex ;
-  pthread_cond_t				m_condition;
-  bool						m_waitingForDeckConnected;
-  bool						m_waitingForCaptureEnd;
-  bool						m_captureStarted;
+  // pthread_mutex_t				m_mutex ;
+  // pthread_cond_t				m_condition;
+  // bool						m_waitingForDeckConnected;
+  // bool						m_waitingForCaptureEnd;
+  // bool						m_captureStarted;
 
   // video mode
   long						m_width;
@@ -81,8 +81,8 @@ private:
   BMDTimeValue				m_frameDuration;
 
   // frame count values for the capture in- and out-points
-  uint32_t					m_inPointFrameCount;
-  uint32_t					m_outPointFrameCount;
+  // uint32_t					m_inPointFrameCount;
+  // uint32_t					m_outPointFrameCount;
 
   // setup the IDeckLinkInput interface (video standard, pixel format, callback object, ...)
   bool setupDeckLinkInput();
@@ -101,8 +101,10 @@ private:
 
   static void FrameCallback(uv_async_t *handle);
 
-  int value_;
-  v8::Persistent<v8::Function> captureCB;
+  uint32_t deviceIndex_;
+  uint32_t displayMode_;
+  uint32_t pixelFormat_;
+  v8::Persistent<v8::Function> captureCB_;
   IDeckLinkVideoInputFrame* latestFrame_;
 public:
   static void Init(v8::Local<v8::Object> exports);
