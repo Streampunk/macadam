@@ -47,7 +47,6 @@ const util = require('util');
 const EventEmitter = require('events');
 
 function Capture (deviceIndex, displayMode, pixelFormat) {
-  EventEmitter.call(this);
   if (arguments.length !== 3 || typeof deviceIndex !== 'number' ||
       typeof displayMode !== 'number' || typeof pixelFormat !== 'number' ) {
     this.emit('error', new Error('Capture requires three number arguments: ' +
@@ -55,6 +54,7 @@ function Capture (deviceIndex, displayMode, pixelFormat) {
   } else {
     this.capture = new macadamNative.Capture(deviceIndex, displayMode, pixelFormat);
   }
+  EventEmitter.call(this);
 }
 
 util.inherits(Capture, EventEmitter);
@@ -64,7 +64,7 @@ Capture.prototype.start = function () {
     this.capture.init();
     this.capture.doCapture(function (x) {
       this.emit('frame', x);
-    });
+    }.bind(this));
   } catch (err) {
     this.emit('error', err);
   }
@@ -167,7 +167,8 @@ var macadam = {
   deckLinkVersion : macadamNative.deckLinkVersion,
   getFirstDevice : macadamNative.getFirstDevice,
   // Raw access to device classes
-  DirectCapture : macadamNative.Capture
+  DirectCapture : macadamNative.Capture,
+  Capture: Capture
 };
 
 module.exports = macadam;
