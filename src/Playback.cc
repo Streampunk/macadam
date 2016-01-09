@@ -41,6 +41,7 @@
  */
 
 #include "Playback.h"
+#include <string.h>
 
 namespace streampunk {
 
@@ -61,8 +62,8 @@ using v8::Exception;
 Persistent<Function> Playback::constructor;
 
 Playback::Playback(uint32_t deviceIndex, uint32_t displayMode,
-    uint32_t pixelFormat) : deviceIndex_(deviceIndex),
-    displayMode_(displayMode), pixelFormat_(pixelFormat) {
+    uint32_t pixelFormat) : m_totalFrameScheduled(0), deviceIndex_(deviceIndex),
+    displayMode_(displayMode), pixelFormat_(pixelFormat), result_(0) {
   async = new uv_async_t;
   uv_async_init(uv_default_loop(), async, FrameCallback);
   async->data = this;
@@ -83,6 +84,7 @@ void Playback::Init(Local<Object> exports) {
 
   // Prototype
   NODE_SET_PROTOTYPE_METHOD(tpl, "init", BMInit);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "scheduleFrame", ScheduleFrame);
   NODE_SET_PROTOTYPE_METHOD(tpl, "doPlayback", DoPlayback);
   NODE_SET_PROTOTYPE_METHOD(tpl, "stop", StopPlayback);
 
@@ -142,7 +144,8 @@ void Playback::BMInit(const FunctionCallbackInfo<Value>& args) {
       String::NewFromUtf8(isolate, "Could not obtain DeckLink Output interface.\n")));
   }
   obj->m_deckLinkOutput = deckLinkOutput;
-  if (deckLinkOutput)
+
+  if (obj->setupDeckLinkOutput())
     args.GetReturnValue().Set(String::NewFromUtf8(isolate, "made it!"));
   else
     args.GetReturnValue().Set(String::NewFromUtf8(isolate, "sad :-("));
@@ -155,9 +158,12 @@ void Playback::DoPlayback(const FunctionCallbackInfo<Value>& args) {
   Playback* obj = ObjectWrap::Unwrap<Playback>(args.Holder());
   obj->playbackCB_.Reset(isolate, cb);
 
-  obj->setupDeckLinkOutput();
-
-  args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Playback started."));
+  if (obj->m_deckLinkOutput->StartScheduledPlayback(0, obj->m_timeScale, 1.0)) {
+    args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Playback started."));
+  }
+  else {
+    args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Playback failed to start."));
+  }
 }
 
 void Playback::StopPlayback(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -170,18 +176,102 @@ void Playback::StopPlayback(const v8::FunctionCallbackInfo<v8::Value>& args) {
   args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Playback stopped."));
 }
 
+void Playback::ScheduleFrame(const v8::FunctionCallbackInfo<v8::Value>& args) {
+  Isolate* isolate = args.GetIsolate();
+  HandleScope scope(isolate);
+
+  Playback* obj = ObjectWrap::Unwrap<Playback>(args.Holder());
+  Local<Object> bufObj = args[0]->ToObject();
+
+  IDeckLinkMutableVideoFrame* frame;
+  if (obj->m_deckLinkOutput->CreateVideoFrame(obj->m_width, obj->m_height,
+      obj->m_width * 2.5, obj->pixelFormat_, bmdFrameFlagDefault, &frame) != S_OK) {
+    args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Failed to create frame."));
+    return;
+  };
+  char* bufData = node::Buffer::Data(bufObj);
+  size_t bufLength = node::Buffer::Length(bufObj);
+  char* frameData = NULL;
+  if (frame->GetBytes((void**) &frameData) != S_OK) {
+    args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Failed to get new frame bytes."));
+    return;
+  };
+  memcpy(frameData, bufData, bufLength);
+
+  if (obj->m_deckLinkOutput->ScheduleVideoFrame(frame,
+      (obj->m_totalFrameScheduled * obj->m_frameDuration),
+      obj->m_frameDuration, obj->m_timeScale) != S_OK) {
+    args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Failed to schedule frame."));
+    return;
+  };
+
+  obj->m_totalFrameScheduled++;
+  args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Frame scheduled."));
+}
+
 bool Playback::setupDeckLinkOutput() {
-  
+  // bool							result = false;
+  IDeckLinkDisplayModeIterator*	displayModeIterator = NULL;
+  IDeckLinkDisplayMode*			deckLinkDisplayMode = NULL;
+
+  m_width = -1;
+
+  // set callback
+  m_deckLinkOutput->SetScheduledFrameCompletionCallback(this);
+
+  // get frame scale and duration for the video mode
+  if (m_deckLinkOutput->GetDisplayModeIterator(&displayModeIterator) != S_OK)
+    return false;
+
+  while (displayModeIterator->Next(&deckLinkDisplayMode) == S_OK)
+  {
+    if (deckLinkDisplayMode->GetDisplayMode() == displayMode_)
+    {
+      m_width = deckLinkDisplayMode->GetWidth();
+      m_height = deckLinkDisplayMode->GetHeight();
+      deckLinkDisplayMode->GetFrameRate(&m_frameDuration, &m_timeScale);
+      deckLinkDisplayMode->Release();
+
+      break;
+    }
+
+    deckLinkDisplayMode->Release();
+  }
+
+  displayModeIterator->Release();
+
+  if (m_width == -1)
+    return false;
+
+  if (m_deckLinkOutput->EnableVideoOutput(displayMode_, bmdVideoOutputFlagDefault) != S_OK)
+    return false;
+
+  return true;
 }
 
 HRESULT	Playback::ScheduledFrameCompleted (IDeckLinkVideoFrame* completedFrame, BMDOutputFrameCompletionResult result)
 {
-	if (m_exportStarted)
-		// Schedule a new frame
-		scheduleNextFrame(false);
-
+  result_ = result;
+  uv_async_send(async);
+  completedFrame->Release(); // Assume you should do this
 	return S_OK;
 }
 
+void Playback::cleanupDeckLinkOutput()
+{
+	m_deckLinkOutput->StopScheduledPlayback(0, NULL, 0);
+	m_deckLinkOutput->DisableVideoOutput();
+	m_deckLinkOutput->SetScheduledFrameCompletionCallback(NULL);
+}
+
+void Playback::FrameCallback(uv_async_t *handle) {
+  Isolate* isolate = v8::Isolate::GetCurrent();
+  HandleScope scope(isolate);
+  Playback *playback = static_cast<Playback*>(handle->data);
+  Local<Function> cb = Local<Function>::New(isolate, playback->playbackCB_);
+
+  Local<Value> argv[1] = { Number::New(isolate, playback->result_) };
+  cb->Call(Null(isolate), 1, argv);
+}
 
 }

@@ -101,12 +101,15 @@ private:
 
   static void StopPlayback(const v8::FunctionCallbackInfo<v8::Value>& args);
 
+  static void ScheduleFrame(const v8::FunctionCallbackInfo<v8::Value>& args);
+
   static void FrameCallback(uv_async_t *handle);
 
   uint32_t deviceIndex_;
   uint32_t displayMode_;
   uint32_t pixelFormat_;
   v8::Persistent<v8::Function> playbackCB_;
+  uint32_t result_;
 public:
   static void Init(v8::Local<v8::Object> exports);
 
