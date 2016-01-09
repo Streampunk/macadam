@@ -46,7 +46,7 @@
     "v8_random_seed": 0,
     "v8_use_snapshot": 1,
     "want_separate_host_toolset": 0,
-    "nodedir": "/Users/vizigoth/.node-gyp/4.2.2",
+    "nodedir": "/Users/streampunk/.node-gyp/4.2.2",
     "copy_dev_lib": "true",
     "standalone_static_library": 1
   }

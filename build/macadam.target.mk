@@ -41,11 +41,11 @@ CFLAGS_OBJC_Debug :=
 CFLAGS_OBJCC_Debug :=
 
 INCS_Debug := \
-	-I/Users/vizigoth/.node-gyp/4.2.2/include/node \
-	-I/Users/vizigoth/.node-gyp/4.2.2/src \
-	-I/Users/vizigoth/.node-gyp/4.2.2/deps/uv/include \
-	-I/Users/vizigoth/.node-gyp/4.2.2/deps/v8/include \
-	-I/Users/vizigoth/tools/Blackmagic\ DeckLink\ SDK\ 10.5/Mac/include
+	-I/Users/streampunk/.node-gyp/4.2.2/include/node \
+	-I/Users/streampunk/.node-gyp/4.2.2/src \
+	-I/Users/streampunk/.node-gyp/4.2.2/deps/uv/include \
+	-I/Users/streampunk/.node-gyp/4.2.2/deps/v8/include \
+	-I/Users/streampunk/Documents/streampunk/Blackmagic\ DeckLink\ SDK\ 10.5/Mac/include
 
 DEFS_Release := \
 	'-DNODE_GYP_MODULE_NAME=macadam' \
@@ -84,15 +84,16 @@ CFLAGS_OBJC_Release :=
 CFLAGS_OBJCC_Release :=
 
 INCS_Release := \
-	-I/Users/vizigoth/.node-gyp/4.2.2/include/node \
-	-I/Users/vizigoth/.node-gyp/4.2.2/src \
-	-I/Users/vizigoth/.node-gyp/4.2.2/deps/uv/include \
-	-I/Users/vizigoth/.node-gyp/4.2.2/deps/v8/include \
-	-I/Users/vizigoth/tools/Blackmagic\ DeckLink\ SDK\ 10.5/Mac/include
+	-I/Users/streampunk/.node-gyp/4.2.2/include/node \
+	-I/Users/streampunk/.node-gyp/4.2.2/src \
+	-I/Users/streampunk/.node-gyp/4.2.2/deps/uv/include \
+	-I/Users/streampunk/.node-gyp/4.2.2/deps/v8/include \
+	-I/Users/streampunk/Documents/streampunk/Blackmagic\ DeckLink\ SDK\ 10.5/Mac/include
 
 OBJS := \
 	$(obj).target/$(TARGET)/src/macadam.o \
-	$(obj).target/$(TARGET)/src/Capture.o
+	$(obj).target/$(TARGET)/src/Capture.o \
+	$(obj).target/$(TARGET)/src/Playback.o
 
 # Add to the list of files we specially track dependencies for.
 all_deps += $(OBJS)
