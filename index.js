@@ -79,6 +79,59 @@ Capture.prototype.stop = function () {
   }
 }
 
+function Playback (deviceIndex, displayMode, pixelFormat) {
+  if (arguments.length !== 3 || typeof deviceIndex !== 'number' ||
+      typeof displayMode !== 'number' || typeof pixelFormat !== 'number' ) {
+    this.emit('error', new Error('Playback requires three number arguments: ' +
+      'index, display mode and pixel format'));
+  } else {
+    this.playback = new macadamNative.Playback(deviceIndex, displayMode, pixelFormat);
+  }
+  this.initialised = false;
+  EventEmitter.call(this);
+}
+
+util.inherits(Playback, EventEmitter);
+
+Playback.prototype.start = function () {
+  try {
+    if (!this.initialised) {
+      this.playback.init();
+      this.initialised = true;
+    }
+    this.playback.doPlayback(function (x) {
+      this.emit('played', x);
+    }.bind(this));
+  } catch (err) {
+    this.emit('error', err);
+  }
+}
+
+Playback.prototype.frame = function (f) {
+  try {
+    if (!this.initialised) {
+      this.playback.init();
+      this.initialised = true;
+    }
+    var result = this.playback.scheduleFrame(f);
+    if (typeof result === 'string')
+      throw new Error("Problem scheduling frame: " + result);
+    else
+      return result;
+  } catch (err) {
+    this.emit('error', err);
+  }
+}
+
+Playback.prototype.stop = function () {
+  try {
+    this.playback.stop();
+    this.emit('done');
+  } catch (err) {
+    this.emit('error', err);
+  }
+}
+
 function bmCodeToInt (s) {
   return new Buffer(s.substring(0, 4)).readUInt32BE(0);
 }
@@ -168,7 +221,8 @@ var macadam = {
   getFirstDevice : macadamNative.getFirstDevice,
   // Raw access to device classes
   DirectCapture : macadamNative.Capture,
-  Capture: Capture
+  Capture : Capture,
+  Playback : Playback
 };
 
 module.exports = macadam;

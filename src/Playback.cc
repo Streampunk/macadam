@@ -183,9 +183,20 @@ void Playback::ScheduleFrame(const v8::FunctionCallbackInfo<v8::Value>& args) {
   Playback* obj = ObjectWrap::Unwrap<Playback>(args.Holder());
   Local<Object> bufObj = args[0]->ToObject();
 
+  uint32_t rowBytePixelRatioN = 1, rowBytePixelRatioD = 1;
+  switch (obj->pixelFormat_) { // TODO expand to other pixel formats
+    case bmdFormat10BitYUV:
+      rowBytePixelRatioN = 5; rowBytePixelRatioD = 2;
+      break;
+    default:
+      rowBytePixelRatioN = 2; rowBytePixelRatioD = 1;
+      break;
+  }
+
   IDeckLinkMutableVideoFrame* frame;
   if (obj->m_deckLinkOutput->CreateVideoFrame(obj->m_width, obj->m_height,
-      obj->m_width * 2.5, obj->pixelFormat_, bmdFrameFlagDefault, &frame) != S_OK) {
+      obj->m_width * rowBytePixelRatioN / rowBytePixelRatioD,
+      obj->pixelFormat_, bmdFrameFlagDefault, &frame) != S_OK) {
     args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Failed to create frame."));
     return;
   };
@@ -198,15 +209,17 @@ void Playback::ScheduleFrame(const v8::FunctionCallbackInfo<v8::Value>& args) {
   };
   memcpy(frameData, bufData, bufLength);
 
-  if (obj->m_deckLinkOutput->ScheduleVideoFrame(frame,
+  HRESULT sfr = obj->m_deckLinkOutput->ScheduleVideoFrame(frame,
       (obj->m_totalFrameScheduled * obj->m_frameDuration),
-      obj->m_frameDuration, obj->m_timeScale) != S_OK) {
+      obj->m_frameDuration, obj->m_timeScale);
+  if (sfr != S_OK) {
+    printf("Failed to schedule frame. Code is %i.\n", sfr);
     args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Failed to schedule frame."));
     return;
   };
 
   obj->m_totalFrameScheduled++;
-  args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Frame scheduled."));
+  args.GetReturnValue().Set(Number::New(isolate, obj->m_totalFrameScheduled));
 }
 
 bool Playback::setupDeckLinkOutput() {
