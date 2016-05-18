@@ -15,7 +15,7 @@ DEFS_Debug := \
 CFLAGS_Debug := \
 	-O0 \
 	-gdwarf-2 \
-	-mmacosx-version-min=10.5 \
+	-mmacosx-version-min=10.7 \
 	-arch x86_64 \
 	-Wall \
 	-Wendif-labels \
@@ -29,10 +29,10 @@ CFLAGS_C_Debug := \
 # Flags passed to only C++ files.
 CFLAGS_CC_Debug := \
 	-std=gnu++0x \
-	-fno-rtti \
 	-fno-exceptions \
 	-fno-threadsafe-statics \
-	-fno-strict-aliasing
+	-std=c++11 \
+	-stdlib=libc++
 
 # Flags passed to only ObjC files.
 CFLAGS_OBJC_Debug :=
@@ -58,7 +58,7 @@ DEFS_Release := \
 CFLAGS_Release := \
 	-Os \
 	-gdwarf-2 \
-	-mmacosx-version-min=10.5 \
+	-mmacosx-version-min=10.7 \
 	-arch x86_64 \
 	-Wall \
 	-Wendif-labels \
@@ -72,10 +72,10 @@ CFLAGS_C_Release := \
 # Flags passed to only C++ files.
 CFLAGS_CC_Release := \
 	-std=gnu++0x \
-	-fno-rtti \
 	-fno-exceptions \
 	-fno-threadsafe-statics \
-	-fno-strict-aliasing
+	-std=c++11 \
+	-stdlib=libc++
 
 # Flags passed to only ObjC files.
 CFLAGS_OBJC_Release :=
@@ -123,7 +123,7 @@ $(obj).$(TOOLSET)/$(TARGET)/%.o: $(obj)/%.cc FORCE_DO_CMD
 LDFLAGS_Debug := \
 	-undefined dynamic_lookup \
 	-Wl,-search_paths_first \
-	-mmacosx-version-min=10.5 \
+	-mmacosx-version-min=10.7 \
 	-arch x86_64 \
 	-L$(builddir)
 
@@ -134,7 +134,7 @@ LIBTOOLFLAGS_Debug := \
 LDFLAGS_Release := \
 	-undefined dynamic_lookup \
 	-Wl,-search_paths_first \
-	-mmacosx-version-min=10.5 \
+	-mmacosx-version-min=10.7 \
 	-arch x86_64 \
 	-L$(builddir)
 
