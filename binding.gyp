@@ -1,7 +1,7 @@
 {
   "targets": [{
     "target_name" : "macadam",
-    "sources" : [ "src/macadam.cc", "src/Capture.cc", "src/Playback.cc" ],
+    "sources" : [ "src/macadam.cc" ],
     "conditions": [
       ['OS=="mac"', {
         'xcode_settings': {
@@ -32,7 +32,7 @@
           }
         },
         "libraries": [
-            "-l../ffmpeg/bin/avcodec.lib"
+            
         ],
         "include_dirs" : [
           "decklink/Win/include"
