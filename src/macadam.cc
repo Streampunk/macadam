@@ -116,6 +116,17 @@ void GetFirstDevice(const FunctionCallbackInfo<Value>& args) {
     args.GetReturnValue().Set(Undefined(isolate));
     return;
   }
+  #ifdef WIN32
+  BSTR deviceNameBSTR = NULL;
+  result = deckLink->GetModelName(&deviceNameBSTR);
+  if (result == S_OK) {
+    _bstr_t deviceName(deviceNameBSTR, false);
+    args.GetReturnValue().Set(String::NewFromUtf8(isolate, (char*) deviceName));
+    return;
+  }
+  #endif
+
+  #ifdef DARWIN
   CFStringRef deviceNameCFString = NULL;
   result = deckLink->GetModelName(&deviceNameCFString);
   if (result == S_OK) {
@@ -124,6 +135,7 @@ void GetFirstDevice(const FunctionCallbackInfo<Value>& args) {
     args.GetReturnValue().Set(String::NewFromUtf8(isolate, deviceName));
     return;
   }
+  #endif
   args.GetReturnValue().Set(Undefined(isolate));
   node::Buffer::New(isolate, 42);
 }
