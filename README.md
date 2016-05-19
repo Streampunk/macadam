@@ -1,8 +1,10 @@
 # Macadam
 
-Prototype bindings to link [Node.js](http://nodejs.org/) and the BlackMagic DeckLink APIs, enabling asynchronous capture and playback to and from BlackMagic devices via a Javascript API.
+Prototype bindings to link [Node.js](http://nodejs.org/) and the BlackMagic DeckLink APIs, enabling asynchronous capture and playback to and from BlackMagic devices via a simple Javascript API.
 
 This is prototype software and is not yet suitable for production use. Currently supported platforms are Mac and Windows.
+
+Why _macadam_? _Tarmacadam_ is the black stuff that magically makes roads, so it seemed appropriate as a name for a steampunk-style BlackMagic library.
 
 ## Installation
 
@@ -22,17 +24,64 @@ To use macadam, `require` the module. Capture and playback operations are illust
 
 ### Capture
 
+The macadam capture class is an event emitter that produces buffers containing video frames.
+
 ```javascript
+var macadam = require('macadam');
+
+// First argument is the DeckLink device number
+// Set appropriate values from display mode and pixel format from those provided.
+var capture = new macadam.Capture(0, macadam.bmdModeHD1080i50, macadam.bmdFormat10BitYUV);
+
+capture.on('frame', function (frameData) {
+  // Do something with each frame received.
+});
+
+capture.on('error', function (err) {
+  // Handle errors found during the capture
+});
+
+capture.start(); // Start capture
+
+// eventually
+capture.stop(); // Stop capture
 ```
+
+The audio and ancillary data inputs of the card are not yet supported.
 
 ### Playback
 
 ``` javascript
+var macadam = require('macadam');
+
+// Set appropriate values from display mode and pixel format from those provided.
+var playback = new macadam.Playback(0, macadam.bmdModeHD1080i50, macadam.bmdFormat10BitYUV);
+
+playback.frame( /* first frame */);
+playback.frame( /* second frame */);
+// more to have a larger buffers
+
+playback.on('played', function (x) {
+  // send the next frame in sequence
+});
+
+playback.on('error', function (err) {
+  // Handle errors found during playback
+});
+
+// eventually
+playback.stop();
 ```
 
-### Device check
+The audio and ancillary data outputs of the card are not yet supported.
+
+### Check the DeckLink API version
+
+To check the DeckLinkAPI version:
 
 ```javascript
+var macadam = require('macadam');
+console.log(macadam.deckLinkVersion());
 ```
 
 ## Status, support and further development
