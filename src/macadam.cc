@@ -51,7 +51,7 @@
 #include <tchar.h>
 #include <conio.h>
 #include <objbase.h>		// Necessary for COM
-#include <comutil.h>
+#include <comdef.h>
 #endif
 
 #include "Capture.h"
