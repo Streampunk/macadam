@@ -76,6 +76,15 @@ Capture::~Capture() {
 void Capture::Init(Local<Object> exports) {
   Isolate* isolate = exports->GetIsolate();
 
+  #ifdef WIN32
+  HRESULT result;
+  result = CoInitialize(NULL);
+	if (FAILED(result))
+	{
+		fprintf(stderr, "Initialization of COM failed - result = %08x.\n", result);
+	}
+  #endif
+
   // Prepare constructor template
   Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
   tpl->SetClassName(String::NewFromUtf8(isolate, "Capture"));
@@ -118,7 +127,11 @@ void Capture::BMInit(const FunctionCallbackInfo<Value>& args) {
   HRESULT	result;
   IDeckLinkAPIInformation *deckLinkAPIInformation;
   IDeckLink* deckLink;
+  #ifdef WIN32
+  CoCreateInstance(CLSID_CDeckLinkIterator, NULL, CLSCTX_ALL, IID_IDeckLinkIterator, (void**)&deckLinkIterator);
+  #else
   deckLinkIterator = CreateDeckLinkIteratorInstance();
+  #endif
   result = deckLinkIterator->QueryInterface(IID_IDeckLinkAPIInformation, (void**)&deckLinkAPIInformation);
   if (result != S_OK) {
     isolate->ThrowException(Exception::Error(
