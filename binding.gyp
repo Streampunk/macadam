@@ -18,7 +18,7 @@
           ]
         },
         "include_dirs" : [
-          "/Users/vizigoth/tools/Blackmagic\ DeckLink\ SDK\ 10.5/Mac/include"
+          "decklink/Mac/include"
         ]
       }],
       ['OS=="win"', {
@@ -35,7 +35,7 @@
             "-l../ffmpeg/bin/avcodec.lib"
         ],
         "include_dirs" : [
-          "/Users/vizigoth/tools/Blackmagic\ DeckLink\ SDK\ 10.5/Mac/include"
+          "decklink/Win/include"
         ]
       }]
     ]
