@@ -41,7 +41,7 @@ This is prototype software that is not yet suitable for production use. The soft
 
 A variant for the Linux platform is also planned. The developers currently lack a test platform for this work.
 
-Contributions can be made via pull requests and will be considered by the author on their merits. Enhancement requests and bug reports should be raised as github issues. For support, please contact [Streampunk Media](http://www.streampunk.media/). For updates follow (@StrmPunkd)[https://twitter.com/StrmPunkd] on Twitter.
+Contributions can be made via pull requests and will be considered by the author on their merits. Enhancement requests and bug reports should be raised as github issues. For support, please contact [Streampunk Media](http://www.streampunk.media/). For updates follow (\@StrmPunkd)[https://twitter.com/StrmPunkd] on Twitter.
 
 ## License
 
