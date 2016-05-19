@@ -47,6 +47,13 @@
 #include "DeckLinkAPI.h"
 #include <stdio.h>
 
+#ifdef WIN32
+#include <tchar.h>
+#include <conio.h>
+#include <objbase.h>		// Necessary for COM
+#include <comutil.h>
+#endif
+
 #include "Capture.h"
 #include "Playback.h"
 
@@ -58,7 +65,11 @@ void DeckLinkVersion(const FunctionCallbackInfo<Value>& args) {
   IDeckLinkIterator* deckLinkIterator;
   HRESULT	result;
   IDeckLinkAPIInformation*	deckLinkAPIInformation;
+  #ifdef WIN32
+  CoCreateInstance(CLSID_CDeckLinkIterator, NULL, CLSCTX_ALL, IID_IDeckLinkIterator, (void**)&deckLinkIterator);
+  #else
   deckLinkIterator = CreateDeckLinkIteratorInstance();
+  #endif
   result = deckLinkIterator->QueryInterface(IID_IDeckLinkAPIInformation, (void**)&deckLinkAPIInformation);
   if (result != S_OK) {
     isolate->ThrowException(Exception::Error(
@@ -91,7 +102,11 @@ void GetFirstDevice(const FunctionCallbackInfo<Value>& args) {
   HRESULT	result;
   IDeckLinkAPIInformation *deckLinkAPIInformation;
   IDeckLink* deckLink;
+  #ifdef WIN32
+  CoCreateInstance(CLSID_CDeckLinkIterator, NULL, CLSCTX_ALL, IID_IDeckLinkIterator, (void**)&deckLinkIterator);
+  #else
   deckLinkIterator = CreateDeckLinkIteratorInstance();
+  #endif
   result = deckLinkIterator->QueryInterface(IID_IDeckLinkAPIInformation, (void**)&deckLinkAPIInformation);
   if (result != S_OK) {
     isolate->ThrowException(Exception::Error(
@@ -138,6 +153,14 @@ void init(Local<Object> exports) {
   NODE_SET_METHOD(exports, "getFirstDevice", GetFirstDevice);
   streampunk::Capture::Init(exports);
   streampunk::Playback::Init(exports);
+  #ifdef WIN32
+  HRESULT result;
+  result = CoInitialize(NULL);
+	if (FAILED(result))
+	{
+		fprintf(stderr, "Initialization of COM failed - result = %08x.\n", result);
+	}
+  #endif
 }
 
 NODE_MODULE(macadam, init);
