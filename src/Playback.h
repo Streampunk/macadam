@@ -1,4 +1,4 @@
-/* Copyright 2016 Christine S. MacNeill
+/* Copyright 2016 Streampunk Media Ltd
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -6,7 +6,7 @@
 
     http://www.apache.org/licenses/LICENSE-2.0
 
-  Unless required by appli cable law or agreed to in writing, software
+  Unless required by applicable law or agreed to in writing, software
   distributed under the License is distributed on an "AS IS" BASIS,
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   See the License for the specific language governing permissions and
@@ -68,8 +68,8 @@ private:
 	// The mutex and condition variable are used to wait for
 	// - a deck to be connected
 	// - the export to complete
-	pthread_mutex_t				m_mutex ;
-	pthread_cond_t				m_condition;
+	// pthread_mutex_t				m_mutex ;
+	// pthread_cond_t				m_condition;
 	bool						m_waitingForDeckConnected;
 	bool						m_waitingForExportEnd;
 	bool						m_exportStarted;
