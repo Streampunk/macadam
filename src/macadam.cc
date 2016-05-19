@@ -40,6 +40,8 @@
 ** -LICENSE-END-
 */
 
+#define _WINSOCKAPI_:wq
+
 #include <node.h>
 #include "node_buffer.h"
 #include "DeckLinkAPI.h"
