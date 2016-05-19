@@ -40,7 +40,7 @@
 ** -LICENSE-END-
 */
 
-#define _WINSOCKAPI_:wq
+#define _WINSOCKAPI_
 
 #include <node.h>
 #include "node_buffer.h"
