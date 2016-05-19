@@ -226,7 +226,7 @@ bool Capture::setupDeckLinkInput() {
 
   m_deckLinkInput->SetCallback(this);
 
-  if (m_deckLinkInput->EnableVideoInput((BMDDisplayMode) displayMode_, pixelFormat_, bmdVideoInputFlagDefault) != S_OK)
+  if (m_deckLinkInput->EnableVideoInput((BMDDisplayMode) displayMode_, (BMDPixelFormat) pixelFormat_, bmdVideoInputFlagDefault) != S_OK)
 	  return false;
 
   if (m_deckLinkInput->StartStreams() != S_OK)
