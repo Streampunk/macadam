@@ -4,7 +4,7 @@ Prototype bindings to link [Node.js](http://nodejs.org/) and the BlackMagic Deck
 
 This is prototype software and is not yet suitable for production use. Currently supported platforms are Mac and Windows.
 
-Why _macadam_? _Tarmacadam_ is the black stuff that magically makes roads, so it seemed appropriate as a name for a steampunk-style BlackMagic library.
+Why _macadam_? _Tarmacadam_ is the black stuff that magically makes roads, so it seemed appropriate as a name for a steampunk-style BlackMagic binding.
 
 ## Installation
 
@@ -24,52 +24,57 @@ To use macadam, `require` the module. Capture and playback operations are illust
 
 ### Capture
 
-The macadam capture class is an event emitter that produces buffers containing video frames.
+The macadam capture class is an event emitter that produces buffers containing video frames. Make sure you release the reference quickly (within ten frames or so) so that the frame data is garbage collected.
 
 ```javascript
 var macadam = require('macadam');
 
-// First argument is the DeckLink device number
-// Set appropriate values from display mode and pixel format from those provided.
+// First argument is the DeckLink device number.
+// Set appropriate values from display mode and pixel format from those macadam provides.
 var capture = new macadam.Capture(0, macadam.bmdModeHD1080i50, macadam.bmdFormat10BitYUV);
 
 capture.on('frame', function (frameData) {
-  // Do something with each frame received.
+  // Do something with each frame received. frameData is a node.js Buffer
 });
 
 capture.on('error', function (err) {
-  // Handle errors found during the capture
+  // Handle errors found during the capture.
 });
 
-capture.start(); // Start capture
+capture.start(); // Start capture.
 
-// eventually
-capture.stop(); // Stop capture
+// ... eventually ...
+capture.stop(); // Stop capture.
 ```
 
 The audio and ancillary data inputs of the card are not yet supported.
 
 ### Playback
 
+The playback event emitter works by sending a sequence of frame buffers (node.js `Buffer` objects) to the playback object. For smooth playback, build a few frames first and then keep adding frames as they are played. A `played` event is emitted each time playback of a frame is complete.
+
+Take care not to hold on to frame buffer references so that they can be garbage collected.
+
 ``` javascript
 var macadam = require('macadam');
 
-// Set appropriate values from display mode and pixel format from those provided.
+// First argument is the DeckLink device number.
+// Set appropriate values from display mode and pixel format from those macadam provides.
 var playback = new macadam.Playback(0, macadam.bmdModeHD1080i50, macadam.bmdFormat10BitYUV);
 
 playback.frame( /* first frame */);
 playback.frame( /* second frame */);
-// more to have a larger buffers
+// Add more here to have a larger buffer to ensure smooth playback
 
 playback.on('played', function (x) {
-  // send the next frame in sequence
+  // Send the next frame in sequence.
 });
 
 playback.on('error', function (err) {
-  // Handle errors found during playback
+  // Handle errors found during playback.
 });
 
-// eventually
+// ... eventually ...
 playback.stop();
 ```
 

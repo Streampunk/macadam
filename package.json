@@ -1,16 +1,17 @@
 {
   "name": "macadam",
-  "version": "0.0.1",
-  "description": "Node bindings to the BlackMagic SDK",
+  "version": "0.1.0",
+  "description": "Async node.js interface to BlackMagic capture and playback devices.",
   "main": "index.js",
   "scripts": {
+    "install": "node-gyp rebuild",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Streampunk/macadam.git"
   },
-  "author": "Christine S MacNeill",
+  "author": "Streampunk Media Ltd",
   "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/Streampunk/macadam/issues"
