@@ -124,9 +124,7 @@ void GetFirstDevice(const FunctionCallbackInfo<Value>& args) {
     args.GetReturnValue().Set(String::NewFromUtf8(isolate, (char*) deviceName));
     return;
   }
-  #endif
-
-  #ifdef DARWIN
+  #elif __APPLE__
   CFStringRef deviceNameCFString = NULL;
   result = deckLink->GetModelName(&deviceNameCFString);
   if (result == S_OK) {
