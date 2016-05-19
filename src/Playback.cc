@@ -209,7 +209,7 @@ void Playback::ScheduleFrame(const v8::FunctionCallbackInfo<v8::Value>& args) {
   IDeckLinkMutableVideoFrame* frame;
   if (obj->m_deckLinkOutput->CreateVideoFrame(obj->m_width, obj->m_height,
       obj->m_width * rowBytePixelRatioN / rowBytePixelRatioD,
-      obj->pixelFormat_, bmdFrameFlagDefault, &frame) != S_OK) {
+      (BMDPixelFormat) obj->pixelFormat_, bmdFrameFlagDefault, &frame) != S_OK) {
     args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Failed to create frame."));
     return;
   };
@@ -269,7 +269,7 @@ bool Playback::setupDeckLinkOutput() {
   if (m_width == -1)
     return false;
 
-  if (m_deckLinkOutput->EnableVideoOutput(displayMode_, bmdVideoOutputFlagDefault) != S_OK)
+  if (m_deckLinkOutput->EnableVideoOutput((BMDDisplayMode) displayMode_, bmdVideoOutputFlagDefault) != S_OK)
     return false;
 
   return true;
