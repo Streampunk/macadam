@@ -1,6 +1,6 @@
 # Macadam
 
-Prototype bindings to link [Node.js](http://nodejs.org/) and the BlackMagic DeckLink APIs, enabling asynchronous capture and playback to and from BlackMagic devices via a simple Javascript API.
+Prototype bindings to link [Node.js](http://nodejs.org/) and the Blackmagic Desktop Video SDK, enabling asynchronous capture and playback to and from [Blackmagic Design](https://www.blackmagicdesign.com/) devices via a simple Javascript API.
 
 This is prototype software and is not yet suitable for production use. Currently supported platforms are Mac and Windows.
 
@@ -11,8 +11,8 @@ Why _macadam_? _Tarmacadam_ is the black stuff that magically makes roads, so it
 Macadam has a number of prerequisites:
 
 1. Install [Node.js](http://nodejs.org/) for your platform. This software has been developed against the long term stable (LTS) release.
-2. Install the latest version of the BlackMagic Desktop Video tools for your platform, available from https://www.blackmagicdesign.com/support.
-3. Make sure you have the prerequisites for running [node-gyp](https://github.com/nodejs/node-gyp) on your system. This requires a C/C++ compiler and python v2.7.
+2. Install the latest version of the Blackmagic Desktop Video SDKs for your platform, available from https://www.blackmagicdesign.com/support.
+3. Install [node-gyp](https://github.com/nodejs/node-gyp) and make sure that you have the prerequisites for compiling Javascript addons for your platform. This requires a C/C++ development kit and python v2.7.
 
 Macadam is designed to be used as a module included into another project. To include macadam into your project:
 
