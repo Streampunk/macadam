@@ -251,12 +251,12 @@ void Capture::TestUV() {
   uv_async_send(async);
 }
 
-void FreeCallback(char* data, void* hint) {
-  Isolate* isolate = v8::Isolate::GetCurrent();
-  IDeckLinkVideoInputFrame* frame = static_cast<IDeckLinkVideoInputFrame*>(hint);
-  isolate->AdjustAmountOfExternalAllocatedMemory(-(frame->GetRowBytes() * frame->GetHeight()));
-  frame->Release();
-}
+// void FreeCallback(char* data, void* hint) {
+//   Isolate* isolate = v8::Isolate::GetCurrent();
+//   IDeckLinkVideoInputFrame* frame = static_cast<IDeckLinkVideoInputFrame*>(hint);
+//   isolate->AdjustAmountOfExternalAllocatedMemory(-(frame->GetRowBytes() * frame->GetHeight()));
+//   frame->Release();
+// }
 
 void Capture::FrameCallback(uv_async_t *handle) {
   Isolate* isolate = v8::Isolate::GetCurrent();
