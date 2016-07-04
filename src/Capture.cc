@@ -266,13 +266,15 @@ void Capture::FrameCallback(uv_async_t *handle) {
   char* new_data;
   capture->latestFrame_->GetBytes((void**) &new_data);
   long new_data_size = capture->latestFrame_->GetRowBytes() * capture->latestFrame_->GetHeight();
-  Local<Object> b = node::Buffer::New(isolate, new_data, new_data_size,
-    FreeCallback, capture->latestFrame_).ToLocalChecked();
-  long extSize = isolate->AdjustAmountOfExternalAllocatedMemory(new_data_size);
-  if (extSize > 100000000) {
-    isolate->LowMemoryNotification();
-    printf("Requesting bin collection.\n");
-  }
+  // Local<Object> b = node::Buffer::New(isolate, new_data, new_data_size,
+  //   FreeCallback, capture->latestFrame_).ToLocalChecked();
+  Local<Object> b = node::Buffer::Copy(isolate, new_data, new_data_size).ToLocalChecked();
+  capture->latestFrame_->Release();
+  // long extSize = isolate->AdjustAmountOfExternalAllocatedMemory(new_data_size);
+  // if (extSize > 100000000) {
+  //   isolate->LowMemoryNotification();
+  //   printf("Requesting bin collection.\n");
+  // }
   Local<Value> argv[1] = { b };
   cb->Call(Null(isolate), 1, argv);
 }
