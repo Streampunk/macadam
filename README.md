@@ -94,7 +94,7 @@ console.log(macadam.deckLinkVersion());
 The Blackmagic mode and format enumerations are available as constants, as in the examples
 shown above: `macadam.bmdModeHD1080i50` and `macadam.bmdFormat10BitYUV`. For more
 information on the modes, see the Blackmagic DeckLink API documentation provided
-with the Blackmagic SDK. Note that not every card supports every mode and format.
+with the Blackmagic SDK. Note that not all cards supports every mode and format.
 
 A set of utility functions are provided that allow access to the mode functions.
 In summary, there are:
