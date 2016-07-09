@@ -89,6 +89,21 @@ var macadam = require('macadam');
 console.log(macadam.deckLinkVersion());
 ```
 
+### Modes and formats
+
+The Blackmagic mode and format enumerations are available as constants, as in the examples
+shown above: `macadam.bmdModeHD1080i50` and `macadam.bmdFormat10BitYUV`. For more
+information on the modes, see the Blackmagic DeckLink API documentation provided
+with the Blackmagic SDK. Note that not every card supports every mode and format.
+
+A set of utility functions are provided that allow access to the mode functions.
+In summary, there are:
+
+* `modeWidth`, `modeHeight`, `modeGrainDuration` and `modeInterlace`: Extract
+  parameters from a Blackmagic _mode_.
+* `formatDepth`, `formatFourCC`, `formatSampling` and `formatColorimetry`: Extract
+  parameters from a Blackmagic _format_.
+
 ## Status, support and further development
 
 This is prototype software that is not yet suitable for production use. The software is being actively tested and developed.

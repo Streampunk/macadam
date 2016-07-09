@@ -1,6 +1,6 @@
 {
   "name": "macadam",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Async node.js interface to Blackmagic Design capture and playback devices.",
   "main": "index.js",
   "scripts": {
