@@ -41,6 +41,10 @@
 */
 
 'use strict';
+var isWinOrMac = (os.platform() === 'win32') || (os.platform() === 'darwin');
+if (!isWinOrMac)
+  throw('Macadam is not currently supported on this platform');
+
 var bindings = require('bindings');
 var macadamNative = bindings('macadam');
 const util = require('util');
