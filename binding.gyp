@@ -22,7 +22,8 @@
         ]
       }],
       ['OS=="win"', {
-        "sources" : [ "src/macadam.cc", "src/Capture.cc", "src/Playback.cc" ],
+        "sources" : [ "src/macadam.cc", "src/Capture.cc", "src/Playback.cc",
+          "decklink/Win/include/DeckLinkAPI_i.c" ],
         "configurations": {
           "Release": {
             "msvs_settings": {
@@ -34,7 +35,6 @@
         },
         "libraries": [
         ],
-      	"sources": [ "decklink/Win/include/DeckLinkAPI_i.c" ],
         "include_dirs" : [
           "decklink/Win/include"
         ]
