@@ -199,7 +199,7 @@ void Playback::ScheduleFrame(const v8::FunctionCallbackInfo<v8::Value>& args) {
   uint32_t rowBytePixelRatioN = 1, rowBytePixelRatioD = 1;
   switch (obj->pixelFormat_) { // TODO expand to other pixel formats
     case bmdFormat10BitYUV:
-      rowBytePixelRatioN = 5; rowBytePixelRatioD = 2;
+      rowBytePixelRatioN = 8; rowBytePixelRatioD = 3;
       break;
     default:
       rowBytePixelRatioN = 2; rowBytePixelRatioD = 1;

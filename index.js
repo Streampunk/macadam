@@ -101,12 +101,12 @@ util.inherits(Playback, EventEmitter);
 Playback.prototype.start = function () {
   try {
     if (!this.initialised) {
-      this.playback.init();
+      console.log("*** playback.init", this.playback.init());
       this.initialised = true;
     }
-    this.playback.doPlayback(function (x) {
+    console.log("*** playback.doPlayback", this.playback.doPlayback(function (x) {
       this.emit('played', x);
-    }.bind(this));
+    }.bind(this)));
   } catch (err) {
     this.emit('error', err);
   }
@@ -119,6 +119,7 @@ Playback.prototype.frame = function (f) {
       this.initialised = true;
     }
     var result = this.playback.scheduleFrame(f);
+    console.log("*** playback.scheduleFrame", result);
     if (typeof result === 'string')
       throw new Error("Problem scheduling frame: " + result);
     else
@@ -130,7 +131,7 @@ Playback.prototype.frame = function (f) {
 
 Playback.prototype.stop = function () {
   try {
-    this.playback.stop();
+    console.log('*** playback stop', this.playback.stop());
     this.emit('done');
   } catch (err) {
     this.emit('error', err);
