@@ -11,7 +11,13 @@ playback.on('error', console.error.bind(null, 'BMD ERROR:'));
 console.log(playback);
 
 playback.frame(frame);
+playback.frame(frame);
 
 playback.start();
 
+playback.on('played', function() {
+  playback.frame(frame);
+});
+
 process.on('exit', playback.stop);
+process.on('SIGINT', playback.stop);
