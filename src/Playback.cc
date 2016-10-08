@@ -171,7 +171,10 @@ void Playback::DoPlayback(const FunctionCallbackInfo<Value>& args) {
   Playback* obj = ObjectWrap::Unwrap<Playback>(args.Holder());
   obj->playbackCB_.Reset(isolate, cb);
 
-  if (obj->m_deckLinkOutput->StartScheduledPlayback(0, obj->m_timeScale, 1.0)) {
+  int result = obj->m_deckLinkOutput->StartScheduledPlayback(0, obj->m_timeScale, 1.0);
+  printf("Playback result code %i and timescale %I64d.\n", result, obj->m_timeScale);
+
+  if (result == S_OK) {
     args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Playback started."));
   }
   else {
@@ -185,6 +188,8 @@ void Playback::StopPlayback(const v8::FunctionCallbackInfo<v8::Value>& args) {
   Playback* obj = ObjectWrap::Unwrap<Playback>(args.Holder());
 
   obj->cleanupDeckLinkOutput();
+
+  obj->playbackCB_.Reset();
 
   args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Playback stopped."));
 }
@@ -221,6 +226,8 @@ void Playback::ScheduleFrame(const v8::FunctionCallbackInfo<v8::Value>& args) {
     return;
   };
   memcpy(frameData, bufData, bufLength);
+
+  printf("Frame duration %I64d/%I64d.", obj->m_frameDuration, obj->m_timeScale);
 
   HRESULT sfr = obj->m_deckLinkOutput->ScheduleVideoFrame(frame,
       (obj->m_totalFrameScheduled * obj->m_frameDuration),
@@ -288,16 +295,21 @@ void Playback::cleanupDeckLinkOutput()
 	m_deckLinkOutput->StopScheduledPlayback(0, NULL, 0);
 	m_deckLinkOutput->DisableVideoOutput();
 	m_deckLinkOutput->SetScheduledFrameCompletionCallback(NULL);
+  m_deckLinkOutput->Release();
 }
 
 void Playback::FrameCallback(uv_async_t *handle) {
   Isolate* isolate = v8::Isolate::GetCurrent();
   HandleScope scope(isolate);
   Playback *playback = static_cast<Playback*>(handle->data);
-  Local<Function> cb = Local<Function>::New(isolate, playback->playbackCB_);
+  if (!playback->playbackCB_.IsEmpty()) {
+    Local<Function> cb = Local<Function>::New(isolate, playback->playbackCB_);
 
-  Local<Value> argv[1] = { Number::New(isolate, playback->result_) };
-  cb->Call(Null(isolate), 1, argv);
+    Local<Value> argv[1] = { Number::New(isolate, playback->result_) };
+    cb->Call(Null(isolate), 1, argv);
+  } else {
+    printf("Frame callback is empty. Assuming finished.\n");
+  }
 }
 
 }

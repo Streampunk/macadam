@@ -9,6 +9,7 @@ var playback = new macadam.Playback(0, macadam.bmdModeHD1080i50,
 playback.on('error', console.error.bind(null, 'BMD ERROR:'));
 
 console.log(playback);
+console.log(playback.constructor);
 
 playback.frame(frame);
 playback.frame(frame);
@@ -19,5 +20,11 @@ playback.on('played', function() {
   playback.frame(frame);
 });
 
-process.on('exit', playback.stop);
-process.on('SIGINT', playback.stop);
+process.on('exit', function () {
+  console.log('Exiting node.');
+  playback.stop();
+}
+process.on('SIGINT', function () {
+  console.log('Received SIGINT.');
+  playback.stop();
+}
