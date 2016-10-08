@@ -122,7 +122,7 @@ Playback.prototype.frame = function (f) {
       this.initialised = true;
     }
     var result = this.playback.scheduleFrame(f);
-    console.log("*** playback.scheduleFrame", result);
+    // console.log("*** playback.scheduleFrame", result);
     if (typeof result === 'string')
       throw new Error("Problem scheduling frame: " + result);
     else

@@ -172,7 +172,7 @@ void Playback::DoPlayback(const FunctionCallbackInfo<Value>& args) {
   obj->playbackCB_.Reset(isolate, cb);
 
   int result = obj->m_deckLinkOutput->StartScheduledPlayback(0, obj->m_timeScale, 1.0);
-  printf("Playback result code %i and timescale %I64d.\n", result, obj->m_timeScale);
+  // printf("Playback result code %i and timescale %I64d.\n", result, obj->m_timeScale);
 
   if (result == S_OK) {
     args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Playback started."));
@@ -227,7 +227,7 @@ void Playback::ScheduleFrame(const v8::FunctionCallbackInfo<v8::Value>& args) {
   };
   memcpy(frameData, bufData, bufLength);
 
-  printf("Frame duration %I64d/%I64d.", obj->m_frameDuration, obj->m_timeScale);
+  // printf("Frame duration %I64d/%I64d.\n", obj->m_frameDuration, obj->m_timeScale);
 
   HRESULT sfr = obj->m_deckLinkOutput->ScheduleVideoFrame(frame,
       (obj->m_totalFrameScheduled * obj->m_frameDuration),
@@ -295,7 +295,6 @@ void Playback::cleanupDeckLinkOutput()
 	m_deckLinkOutput->StopScheduledPlayback(0, NULL, 0);
 	m_deckLinkOutput->DisableVideoOutput();
 	m_deckLinkOutput->SetScheduledFrameCompletionCallback(NULL);
-  m_deckLinkOutput->Release();
 }
 
 void Playback::FrameCallback(uv_async_t *handle) {
