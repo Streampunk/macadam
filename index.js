@@ -429,6 +429,35 @@ function formatFourCC (format) {
   };
 };
 
+function fourCCFormat(fourCC) {
+  switch (fourCC) {
+    case 'UYVY':
+      return macadam.bmdFormat8BitYUV;
+    case 'v210':
+    case 'pgroup':
+      return macadam.bmdFormat10BitYUV;
+    case 'ARGB':
+      return macadam.bmdFormat8BitARGB;
+    case 'BGRA':
+      return macadam.bmdFormat8BitBGRA;
+  // Big-endian RGB 10-bit per component with SMPTE video levels (64-960). Packed as 2:10:10:10
+    case 'r210':
+      return macadam.bmdFormat10BitRGB;
+  // Big-endian RGB 12-bit per component with full range (0-4095). Packed as 12-bit per component
+    case 'R12B':
+      return macadam.bmdFormat12BitRGB;
+  // Little-endian RGB 12-bit per component with full range (0-4095). Packed as 12-bit per component
+    case 'R12L':
+      return macadam.bmdFormat12BitRGBLE;
+  // Little-endian 10-bit RGB with SMPTE video levels (64-940)
+    case 'R10l':
+      return macadam.bmdFormat10BitRGBXLE;
+  // Big-endian 10-bit RGB with SMPTE video levels (64-940)
+    case 'R10b':
+      return macadam.bmdFormat10BitRGBX;
+  }
+}
+
 function formatSampling (format) {
   switch (format) {
     case macadam.bmdFormat8BitYUV:
@@ -571,6 +600,7 @@ var macadam = {
   modeInterlace : modeInterlace,
   formatDepth : formatDepth,
   formatFourCC : formatFourCC,
+  fourCCFOrmat : fourCCFormat,
   formatSampling : formatSampling,
   formatColorimetry : formatColorimetry,
   // access details about the currently connected devices
