@@ -600,7 +600,7 @@ var macadam = {
   modeInterlace : modeInterlace,
   formatDepth : formatDepth,
   formatFourCC : formatFourCC,
-  fourCCFOrmat : fourCCFormat,
+  fourCCFormat : fourCCFormat,
   formatSampling : formatSampling,
   formatColorimetry : formatColorimetry,
   // access details about the currently connected devices
