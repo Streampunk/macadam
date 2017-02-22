@@ -1,4 +1,4 @@
-/* Copyright 2016 Streampunk Media Ltd
+/* Copyright 2017 Streampunk Media Ltd.
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -105,9 +105,9 @@ void Capture::New(const FunctionCallbackInfo<Value>& args) {
 
   if (args.IsConstructCall()) {
     // Invoked as constructor: `new Capture(...)`
-    double deviceIndex = args[0]->IsUndefined() ? 0 : args[0]->NumberValue();
-    double displayMode = args[1]->IsUndefined() ? 0 : args[1]->NumberValue();
-    double pixelFormat = args[2]->IsUndefined() ? 0 : args[2]->NumberValue();
+    uint32_t deviceIndex = args[0]->IsUndefined() ? 0 : args[0]->Uint32Value();
+    uint32_t displayMode = args[1]->IsUndefined() ? 0 : args[1]->Uint32Value();
+    uint32_t pixelFormat = args[2]->IsUndefined() ? 0 : args[2]->Uint32Value();
     Capture* obj = new Capture(deviceIndex, displayMode, pixelFormat);
     obj->Wrap(args.This());
     args.GetReturnValue().Set(args.This());
@@ -116,7 +116,7 @@ void Capture::New(const FunctionCallbackInfo<Value>& args) {
     const int argc = 3;
     Local<Value> argv[argc] = { args[0], args[1], args[2] };
     Local<Function> cons = Local<Function>::New(isolate, constructor);
-    args.GetReturnValue().Set(cons->NewInstance(argc, argv));
+    args.GetReturnValue().Set(cons->NewInstance(isolate->GetCurrentContext(), argc, argv).ToLocalChecked());
   }
 }
 
