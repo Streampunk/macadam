@@ -264,6 +264,7 @@ void Capture::FrameCallback(uv_async_t *handle) {
   Capture *capture = static_cast<Capture*>(handle->data);
   Local<Function> cb = Local<Function>::New(isolate, capture->captureCB_);
   char* new_data;
+  // TODO why does this seg fault
   capture->latestFrame_->GetBytes((void**) &new_data);
   long new_data_size = capture->latestFrame_->GetRowBytes() * capture->latestFrame_->GetHeight();
   // Local<Object> b = node::Buffer::New(isolate, new_data, new_data_size,
