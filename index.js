@@ -142,11 +142,11 @@ Playback.prototype.stop = function () {
 }
 
 function bmCodeToInt (s) {
-  return new Buffer(s.substring(0, 4)).readUInt32BE(0);
+  return Buffer.from(s.substring(0, 4)).readUInt32BE(0);
 }
 
 function intToBMCode(i) {
-  var b = new Buffer(4).writeUInt32(i, 0);
+  var b = Buffer.allocUnsafe(4).writeUInt32(i, 0);
   return b.toString();
 }
 
