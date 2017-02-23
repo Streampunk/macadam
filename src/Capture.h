@@ -64,6 +64,7 @@ private:
   IDeckLink *					m_deckLink;
   IDeckLinkInput *			m_deckLinkInput;
   uv_async_t *async;
+  uv_mutex_t padlock;
 
   // The mutex and condition variable are used to wait for
   // - a deck to be connected
