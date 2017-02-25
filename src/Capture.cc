@@ -276,7 +276,7 @@ bool Capture::setupDeckLinkInput() {
 
 HRESULT	Capture::VideoInputFrameArrived (IDeckLinkVideoInputFrame* arrivedFrame, IDeckLinkAudioInputPacket* arrivedAudio)
 {
-  printf("Arrived video %i audio %i", arrivedFrame == NULL, arrivedAudio == NULL);
+  // printf("Arrived video %i audio %i", arrivedFrame == NULL, arrivedAudio == NULL);
   uv_mutex_lock(&padlock);
   if (arrivedFrame != NULL) {
     arrivedFrame->AddRef();
