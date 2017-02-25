@@ -215,6 +215,7 @@ void Capture::StopCapture(const v8::FunctionCallbackInfo<v8::Value>& args) {
 HRESULT Capture::setupAudioInput(BMDAudioSampleRate sampleRate,
   BMDAudioSampleType sampleType, uint32_t channelCount) {
 
+  sampleByteFactor_ = channelCount * (sampleType / 8);
   HRESULT result = m_deckLinkInput->EnableAudioInput(sampleRate, sampleType, channelCount);
 
   return result;
@@ -307,8 +308,8 @@ void Capture::FrameCallback(uv_async_t *handle) {
   Isolate* isolate = v8::Isolate::GetCurrent();
   HandleScope scope(isolate);
   Capture *capture = static_cast<Capture*>(handle->data);
-  printf("Frame %i Audio %i\n", capture->latestFrame_, capture->latestAudio_);
   Local<Function> cb = Local<Function>::New(isolate, capture->captureCB_);
+  printf("Sample byte factor %i\n", capture->sampleByteFactor_);
   char* new_data;
   char* new_audio;
   Local<Value> bv = Null(isolate);
@@ -325,8 +326,7 @@ void Capture::FrameCallback(uv_async_t *handle) {
   }
   if (capture->latestAudio_ != NULL) {
     capture->latestAudio_->GetBytes((void**) &new_audio);
-    // TODO fix this to use dynamic parameters
-    long new_audio_size = capture->latestAudio_->GetSampleFrameCount() * 4;
+    long new_audio_size = capture->latestAudio_->GetSampleFrameCount() * capture->sampleByteFactor_;
     // Local<Object> b = node::Buffer::New(isolate, new_data, new_data_size,
     //   FreeCallback, capture->latestFrame_).ToLocalChecked();
     ba = node::Buffer::Copy(isolate, new_audio, new_audio_size).ToLocalChecked();

@@ -110,6 +110,7 @@ private:
   uint32_t deviceIndex_;
   uint32_t displayMode_;
   uint32_t pixelFormat_;
+  uint32_t sampleByteFactor_;
   v8::Persistent<v8::Function> captureCB_;
   IDeckLinkVideoInputFrame* latestFrame_;
   IDeckLinkAudioInputPacket* latestAudio_;
