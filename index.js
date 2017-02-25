@@ -70,9 +70,9 @@ util.inherits(Capture, EventEmitter);
 Capture.prototype.start = function () {
   try {
     this.capture.init();
-    this.capture.doCapture(function (x) {
-      this.emit('frame', x);
-    }.bind(this));
+    this.capture.doCapture((v, a) => {
+      this.emit('frame', v, a);
+    });
   } catch (err) {
     this.emit('error', err);
   }
@@ -84,6 +84,14 @@ Capture.prototype.stop = function () {
     this.emit('done');
   } catch (err) {
     this.emit('error', err);
+  }
+}
+
+Capture.prototype.enableAudio = function (sampleRate, sampleType, channelCount) {
+  try {
+    return this.capture.enableAudio(+sampleRate, +sampleType, +channelCount);
+  } catch (err) {
+    return "Error when enabling audio: " + err;
   }
 }
 
