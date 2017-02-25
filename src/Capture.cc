@@ -94,6 +94,7 @@ void Capture::Init(Local<Object> exports) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "init", BMInit);
   NODE_SET_PROTOTYPE_METHOD(tpl, "doCapture", DoCapture);
   NODE_SET_PROTOTYPE_METHOD(tpl, "stop", StopCapture);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "enableAudio", EnableAudio);
 
   constructor.Reset(isolate, tpl->GetFunction());
   exports->Set(String::NewFromUtf8(isolate, "Capture"),
@@ -161,6 +162,33 @@ void Capture::BMInit(const FunctionCallbackInfo<Value>& args) {
     args.GetReturnValue().Set(String::NewFromUtf8(isolate, "sad :-("));
 }
 
+void Capture::EnableAudio(const FunctionCallbackInfo<v8::Value>& args) {
+  Isolate* isolate = args.GetIsolate();
+
+  Capture* obj = ObjectWrap::Unwrap<Capture>(args.Holder());
+  HRESULT result;
+  uint32_t sampleRate = args[0]->IsUndefined() ?
+    bmdAudioSampleRate48kHz : args[0]->Uint32Value();
+  uint32_t sampleType = args[1]->IsUndefined() ? 0 : args[1]->Uint32Value();
+  uint32_t channelCount = args[2]->IsUndefined() ? 2 : args[2]->Uint32Value();
+
+  result = obj->setupAudioInput((BMDAudioSampleRate) sampleRate,
+      (BMDAudioSampleType) sampleType, channelCount);
+
+  switch (result) {
+    case E_INVALIDARG:
+      args.GetReturnValue().Set(String::NewFromUtf8(isolate,
+        "audio channel count must be 2, 8 or 16"));
+      break;
+    case S_OK:
+      args.GetReturnValue().Set(String::NewFromUtf8(isolate, "audio enabled"));
+      break;
+    default:
+      args.GetReturnValue().Set(String::NewFromUtf8(isolate, "failed to start audio"));
+      break;
+  }
+}
+
 void Capture::DoCapture(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = args.GetIsolate();
 
@@ -181,6 +209,12 @@ void Capture::StopCapture(const v8::FunctionCallbackInfo<v8::Value>& args) {
   obj->cleanupDeckLinkInput();
 
   args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Capture stopped."));
+}
+
+HRESULT Capture::setupAudioInput(BMDAudioSampleRate sampleRate,
+  BMDAudioSampleType sampleType, uint32_t channelCount) {
+
+  return m_deckLinkInput->EnableAudioInput(sampleRate, sampleType, channelCount);
 }
 
 // Stop video input
@@ -235,10 +269,11 @@ bool Capture::setupDeckLinkInput() {
   return true;
 }
 
-HRESULT	Capture::VideoInputFrameArrived (IDeckLinkVideoInputFrame* arrivedFrame, IDeckLinkAudioInputPacket*)
+HRESULT	Capture::VideoInputFrameArrived (IDeckLinkVideoInputFrame* arrivedFrame, IDeckLinkAudioInputPacket* arrivedAudio)
 {
   arrivedFrame->AddRef();
   latestFrame_ = arrivedFrame;
+  latestAudio_ = arrivedAudio;
   uv_async_send(async);
   return S_OK;
 }

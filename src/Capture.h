@@ -88,6 +88,9 @@ private:
   // setup the IDeckLinkInput interface (video standard, pixel format, callback object, ...)
   bool setupDeckLinkInput();
 
+  HRESULT setupAudioInput(BMDAudioSampleRate sampleRate, BMDAudioSampleType sampleType,
+    uint32_t channelCount);
+
   void cleanupDeckLinkInput();
 
   // init() must be called after the constructor.
@@ -102,11 +105,14 @@ private:
 
   static void FrameCallback(uv_async_t *handle);
 
+  static void EnableAudio(const v8::FunctionCallbackInfo<v8::Value>& args);
+
   uint32_t deviceIndex_;
   uint32_t displayMode_;
   uint32_t pixelFormat_;
   v8::Persistent<v8::Function> captureCB_;
   IDeckLinkVideoInputFrame* latestFrame_;
+  IDeckLinkAudioInputPacket* latestAudio_;
 public:
   static void Init(v8::Local<v8::Object> exports);
 

@@ -590,6 +590,9 @@ var macadam = {
   bmdDisplayModeSupports3D        : 1 << 0,
   bmdDisplayModeColorspaceRec601  : 1 << 1,
   bmdDisplayModeColorspaceRec709  : 1 << 2,
+  bmdAudioSampleRate48kHz	        : 48000,
+  bmdAudioSampleType16bitInteger	: 16,
+  bmdAudioSampleType32bitInteger	: 32,
   // Convert to and from Black Magic codes.
   intToBMCode : intToBMCode,
   bmCodeToInt : bmCodeToInt,
