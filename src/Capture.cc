@@ -167,13 +167,17 @@ void Capture::EnableAudio(const FunctionCallbackInfo<v8::Value>& args) {
 
   Capture* obj = ObjectWrap::Unwrap<Capture>(args.Holder());
   HRESULT result;
-  uint32_t sampleRate = args[0]->IsUndefined() ?
-    bmdAudioSampleRate48kHz : args[0]->Uint32Value();
-  uint32_t sampleType = args[1]->IsUndefined() ? 0 : args[1]->Uint32Value();
-  uint32_t channelCount = args[2]->IsUndefined() ? 2 : args[2]->Uint32Value();
+  printf("About to read arguments. %i\n", args.Length());
+  printf("Numbers? %i %i %i\n", args[0]->IsNumber(), args[1]->IsNumber(), args[2]->IsNumber());
+  BMDAudioSampleRate sampleRate = args[0]->IsNumber() ?
+      (BMDAudioSampleRate) args[0]->Uint32Value() : bmdAudioSampleRate48kHz;
+  BMDAudioSampleType sampleType = args[1]->IsNumber() ?
+      (BMDAudioSampleType) args[1]->Uint32Value() : bmdAudioSampleType16bitInteger;
+  uint32_t channelCount = args[2]->IsNumber() ?
+      args[2]->Uint32Value() : 2;
 
-  result = obj->setupAudioInput((BMDAudioSampleRate) sampleRate,
-      (BMDAudioSampleType) sampleType, channelCount);
+  printf("Calling capture enable audio input: %i %i %i\n", sampleRate, sampleType, channelCount);
+  result = obj->setupAudioInput(sampleRate, sampleType, channelCount);
 
   switch (result) {
     case E_INVALIDARG:
@@ -213,6 +217,8 @@ void Capture::StopCapture(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
 HRESULT Capture::setupAudioInput(BMDAudioSampleRate sampleRate,
   BMDAudioSampleType sampleType, uint32_t channelCount) {
+
+  printf("Decklink defined %i\n", m_deckLinkInput == NULL);
 
   return m_deckLinkInput->EnableAudioInput(sampleRate, sampleType, channelCount);
 }

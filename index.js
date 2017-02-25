@@ -51,8 +51,8 @@ var macadamNative = bindings('macadam');
 const util = require('util');
 const EventEmitter = require('events');
 
-// var SegfaultHandler = require('../node-segfault-handler');
-// SegfaultHandler.registerHandler("crash.log");
+var SegfaultHandler = require('../node-segfault-handler');
+SegfaultHandler.registerHandler("crash.log");
 
 function Capture (deviceIndex, displayMode, pixelFormat) {
   if (arguments.length !== 3 || typeof deviceIndex !== 'number' ||
@@ -62,6 +62,7 @@ function Capture (deviceIndex, displayMode, pixelFormat) {
   } else {
     this.capture = new macadamNative.Capture(deviceIndex, displayMode, pixelFormat);
   }
+  this.initialised = false;
   EventEmitter.call(this);
 }
 
@@ -69,7 +70,10 @@ util.inherits(Capture, EventEmitter);
 
 Capture.prototype.start = function () {
   try {
-    this.capture.init();
+    if (!this.initialised) {
+      this.capture.init();
+      this.initialised = true;
+    }
     this.capture.doCapture((v, a) => {
       this.emit('frame', v, a);
     });
@@ -89,7 +93,14 @@ Capture.prototype.stop = function () {
 
 Capture.prototype.enableAudio = function (sampleRate, sampleType, channelCount) {
   try {
-    return this.capture.enableAudio(+sampleRate, +sampleType, +channelCount);
+    if (!this.initialised) {
+      this.capture.init();
+      this.initialised = true;
+    }
+    return this.capture.enableAudio(
+      typeof sampleRate === 'string' ? +sampleRate : sampleRate,
+      typeof sampleType === 'string' ? +sampleType: sampleType,
+      typeof channelCount === 'string' ? +channelCount : channelCount);
   } catch (err) {
     return "Error when enabling audio: " + err;
   }
