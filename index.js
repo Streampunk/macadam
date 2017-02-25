@@ -71,8 +71,11 @@ util.inherits(Capture, EventEmitter);
 Capture.prototype.start = function () {
   try {
     if (!this.initialised) {
-      this.capture.init();
-      this.initialised = true;
+      this.initialised = this.capture.init() ? true : false;
+      if (!this.initialised) {
+        console.error('Cannot start capture when no device is present.');
+        return 'Cannot start capture when no device is present.';
+      }
     }
     this.capture.doCapture((v, a) => {
       this.emit('frame', v, a);
@@ -94,8 +97,11 @@ Capture.prototype.stop = function () {
 Capture.prototype.enableAudio = function (sampleRate, sampleType, channelCount) {
   try {
     if (!this.initialised) {
-      console.log('Initialising', this.capture.init());
-      this.initialised = true;
+      this.initialised = this.capture.init() ? true : false;
+      if (!this.initialised) {
+        console.error('Cannot initialise audio when no device is present.');
+        return 'Cannot initialise audio when no device is present.';
+      }
     }
     return this.capture.enableAudio(
       typeof sampleRate === 'string' ? +sampleRate : sampleRate,
