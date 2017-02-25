@@ -300,13 +300,14 @@ void Capture::FrameCallback(uv_async_t *handle) {
   Isolate* isolate = v8::Isolate::GetCurrent();
   HandleScope scope(isolate);
   Capture *capture = static_cast<Capture*>(handle->data);
+  printf("Frame %i Audio %i\n", capture->latestFrame_, capture->latestAudio_);
   Local<Function> cb = Local<Function>::New(isolate, capture->captureCB_);
   char* new_data;
   char* new_audio;
   Local<Value> bv = Null(isolate);
   Local<Value> ba = Null(isolate);
   uv_mutex_lock(&capture->padlock);
-  printf("Frame %i Audio %i\n", capture->latestFrame_, capture->latestAudio_);
+
   if (capture->latestFrame_ != NULL) {
     capture->latestFrame_->GetBytes((void**) &new_data);
     long new_data_size = capture->latestFrame_->GetRowBytes() * capture->latestFrame_->GetHeight();
