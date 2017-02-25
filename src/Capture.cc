@@ -65,6 +65,7 @@ Capture::Capture(uint32_t deviceIndex, uint32_t displayMode,
     displayMode_(displayMode), pixelFormat_(pixelFormat), latestFrame_(NULL) {
   async = new uv_async_t;
   uv_async_init(uv_default_loop(), async, FrameCallback);
+  uv_mutex_init(&padlock);
   async->data = this;
 }
 
