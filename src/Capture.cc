@@ -167,8 +167,6 @@ void Capture::EnableAudio(const FunctionCallbackInfo<v8::Value>& args) {
 
   Capture* obj = ObjectWrap::Unwrap<Capture>(args.Holder());
   HRESULT result;
-  printf("About to read arguments. %i\n", args.Length());
-  printf("Numbers? %i %i %i\n", args[0]->IsNumber(), args[1]->IsNumber(), args[2]->IsNumber());
   BMDAudioSampleRate sampleRate = args[0]->IsNumber() ?
       (BMDAudioSampleRate) args[0]->Uint32Value() : bmdAudioSampleRate48kHz;
   BMDAudioSampleType sampleType = args[1]->IsNumber() ?
@@ -176,7 +174,6 @@ void Capture::EnableAudio(const FunctionCallbackInfo<v8::Value>& args) {
   uint32_t channelCount = args[2]->IsNumber() ?
       args[2]->Uint32Value() : 2;
 
-  printf("Calling capture enable audio input: %i %i %i\n", sampleRate, sampleType, channelCount);
   result = obj->setupAudioInput(sampleRate, sampleType, channelCount);
 
   switch (result) {
@@ -218,10 +215,8 @@ void Capture::StopCapture(const v8::FunctionCallbackInfo<v8::Value>& args) {
 HRESULT Capture::setupAudioInput(BMDAudioSampleRate sampleRate,
   BMDAudioSampleType sampleType, uint32_t channelCount) {
 
-  printf("Decklink defined %i\n", m_deckLinkInput);
-
   HRESULT result = m_deckLinkInput->EnableAudioInput(sampleRate, sampleType, channelCount);
-  printf("Got result %i\n", result);
+
   return result;
 }
 
@@ -307,12 +302,25 @@ void Capture::FrameCallback(uv_async_t *handle) {
   Capture *capture = static_cast<Capture*>(handle->data);
   Local<Function> cb = Local<Function>::New(isolate, capture->captureCB_);
   char* new_data;
+  char* new_audio;
+  Local<Value> bv = Null(isolate);
+  Local<Value> ba = Null(isolate);
   uv_mutex_lock(&capture->padlock);
-  capture->latestFrame_->GetBytes((void**) &new_data);
-  long new_data_size = capture->latestFrame_->GetRowBytes() * capture->latestFrame_->GetHeight();
-  // Local<Object> b = node::Buffer::New(isolate, new_data, new_data_size,
-  //   FreeCallback, capture->latestFrame_).ToLocalChecked();
-  Local<Object> b = node::Buffer::Copy(isolate, new_data, new_data_size).ToLocalChecked();
+  if (capture->latestFrame_ != NULL) {
+    capture->latestFrame_->GetBytes((void**) &new_data);
+    long new_data_size = capture->latestFrame_->GetRowBytes() * capture->latestFrame_->GetHeight();
+    // Local<Object> b = node::Buffer::New(isolate, new_data, new_data_size,
+    //   FreeCallback, capture->latestFrame_).ToLocalChecked();
+    bv = node::Buffer::Copy(isolate, new_data, new_data_size).ToLocalChecked();
+  }
+  if (capture->latestAudio_ != NULL) {
+    capture->latestAudio_->GetBytes((void**) &new_audio);
+    // TODO fix this to use dynamic parameters
+    long new_audio_size = capture->latestAudio_->GetSampleFrameCount() * 4;
+    // Local<Object> b = node::Buffer::New(isolate, new_data, new_data_size,
+    //   FreeCallback, capture->latestFrame_).ToLocalChecked();
+    ba = node::Buffer::Copy(isolate, new_audio, new_audio_size).ToLocalChecked();
+  }
   capture->latestFrame_->Release();
   uv_mutex_unlock(&capture->padlock);
   // long extSize = isolate->AdjustAmountOfExternalAllocatedMemory(new_data_size);
@@ -320,8 +328,8 @@ void Capture::FrameCallback(uv_async_t *handle) {
   //   isolate->LowMemoryNotification();
   //   printf("Requesting bin collection.\n");
   // }
-  Local<Value> argv[1] = { b };
-  cb->Call(Null(isolate), 1, argv);
+  Local<Value> argv[2] = { bv, ba };
+  cb->Call(Null(isolate), 2, argv);
 }
 
 }
