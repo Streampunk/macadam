@@ -274,9 +274,16 @@ bool Capture::setupDeckLinkInput() {
 
 HRESULT	Capture::VideoInputFrameArrived (IDeckLinkVideoInputFrame* arrivedFrame, IDeckLinkAudioInputPacket* arrivedAudio)
 {
-  arrivedFrame->AddRef();
-  latestFrame_ = arrivedFrame;
-  latestAudio_ = arrivedAudio;
+  if (arrivedFrame != NULL) {
+    arrivedFrame->AddRef();
+    latestFrame_ = arrivedFrame;
+  }
+  else latestFrame_ = NULL;
+  if (arrivedAudio != NULL) {
+    arrivedAudio->AddRef();
+    latestAudio_ = arrivedAudio;
+  }
+  else latestAudio_ = NULL;
   uv_async_send(async);
   return S_OK;
 }
@@ -314,6 +321,7 @@ void Capture::FrameCallback(uv_async_t *handle) {
     // Local<Object> b = node::Buffer::New(isolate, new_data, new_data_size,
     //   FreeCallback, capture->latestFrame_).ToLocalChecked();
     bv = node::Buffer::Copy(isolate, new_data, new_data_size).ToLocalChecked();
+    capture->latestFrame_->Release();
   }
   if (capture->latestAudio_ != NULL) {
     capture->latestAudio_->GetBytes((void**) &new_audio);
@@ -322,8 +330,8 @@ void Capture::FrameCallback(uv_async_t *handle) {
     // Local<Object> b = node::Buffer::New(isolate, new_data, new_data_size,
     //   FreeCallback, capture->latestFrame_).ToLocalChecked();
     ba = node::Buffer::Copy(isolate, new_audio, new_audio_size).ToLocalChecked();
+    capture->latestAudio_->Release();
   }
-  capture->latestFrame_->Release();
   uv_mutex_unlock(&capture->padlock);
   // long extSize = isolate->AdjustAmountOfExternalAllocatedMemory(new_data_size);
   // if (extSize > 100000000) {
