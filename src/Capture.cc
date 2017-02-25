@@ -218,9 +218,11 @@ void Capture::StopCapture(const v8::FunctionCallbackInfo<v8::Value>& args) {
 HRESULT Capture::setupAudioInput(BMDAudioSampleRate sampleRate,
   BMDAudioSampleType sampleType, uint32_t channelCount) {
 
-  printf("Decklink defined %i\n", m_deckLinkInput == NULL);
+  printf("Decklink defined %i\n", m_deckLinkInput);
 
-  return m_deckLinkInput->EnableAudioInput(sampleRate, sampleType, channelCount);
+  HRESULT result = m_deckLinkInput->EnableAudioInput(sampleRate, sampleType, channelCount);
+  printf("Got result %i\n", result);
+  return result;
 }
 
 // Stop video input

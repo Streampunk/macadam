@@ -94,7 +94,7 @@ Capture.prototype.stop = function () {
 Capture.prototype.enableAudio = function (sampleRate, sampleType, channelCount) {
   try {
     if (!this.initialised) {
-      this.capture.init();
+      console.log('Initialising', this.capture.init());
       this.initialised = true;
     }
     return this.capture.enableAudio(
