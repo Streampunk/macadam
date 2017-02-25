@@ -275,6 +275,7 @@ bool Capture::setupDeckLinkInput() {
 
 HRESULT	Capture::VideoInputFrameArrived (IDeckLinkVideoInputFrame* arrivedFrame, IDeckLinkAudioInputPacket* arrivedAudio)
 {
+  printf("Arrived video %i audio %i", arrivedFrame == NULL, arrivedAudio == NULL);
   if (arrivedFrame != NULL) {
     arrivedFrame->AddRef();
     latestFrame_ = arrivedFrame;
@@ -309,13 +310,11 @@ void Capture::FrameCallback(uv_async_t *handle) {
   HandleScope scope(isolate);
   Capture *capture = static_cast<Capture*>(handle->data);
   Local<Function> cb = Local<Function>::New(isolate, capture->captureCB_);
-  printf("Sample byte factor %i\n", capture->sampleByteFactor_);
   char* new_data;
   char* new_audio;
   Local<Value> bv = Null(isolate);
   Local<Value> ba = Null(isolate);
   uv_mutex_lock(&capture->padlock);
-
   if (capture->latestFrame_ != NULL) {
     capture->latestFrame_->GetBytes((void**) &new_data);
     long new_data_size = capture->latestFrame_->GetRowBytes() * capture->latestFrame_->GetHeight();
