@@ -51,8 +51,8 @@ var macadamNative = bindings('macadam');
 const util = require('util');
 const EventEmitter = require('events');
 
-var SegfaultHandler = require('../node-segfault-handler');
-SegfaultHandler.registerHandler("crash.log");
+// var SegfaultHandler = require('../node-segfault-handler');
+// SegfaultHandler.registerHandler("crash.log");
 
 function Capture (deviceIndex, displayMode, pixelFormat) {
   if (arguments.length !== 3 || typeof deviceIndex !== 'number' ||
