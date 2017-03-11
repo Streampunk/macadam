@@ -66,6 +66,7 @@ Playback::Playback(uint32_t deviceIndex, uint32_t displayMode,
     displayMode_(displayMode), pixelFormat_(pixelFormat), result_(0) {
   async = new uv_async_t;
   uv_async_init(uv_default_loop(), async, FrameCallback);
+  uv_mutex_init(&padlock);
   async->data = this;
 }
 
@@ -228,17 +229,19 @@ void Playback::ScheduleFrame(const v8::FunctionCallbackInfo<v8::Value>& args) {
   memcpy(frameData, bufData, bufLength);
 
   // printf("Frame duration %I64d/%I64d.\n", obj->m_frameDuration, obj->m_timeScale);
-
+  uv_mutex_lock(&obj->padlock);
   HRESULT sfr = obj->m_deckLinkOutput->ScheduleVideoFrame(frame,
       (obj->m_totalFrameScheduled * obj->m_frameDuration),
       obj->m_frameDuration, obj->m_timeScale);
   if (sfr != S_OK) {
     printf("Failed to schedule frame. Code is %i.\n", sfr);
     args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Failed to schedule frame."));
+    uv_mutex_unlock(&obj->padlock);
     return;
   };
 
   obj->m_totalFrameScheduled++;
+  uv_mutex_unlock(&obj->padlock);
   args.GetReturnValue().Set(Number::New(isolate, obj->m_totalFrameScheduled));
 }
 
@@ -284,9 +287,11 @@ bool Playback::setupDeckLinkOutput() {
 
 HRESULT	Playback::ScheduledFrameCompleted (IDeckLinkVideoFrame* completedFrame, BMDOutputFrameCompletionResult result)
 {
+  uv_mutex_lock(&padlock);
   result_ = result;
-  uv_async_send(async);
   completedFrame->Release(); // Assume you should do this
+  uv_mutex_unlock(&padlock);
+  uv_async_send(async);
 	return S_OK;
 }
 
@@ -301,6 +306,7 @@ void Playback::FrameCallback(uv_async_t *handle) {
   Isolate* isolate = v8::Isolate::GetCurrent();
   HandleScope scope(isolate);
   Playback *playback = static_cast<Playback*>(handle->data);
+  uv_mutex_lock(&playback->padlock);
   if (!playback->playbackCB_.IsEmpty()) {
     Local<Function> cb = Local<Function>::New(isolate, playback->playbackCB_);
 
@@ -309,6 +315,7 @@ void Playback::FrameCallback(uv_async_t *handle) {
   } else {
     printf("Frame callback is empty. Assuming finished.\n");
   }
+  uv_mutex_unlock(&playback->padlock);
 }
 
 }
