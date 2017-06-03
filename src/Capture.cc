@@ -44,21 +44,10 @@
 
 namespace streampunk {
 
-using v8::Function;
-using v8::FunctionCallbackInfo;
-using v8::FunctionTemplate;
-using v8::Isolate;
-using v8::Local;
-using v8::Number;
-using v8::Object;
-using v8::Persistent;
-using v8::String;
-using v8::Value;
-using v8::EscapableHandleScope;
-using v8::HandleScope;
-using v8::Exception;
-
-Persistent<Function> Capture::constructor;
+inline Nan::Persistent<v8::Function> &Capture::constructor() {
+  static Nan::Persistent<v8::Function> myConstructor;
+  return myConstructor;
+}
 
 Capture::Capture(uint32_t deviceIndex, uint32_t displayMode,
     uint32_t pixelFormat) : deviceIndex_(deviceIndex),
@@ -74,9 +63,7 @@ Capture::~Capture() {
     captureCB_.Reset();
 }
 
-void Capture::Init(Local<Object> exports) {
-  Isolate* isolate = exports->GetIsolate();
-
+NAN_MODULE_INIT(Capture::Init) {
   #ifdef WIN32
   HRESULT result;
   result = CoInitialize(NULL);
@@ -87,44 +74,41 @@ void Capture::Init(Local<Object> exports) {
   #endif
 
   // Prepare constructor template
-  Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
-  tpl->SetClassName(String::NewFromUtf8(isolate, "Capture"));
+  v8::Local<v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(New);
+  tpl->SetClassName(Nan::New("Capture").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
   // Prototype
-  NODE_SET_PROTOTYPE_METHOD(tpl, "init", BMInit);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "doCapture", DoCapture);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "stop", StopCapture);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "enableAudio", EnableAudio);
+  Nan::SetPrototypeMethod(tpl, "init", BMInit);
+  Nan::SetPrototypeMethod(tpl, "doCapture", DoCapture);
+  Nan::SetPrototypeMethod(tpl, "stop", StopCapture);
+  Nan::SetPrototypeMethod(tpl, "enableAudio", EnableAudio);
 
-  constructor.Reset(isolate, tpl->GetFunction());
-  exports->Set(String::NewFromUtf8(isolate, "Capture"),
-               tpl->GetFunction());
+  constructor().Reset(Nan::GetFunction(tpl).ToLocalChecked());
+  Nan::Set(target, Nan::New("Capture").ToLocalChecked(),
+               Nan::GetFunction(tpl).ToLocalChecked());
 }
 
-void Capture::New(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = args.GetIsolate();
+NAN_METHOD(Capture::New) {
 
-  if (args.IsConstructCall()) {
+  if (info.IsConstructCall()) {
     // Invoked as constructor: `new Capture(...)`
-    uint32_t deviceIndex = args[0]->IsUndefined() ? 0 : args[0]->Uint32Value();
-    uint32_t displayMode = args[1]->IsUndefined() ? 0 : args[1]->Uint32Value();
-    uint32_t pixelFormat = args[2]->IsUndefined() ? 0 : args[2]->Uint32Value();
+    uint32_t deviceIndex = info[0]->IsUndefined() ? 0 : Nan::To<uint32_t>(info[0]).FromJust();
+    uint32_t displayMode = info[1]->IsUndefined() ? 0 : Nan::To<uint32_t>(info[1]).FromJust();
+    uint32_t pixelFormat = info[2]->IsUndefined() ? 0 : Nan::To<uint32_t>(info[2]).FromJust();
     Capture* obj = new Capture(deviceIndex, displayMode, pixelFormat);
-    obj->Wrap(args.This());
-    args.GetReturnValue().Set(args.This());
+    obj->Wrap(info.This());
+    info.GetReturnValue().Set(info.This());
   } else {
     // Invoked as plain function `Capture(...)`, turn into construct call.
     const int argc = 3;
-    Local<Value> argv[argc] = { args[0], args[1], args[2] };
-    Local<Function> cons = Local<Function>::New(isolate, constructor);
-    args.GetReturnValue().Set(cons->NewInstance(isolate->GetCurrentContext(), argc, argv).ToLocalChecked());
+    v8::Local<v8::Value> argv[argc] = { info[0], info[1], info[2] };
+    v8::Local<v8::Function> cons = Nan::New(constructor());
+    info.GetReturnValue().Set(Nan::NewInstance(cons, argc, argv).ToLocalChecked());
   }
 }
 
-void Capture::BMInit(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = args.GetIsolate();
-
+NAN_METHOD(Capture::BMInit) {
   IDeckLinkIterator* deckLinkIterator;
   HRESULT	result;
   IDeckLinkAPIInformation *deckLinkAPIInformation;
@@ -136,14 +120,13 @@ void Capture::BMInit(const FunctionCallbackInfo<Value>& args) {
   #endif
   result = deckLinkIterator->QueryInterface(IID_IDeckLinkAPIInformation, (void**)&deckLinkAPIInformation);
   if (result != S_OK) {
-    isolate->ThrowException(Exception::Error(
-      String::NewFromUtf8(isolate, "Error connecting to DeckLinkAPI.")));
+    Nan::ThrowError("Error connecting to DeckLinkAPI.");
   }
-  Capture* obj = ObjectWrap::Unwrap<Capture>(args.Holder());
+  Capture* obj = ObjectWrap::Unwrap<Capture>(info.Holder());
 
   for ( uint32_t x = 0 ; x <= obj->deviceIndex_ ; x++ ) {
     if (deckLinkIterator->Next(&deckLink) != S_OK) {
-      args.GetReturnValue().Set(Undefined(isolate));
+      info.GetReturnValue().Set(Nan::Undefined());
       return;
     }
   }
@@ -153,64 +136,56 @@ void Capture::BMInit(const FunctionCallbackInfo<Value>& args) {
   IDeckLinkInput *deckLinkInput;
   if (deckLink->QueryInterface(IID_IDeckLinkInput, (void **)&deckLinkInput) != S_OK)
 	{
-    isolate->ThrowException(Exception::Error(
-      String::NewFromUtf8(isolate, "Could not obtain the DeckLink Input interface.")));
+    Nan::ThrowError("Could not obtain the DeckLink Input interface.");
 	}
   obj->m_deckLinkInput = deckLinkInput;
   if (deckLinkInput)
-    args.GetReturnValue().Set(String::NewFromUtf8(isolate, "made it!"));
+    info.GetReturnValue().Set(Nan::New<v8::String>("made it!").ToLocalChecked());
   else
-    args.GetReturnValue().Set(String::NewFromUtf8(isolate, "sad :-("));
+    info.GetReturnValue().Set(Nan::New<v8::String>("sad :-(").ToLocalChecked());
 }
 
-void Capture::EnableAudio(const FunctionCallbackInfo<v8::Value>& args) {
-  Isolate* isolate = args.GetIsolate();
-
-  Capture* obj = ObjectWrap::Unwrap<Capture>(args.Holder());
+NAN_METHOD(Capture::EnableAudio) {
+  Capture* obj = ObjectWrap::Unwrap<Capture>(info.Holder());
   HRESULT result;
-  BMDAudioSampleRate sampleRate = args[0]->IsNumber() ?
-      (BMDAudioSampleRate) args[0]->Uint32Value() : bmdAudioSampleRate48kHz;
-  BMDAudioSampleType sampleType = args[1]->IsNumber() ?
-      (BMDAudioSampleType) args[1]->Uint32Value() : bmdAudioSampleType16bitInteger;
-  uint32_t channelCount = args[2]->IsNumber() ?
-      args[2]->Uint32Value() : 2;
+  BMDAudioSampleRate sampleRate = info[0]->IsNumber() ?
+      (BMDAudioSampleRate) Nan::To<BMDAudioSampleRate>(info[0]).FromJust() : bmdAudioSampleRate48kHz;
+  BMDAudioSampleType sampleType = info[1]->IsNumber() ?
+      (BMDAudioSampleType) Nan::To<BMDAudioSampleRate>(info[1]).FromJust() : bmdAudioSampleType16bitInteger;
+  uint32_t channelCount = info[2]->IsNumber() ? Nan::To<uint32_t>(info[2]).FromJust() : 2;
 
   result = obj->setupAudioInput(sampleRate, sampleType, channelCount);
 
   switch (result) {
     case E_INVALIDARG:
-      args.GetReturnValue().Set(String::NewFromUtf8(isolate,
-        "audio channel count must be 2, 8 or 16"));
+      info.GetReturnValue().Set(
+        Nan::New<v8::String>("audio channel count must be 2, 8 or 16").ToLocalChecked());
       break;
     case S_OK:
-      args.GetReturnValue().Set(String::NewFromUtf8(isolate, "audio enabled"));
+      info.GetReturnValue().Set(Nan::New<v8::String>("audio enabled").ToLocalChecked());
       break;
     default:
-      args.GetReturnValue().Set(String::NewFromUtf8(isolate, "failed to start audio"));
+      info.GetReturnValue().Set(Nan::New<v8::String>("failed to start audio").ToLocalChecked());
       break;
   }
 }
 
-void Capture::DoCapture(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = args.GetIsolate();
-
-  Local<Function> cb = Local<Function>::Cast(args[0]);
-  Capture* obj = ObjectWrap::Unwrap<Capture>(args.Holder());
-  obj->captureCB_.Reset(isolate, cb);
+NAN_METHOD(Capture::DoCapture) {
+  v8::Local<v8::Function> cb = v8::Local<v8::Function>::Cast(info[0]);
+  Capture* obj = ObjectWrap::Unwrap<Capture>(info.Holder());
+  obj->captureCB_.Reset(cb);
 
   obj->setupDeckLinkInput();
 
-  args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Capture started."));
+  info.GetReturnValue().Set(Nan::New("Capture started.").ToLocalChecked());
 }
 
-void Capture::StopCapture(const v8::FunctionCallbackInfo<v8::Value>& args) {
-  Isolate* isolate = args.GetIsolate();
-
-  Capture* obj = ObjectWrap::Unwrap<Capture>(args.Holder());
+NAN_METHOD(Capture::StopCapture) {
+  Capture* obj = ObjectWrap::Unwrap<Capture>(info.Holder());
 
   obj->cleanupDeckLinkInput();
 
-  args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Capture stopped."));
+  info.GetReturnValue().Set(Nan::New<v8::String>("Capture stopped.").ToLocalChecked());
 }
 
 HRESULT Capture::setupAudioInput(BMDAudioSampleRate sampleRate,
@@ -308,22 +283,21 @@ void Capture::TestUV() {
 //   frame->Release();
 // }
 
-void Capture::FrameCallback(uv_async_t *handle) {
-  Isolate* isolate = v8::Isolate::GetCurrent();
-  HandleScope scope(isolate);
-  Capture *capture = static_cast<Capture*>(handle->data);
-  Local<Function> cb = Local<Function>::New(isolate, capture->captureCB_);
+NAUV_WORK_CB(Capture::FrameCallback) {
+  Nan::HandleScope scope;
+  Capture *capture = static_cast<Capture*>(async->data);
+  Nan::Callback cb(Nan::New(capture->captureCB_));
   char* new_data;
   char* new_audio;
-  Local<Value> bv = Null(isolate);
-  Local<Value> ba = Null(isolate);
+  v8::Local<v8::Value> bv = Nan::Null();
+  v8::Local<v8::Value> ba = Nan::Null();
   uv_mutex_lock(&capture->padlock);
   if (capture->latestFrame_ != NULL) {
     capture->latestFrame_->GetBytes((void**) &new_data);
     long new_data_size = capture->latestFrame_->GetRowBytes() * capture->latestFrame_->GetHeight();
     // Local<Object> b = node::Buffer::New(isolate, new_data, new_data_size,
     //   FreeCallback, capture->latestFrame_).ToLocalChecked();
-    bv = node::Buffer::Copy(isolate, new_data, new_data_size).ToLocalChecked();
+    bv = Nan::CopyBuffer(new_data, new_data_size).ToLocalChecked();
     capture->latestFrame_->Release();
   }
   if (capture->latestAudio_ != NULL) {
@@ -331,7 +305,7 @@ void Capture::FrameCallback(uv_async_t *handle) {
     long new_audio_size = capture->latestAudio_->GetSampleFrameCount() * capture->sampleByteFactor_;
     // Local<Object> b = node::Buffer::New(isolate, new_data, new_data_size,
     //   FreeCallback, capture->latestFrame_).ToLocalChecked();
-    ba = node::Buffer::Copy(isolate, new_audio, new_audio_size).ToLocalChecked();
+    ba = Nan::CopyBuffer(new_audio, new_audio_size).ToLocalChecked();
     capture->latestAudio_->Release();
   }
   uv_mutex_unlock(&capture->padlock);
@@ -340,8 +314,8 @@ void Capture::FrameCallback(uv_async_t *handle) {
   //   isolate->LowMemoryNotification();
   //   printf("Requesting bin collection.\n");
   // }
-  Local<Value> argv[2] = { bv, ba };
-  cb->Call(Null(isolate), 2, argv);
+  v8::Local<v8::Value> argv[2] = { bv, ba };
+  cb.Call(2, argv);
 }
 
 }
