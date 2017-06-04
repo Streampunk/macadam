@@ -140,9 +140,9 @@ NAN_METHOD(Capture::BMInit) {
 	}
   obj->m_deckLinkInput = deckLinkInput;
   if (deckLinkInput)
-    info.GetReturnValue().Set(Nan::New<v8::String>("made it!").ToLocalChecked());
+    info.GetReturnValue().Set(Nan::New("made it!").ToLocalChecked());
   else
-    info.GetReturnValue().Set(Nan::New<v8::String>("sad :-(").ToLocalChecked());
+    info.GetReturnValue().Set(Nan::New("sad :-(").ToLocalChecked());
 }
 
 NAN_METHOD(Capture::EnableAudio) {

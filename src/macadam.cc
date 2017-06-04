@@ -46,6 +46,7 @@
 #include "node_buffer.h"
 #include "DeckLinkAPI.h"
 #include <stdio.h>
+#include <nan.h>
 
 #ifdef WIN32
 #include <tchar.h>
@@ -59,9 +60,7 @@
 
 using namespace v8;
 
-void DeckLinkVersion(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = args.GetIsolate();
-
+NAN_METHOD(DeckLinkVersion) {
   IDeckLinkIterator* deckLinkIterator;
   HRESULT	result;
   IDeckLinkAPIInformation*	deckLinkAPIInformation;
@@ -72,8 +71,7 @@ void DeckLinkVersion(const FunctionCallbackInfo<Value>& args) {
   #endif
   result = deckLinkIterator->QueryInterface(IID_IDeckLinkAPIInformation, (void**)&deckLinkAPIInformation);
   if (result != S_OK) {
-    isolate->ThrowException(Exception::Error(
-      String::NewFromUtf8(isolate, "Error connecting to DeckLinkAPI.")));
+    Nan::ThrowError("Error connecting to DeckLinkAPI.");
   }
 
   char deckVer [80];
@@ -91,13 +89,10 @@ void DeckLinkVersion(const FunctionCallbackInfo<Value>& args) {
 
   deckLinkAPIInformation->Release();
 
-  Local<String> deckVerString = String::NewFromUtf8(isolate, deckVer);
-  args.GetReturnValue().Set(deckVerString);
+  info.GetReturnValue().Set(Nan::New(deckVer).ToLocalChecked());
 }
 
-void GetFirstDevice(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = args.GetIsolate();
-
+NAN_METHOD(GetFirstDevice) {
   IDeckLinkIterator* deckLinkIterator;
   HRESULT	result;
   IDeckLinkAPIInformation *deckLinkAPIInformation;
@@ -109,11 +104,10 @@ void GetFirstDevice(const FunctionCallbackInfo<Value>& args) {
   #endif
   result = deckLinkIterator->QueryInterface(IID_IDeckLinkAPIInformation, (void**)&deckLinkAPIInformation);
   if (result != S_OK) {
-    isolate->ThrowException(Exception::Error(
-      String::NewFromUtf8(isolate, "Error connecting to DeckLinkAPI.")));
+    Nan::ThrowError("Error connecting to DeckLinkAPI.");
   }
   if (deckLinkIterator->Next(&deckLink) != S_OK) {
-    args.GetReturnValue().Set(Undefined(isolate));
+    info.GetReturnValue().SetUndefined();
     return;
   }
   #ifdef WIN32
@@ -121,7 +115,7 @@ void GetFirstDevice(const FunctionCallbackInfo<Value>& args) {
   result = deckLink->GetModelName(&deviceNameBSTR);
   if (result == S_OK) {
     _bstr_t deviceName(deviceNameBSTR, false);
-    args.GetReturnValue().Set(String::NewFromUtf8(isolate, (char*) deviceName));
+    info.GetReturnValue().Set(Nan::New((char*) deviceName).ToLocalChecked());
     return;
   }
   #elif __APPLE__
@@ -130,12 +124,11 @@ void GetFirstDevice(const FunctionCallbackInfo<Value>& args) {
   if (result == S_OK) {
     char deviceName [64];
     CFStringGetCString(deviceNameCFString, deviceName, sizeof(deviceName), kCFStringEncodingMacRoman);
-    args.GetReturnValue().Set(String::NewFromUtf8(isolate, deviceName));
+    info.GetReturnValue().Set(Nan::New(deviceName).ToLocalChecked());
     return;
   }
   #endif
-  args.GetReturnValue().Set(Undefined(isolate));
-  node::Buffer::New(isolate, 42);
+  info.GetReturnValue().SetUndefined();
 }
 
 
@@ -158,11 +151,11 @@ void GetFirstDevice(const FunctionCallbackInfo<Value>& args) {
   return scope.Close(fastBuffer);
 } */
 
-void init(Local<Object> exports) {
-  NODE_SET_METHOD(exports, "deckLinkVersion", DeckLinkVersion);
-  NODE_SET_METHOD(exports, "getFirstDevice", GetFirstDevice);
-  streampunk::Capture::Init(exports);
-  streampunk::Playback::Init(exports);
+NAN_MODULE_INIT(Init) {
+  Nan::Export(target, "deckLinkVersion", DeckLinkVersion);
+  Nan::Export(target, "getFirstDevice", GetFirstDevice);
+  streampunk::Capture::Init(target);
+  streampunk::Playback::Init(target);
   #ifdef WIN32
   HRESULT result;
   result = CoInitialize(NULL);
@@ -173,4 +166,4 @@ void init(Local<Object> exports) {
   #endif
 }
 
-NODE_MODULE(macadam, init);
+NODE_MODULE(macadam, Init);
