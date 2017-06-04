@@ -149,9 +149,9 @@ NAN_METHOD(Capture::EnableAudio) {
   Capture* obj = ObjectWrap::Unwrap<Capture>(info.Holder());
   HRESULT result;
   BMDAudioSampleRate sampleRate = info[0]->IsNumber() ?
-      (BMDAudioSampleRate) Nan::To<BMDAudioSampleRate>(info[0]).FromJust() : bmdAudioSampleRate48kHz;
+      (BMDAudioSampleRate) Nan::To<uint32_t>(info[0]).FromJust() : bmdAudioSampleRate48kHz;
   BMDAudioSampleType sampleType = info[1]->IsNumber() ?
-      (BMDAudioSampleType) Nan::To<BMDAudioSampleRate>(info[1]).FromJust() : bmdAudioSampleType16bitInteger;
+      (BMDAudioSampleType) Nan::To<uint32_t>(info[1]).FromJust() : bmdAudioSampleType16bitInteger;
   uint32_t channelCount = info[2]->IsNumber() ? Nan::To<uint32_t>(info[2]).FromJust() : 2;
 
   result = obj->setupAudioInput(sampleRate, sampleType, channelCount);
