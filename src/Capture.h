@@ -47,19 +47,20 @@
 #include <node_object_wrap.h>
 #include <uv.h>
 #include <node_buffer.h>
+#include <nan.h>
 
 #include "DeckLinkAPI.h"
 
 namespace streampunk {
 
-class Capture : public IDeckLinkInputCallback, public node::ObjectWrap
+class Capture : public IDeckLinkInputCallback, public Nan::ObjectWrap
 {
 private:
   explicit Capture(uint32_t deviceIndex = 0, uint32_t displayMode = 0, uint32_t pixelFormat = 0);
   ~Capture();
 
-  static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static v8::Persistent<v8::Function> constructor;
+  static NAN_METHOD(New);
+  static inline Nan::Persistent<v8::Function> &constructor();
 
   IDeckLink *					m_deckLink;
   IDeckLinkInput *			m_deckLinkInput;
@@ -96,26 +97,26 @@ private:
   // init() must be called after the constructor.
   // if init() fails, call the destructor
   //bool			init();
-  static void BMInit(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static NAN_METHOD(BMInit);
 
   // start the capture operation. returns when the operation has completed
-  static void DoCapture(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static NAN_METHOD(DoCapture);
 
-  static void StopCapture(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static NAN_METHOD(StopCapture);
 
-  static void FrameCallback(uv_async_t *handle);
+  static NAN_METHOD(EnableAudio);
 
-  static void EnableAudio(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static NAUV_WORK_CB(FrameCallback);
 
   uint32_t deviceIndex_;
   uint32_t displayMode_;
   uint32_t pixelFormat_;
   uint32_t sampleByteFactor_;
-  v8::Persistent<v8::Function> captureCB_;
+  Nan::Persistent<v8::Function> captureCB_;
   IDeckLinkVideoInputFrame* latestFrame_;
   IDeckLinkAudioInputPacket* latestAudio_;
 public:
-  static void Init(v8::Local<v8::Object> exports);
+  static NAN_MODULE_INIT(Init);
 
   // IDeckLinkInputCallback
   virtual HRESULT	VideoInputFormatChanged (BMDVideoInputFormatChangedEvents notificationEvents, IDeckLinkDisplayMode* newDisplayMode, BMDDetectedVideoInputFormatFlags detectedSignalFlags);

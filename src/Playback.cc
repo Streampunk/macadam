@@ -45,21 +45,10 @@
 
 namespace streampunk {
 
-using v8::Function;
-using v8::FunctionCallbackInfo;
-using v8::FunctionTemplate;
-using v8::Isolate;
-using v8::Local;
-using v8::Number;
-using v8::Object;
-using v8::Persistent;
-using v8::String;
-using v8::Value;
-using v8::EscapableHandleScope;
-using v8::HandleScope;
-using v8::Exception;
-
-Persistent<Function> Playback::constructor;
+inline Nan::Persistent<v8::Function> &Playback::constructor() {
+  static Nan::Persistent<v8::Function> myConstructor;
+  return myConstructor;
+}
 
 Playback::Playback(uint32_t deviceIndex, uint32_t displayMode,
     uint32_t pixelFormat) : m_totalFrameScheduled(0), deviceIndex_(deviceIndex),
@@ -75,9 +64,7 @@ Playback::~Playback() {
     playbackCB_.Reset();
 }
 
-void Playback::Init(Local<Object> exports) {
-  Isolate* isolate = exports->GetIsolate();
-
+NAN_MODULE_INIT(Playback::Init) {
   #ifdef WIN32
   HRESULT result;
   result = CoInitialize(NULL);
@@ -88,44 +75,40 @@ void Playback::Init(Local<Object> exports) {
   #endif
 
   // Prepare constructor template
-  Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
-  tpl->SetClassName(String::NewFromUtf8(isolate, "Playback"));
+  v8::Local<v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(New);
+  tpl->SetClassName(Nan::New("Playback").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
   // Prototype
-  NODE_SET_PROTOTYPE_METHOD(tpl, "init", BMInit);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "scheduleFrame", ScheduleFrame);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "doPlayback", DoPlayback);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "stop", StopPlayback);
+  Nan::SetPrototypeMethod(tpl, "init", BMInit);
+  Nan::SetPrototypeMethod(tpl, "scheduleFrame", ScheduleFrame);
+  Nan::SetPrototypeMethod(tpl, "doPlayback", DoPlayback);
+  Nan::SetPrototypeMethod(tpl, "stop", StopPlayback);
 
-  constructor.Reset(isolate, tpl->GetFunction());
-  exports->Set(String::NewFromUtf8(isolate, "Playback"),
-               tpl->GetFunction());
+  constructor().Reset(Nan::GetFunction(tpl).ToLocalChecked());
+  Nan::Set(target, Nan::New("Playback").ToLocalChecked(),
+               Nan::GetFunction(tpl).ToLocalChecked());
 }
 
-void Playback::New(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = args.GetIsolate();
-
-  if (args.IsConstructCall()) {
+NAN_METHOD(Playback::New) {
+  if (info.IsConstructCall()) {
     // Invoked as constructor: `new Playback(...)`
-    uint32_t deviceIndex = args[0]->IsUndefined() ? 0 : args[0]->Uint32Value();
-    uint32_t displayMode = args[1]->IsUndefined() ? 0 : args[1]->Uint32Value();
-    uint32_t pixelFormat = args[2]->IsUndefined() ? 0 : args[2]->Uint32Value();
+    uint32_t deviceIndex = info[0]->IsUndefined() ? 0 : Nan::To<uint32_t>(info[0]).FromJust();
+    uint32_t displayMode = info[1]->IsUndefined() ? 0 : Nan::To<uint32_t>(info[1]).FromJust();
+    uint32_t pixelFormat = info[2]->IsUndefined() ? 0 : Nan::To<uint32_t>(info[2]).FromJust();
     Playback* obj = new Playback(deviceIndex, displayMode, pixelFormat);
-    obj->Wrap(args.This());
-    args.GetReturnValue().Set(args.This());
+    obj->Wrap(info.This());
+    info.GetReturnValue().Set(info.This());
   } else {
     // Invoked as plain function `Playback(...)`, turn into construct call.
     const int argc = 3;
-    Local<Value> argv[argc] = { args[0], args[1], args[2] };
-    Local<Function> cons = Local<Function>::New(isolate, constructor);
-    args.GetReturnValue().Set(cons->NewInstance(isolate->GetCurrentContext(), argc, argv).ToLocalChecked());
+    v8::Local<v8::Value> argv[argc] = { info[0], info[1], info[2] };
+    v8::Local<v8::Function> cons = Nan::New(constructor());
+    info.GetReturnValue().Set(Nan::NewInstance(cons, argc, argv).ToLocalChecked());
   }
 }
 
-void Playback::BMInit(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = args.GetIsolate();
-
+NAN_METHOD(Playback::BMInit) {
   IDeckLinkIterator* deckLinkIterator;
   HRESULT	result;
   IDeckLinkAPIInformation *deckLinkAPIInformation;
@@ -137,14 +120,13 @@ void Playback::BMInit(const FunctionCallbackInfo<Value>& args) {
   #endif
   result = deckLinkIterator->QueryInterface(IID_IDeckLinkAPIInformation, (void**)&deckLinkAPIInformation);
   if (result != S_OK) {
-    isolate->ThrowException(Exception::Error(
-      String::NewFromUtf8(isolate, "Error connecting to DeckLinkAPI.")));
+    Nan::ThrowError("Error connecting to DeckLinkAPI.\n");
   }
-  Playback* obj = ObjectWrap::Unwrap<Playback>(args.Holder());
+  Playback* obj = ObjectWrap::Unwrap<Playback>(info.Holder());
 
   for ( uint32_t x = 0 ; x <= obj->deviceIndex_ ; x++ ) {
     if (deckLinkIterator->Next(&deckLink) != S_OK) {
-      args.GetReturnValue().Set(Undefined(isolate));
+      info.GetReturnValue().SetUndefined();
       return;
     }
   }
@@ -154,53 +136,45 @@ void Playback::BMInit(const FunctionCallbackInfo<Value>& args) {
   IDeckLinkOutput *deckLinkOutput;
   if (deckLink->QueryInterface(IID_IDeckLinkOutput, (void **)&deckLinkOutput) != S_OK)
   {
-    isolate->ThrowException(Exception::Error(
-      String::NewFromUtf8(isolate, "Could not obtain DeckLink Output interface.\n")));
+    Nan::ThrowError("Could not obtain DeckLink Output interface.\n");
   }
   obj->m_deckLinkOutput = deckLinkOutput;
 
   if (obj->setupDeckLinkOutput())
-    args.GetReturnValue().Set(String::NewFromUtf8(isolate, "made it!"));
+    info.GetReturnValue().Set(Nan::New("made it!").ToLocalChecked());
   else
-    args.GetReturnValue().Set(String::NewFromUtf8(isolate, "sad :-("));
+    info.GetReturnValue().Set(Nan::New("sad :-(").ToLocalChecked());
 }
 
-void Playback::DoPlayback(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = args.GetIsolate();
-
-  Local<Function> cb = Local<Function>::Cast(args[0]);
-  Playback* obj = ObjectWrap::Unwrap<Playback>(args.Holder());
-  obj->playbackCB_.Reset(isolate, cb);
+NAN_METHOD(Playback::DoPlayback) {
+  v8::Local<v8::Function> cb = v8::Local<v8::Function>::Cast(info[0]);
+  Playback* obj = ObjectWrap::Unwrap<Playback>(info.Holder());
+  obj->playbackCB_.Reset(cb);
 
   int result = obj->m_deckLinkOutput->StartScheduledPlayback(0, obj->m_timeScale, 1.0);
   // printf("Playback result code %i and timescale %I64d.\n", result, obj->m_timeScale);
 
   if (result == S_OK) {
-    args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Playback started."));
+    info.GetReturnValue().Set(Nan::New("Playback started.").ToLocalChecked());
   }
   else {
-    args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Playback failed to start."));
+    info.GetReturnValue().Set(Nan::New("Playback failed to start.").ToLocalChecked());
   }
 }
 
-void Playback::StopPlayback(const v8::FunctionCallbackInfo<v8::Value>& args) {
-  Isolate* isolate = args.GetIsolate();
-
-  Playback* obj = ObjectWrap::Unwrap<Playback>(args.Holder());
+NAN_METHOD(Playback::StopPlayback) {
+  Playback* obj = ObjectWrap::Unwrap<Playback>(info.Holder());
 
   obj->cleanupDeckLinkOutput();
 
   obj->playbackCB_.Reset();
 
-  args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Playback stopped."));
+  info.GetReturnValue().Set(Nan::New("Playback stopped.").ToLocalChecked());
 }
 
-void Playback::ScheduleFrame(const v8::FunctionCallbackInfo<v8::Value>& args) {
-  Isolate* isolate = args.GetIsolate();
-  HandleScope scope(isolate);
-
-  Playback* obj = ObjectWrap::Unwrap<Playback>(args.Holder());
-  Local<Object> bufObj = args[0]->ToObject();
+NAN_METHOD(Playback::ScheduleFrame) {
+  Playback* obj = ObjectWrap::Unwrap<Playback>(info.Holder());
+  v8::Local<v8::Object> bufObj = Nan::To<v8::Object>(info[0]).ToLocalChecked();
 
   uint32_t rowBytePixelRatioN = 1, rowBytePixelRatioD = 1;
   switch (obj->pixelFormat_) { // TODO expand to other pixel formats
@@ -216,14 +190,14 @@ void Playback::ScheduleFrame(const v8::FunctionCallbackInfo<v8::Value>& args) {
   if (obj->m_deckLinkOutput->CreateVideoFrame(obj->m_width, obj->m_height,
       obj->m_width * rowBytePixelRatioN / rowBytePixelRatioD,
       (BMDPixelFormat) obj->pixelFormat_, bmdFrameFlagDefault, &frame) != S_OK) {
-    args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Failed to create frame."));
+    info.GetReturnValue().Set(Nan::New("Failed to create frame.").ToLocalChecked());
     return;
   };
   char* bufData = node::Buffer::Data(bufObj);
   size_t bufLength = node::Buffer::Length(bufObj);
   char* frameData = NULL;
   if (frame->GetBytes((void**) &frameData) != S_OK) {
-    args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Failed to get new frame bytes."));
+    info.GetReturnValue().Set(Nan::New("Failed to get new frame bytes.").ToLocalChecked());
     return;
   };
   memcpy(frameData, bufData, bufLength);
@@ -235,14 +209,14 @@ void Playback::ScheduleFrame(const v8::FunctionCallbackInfo<v8::Value>& args) {
       obj->m_frameDuration, obj->m_timeScale);
   if (sfr != S_OK) {
     printf("Failed to schedule frame. Code is %i.\n", sfr);
-    args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Failed to schedule frame."));
+    info.GetReturnValue().Set(Nan::New("Failed to schedule frame.").ToLocalChecked());
     uv_mutex_unlock(&obj->padlock);
     return;
   };
 
   obj->m_totalFrameScheduled++;
   uv_mutex_unlock(&obj->padlock);
-  args.GetReturnValue().Set(Number::New(isolate, obj->m_totalFrameScheduled));
+  info.GetReturnValue().Set(obj->m_totalFrameScheduled);
 }
 
 bool Playback::setupDeckLinkOutput() {
@@ -302,16 +276,15 @@ void Playback::cleanupDeckLinkOutput()
 	m_deckLinkOutput->SetScheduledFrameCompletionCallback(NULL);
 }
 
-void Playback::FrameCallback(uv_async_t *handle) {
-  Isolate* isolate = v8::Isolate::GetCurrent();
-  HandleScope scope(isolate);
-  Playback *playback = static_cast<Playback*>(handle->data);
+NAUV_WORK_CB(Playback::FrameCallback) {
+  Nan::HandleScope scope;
+  Playback *playback = static_cast<Playback*>(async->data);
   uv_mutex_lock(&playback->padlock);
   if (!playback->playbackCB_.IsEmpty()) {
-    Local<Function> cb = Local<Function>::New(isolate, playback->playbackCB_);
+    Nan::Callback cb(Nan::New(playback->playbackCB_));
 
-    Local<Value> argv[1] = { Number::New(isolate, playback->result_) };
-    cb->Call(Null(isolate), 1, argv);
+    v8::Local<v8::Value> argv[1] = { Nan::New(playback->result_) };
+    cb.Call(1, argv);
   } else {
     printf("Frame callback is empty. Assuming finished.\n");
   }

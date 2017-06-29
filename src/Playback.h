@@ -47,19 +47,20 @@
 #include <node_object_wrap.h>
 #include <uv.h>
 #include <node_buffer.h>
+#include <nan.h>
 
 #include "DeckLinkAPI.h"
 
 namespace streampunk {
 
-class Playback : public IDeckLinkVideoOutputCallback, public node::ObjectWrap
+class Playback : public IDeckLinkVideoOutputCallback, public Nan::ObjectWrap
 {
 private:
   explicit Playback(uint32_t deviceIndex = 0, uint32_t displayMode = 0, uint32_t pixelFormat = 0);
   ~Playback();
 
-  static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static v8::Persistent<v8::Function> constructor;
+  static NAN_METHOD(New);
+  static inline Nan::Persistent<v8::Function> &constructor();
 
 	IDeckLink *					m_deckLink;
 	IDeckLinkOutput *			m_deckLinkOutput;
@@ -97,23 +98,23 @@ private:
 
 	void			cleanupDeckLinkOutput();
 
-  static void BMInit(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static NAN_METHOD(BMInit);
 
-  static void DoPlayback(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static NAN_METHOD(DoPlayback);
 
-  static void StopPlayback(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static NAN_METHOD(StopPlayback);
 
-  static void ScheduleFrame(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static NAN_METHOD(ScheduleFrame);
 
-  static void FrameCallback(uv_async_t *handle);
+  static NAUV_WORK_CB(FrameCallback);
 
   uint32_t deviceIndex_;
   uint32_t displayMode_;
   uint32_t pixelFormat_;
-  v8::Persistent<v8::Function> playbackCB_;
+  Nan::Persistent<v8::Function> playbackCB_;
   uint32_t result_;
 public:
-  static void Init(v8::Local<v8::Object> exports);
+  static NAN_MODULE_INIT(Init);
 
 	// IDeckLinkVideoOutputCallback
 	virtual HRESULT	ScheduledFrameCompleted (IDeckLinkVideoFrame* completedFrame, BMDOutputFrameCompletionResult result);

@@ -1,6 +1,9 @@
 {
   "targets": [{
     "target_name" : "macadam",
+    "include_dirs" : [
+      "<!(node -e \"require('nan')\")"
+    ],
     "conditions": [
       ['OS=="mac"', {
         'sources' : [ "src/macadam.cc", "src/Capture.cc", "src/Playback.cc" ],
