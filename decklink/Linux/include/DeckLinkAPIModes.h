@@ -25,6 +25,9 @@
 ** -LICENSE-END-
 */
 
+#ifndef BMD_DECKLINKAPIMODES_H
+#define BMD_DECKLINKAPIMODES_H
+
 
 #ifndef BMD_CONST
     #if defined(_MSC_VER)
@@ -37,16 +40,15 @@
 // Type Declarations
 
 
-// Enumeration Mapping
+// Interface ID Declarations
 
-cpp_quote("typedef unsigned int BMDDisplayModeFlags;")
-cpp_quote("#if 0")
-typedef enum _BMDDisplayModeFlags BMDDisplayModeFlags;
-cpp_quote("#endif")
+BMD_CONST REFIID IID_IDeckLinkDisplayModeIterator                 = /* 9C88499F-F601-4021-B80B-032E4EB41C35 */ {0x9C,0x88,0x49,0x9F,0xF6,0x01,0x40,0x21,0xB8,0x0B,0x03,0x2E,0x4E,0xB4,0x1C,0x35};
+BMD_CONST REFIID IID_IDeckLinkDisplayMode                         = /* 3EB2C1AB-0A3D-4523-A3AD-F40D7FB14E78 */ {0x3E,0xB2,0xC1,0xAB,0x0A,0x3D,0x45,0x23,0xA3,0xAD,0xF4,0x0D,0x7F,0xB1,0x4E,0x78};
 
 /* Enum BMDDisplayMode - Video display modes */
 
-typedef [v1_enum] enum	_BMDDisplayMode {
+typedef uint32_t BMDDisplayMode;
+enum _BMDDisplayMode {
 
     /* SD Modes */
 
@@ -108,21 +110,23 @@ typedef [v1_enum] enum	_BMDDisplayMode {
     /* Special Modes */
 
     bmdModeUnknown                                               = /* 'iunk' */ 0x69756E6B
-} BMDDisplayMode;
+};
 
 /* Enum BMDFieldDominance - Video field dominance */
 
-typedef [v1_enum] enum	_BMDFieldDominance {
+typedef uint32_t BMDFieldDominance;
+enum _BMDFieldDominance {
     bmdUnknownFieldDominance                                     = 0,
     bmdLowerFieldFirst                                           = /* 'lowr' */ 0x6C6F7772,
     bmdUpperFieldFirst                                           = /* 'uppr' */ 0x75707072,
     bmdProgressiveFrame                                          = /* 'prog' */ 0x70726F67,
     bmdProgressiveSegmentedFrame                                 = /* 'psf ' */ 0x70736620
-} BMDFieldDominance;
+};
 
 /* Enum BMDPixelFormat - Video pixel formats supported for output/input */
 
-typedef [v1_enum] enum	_BMDPixelFormat {
+typedef uint32_t BMDPixelFormat;
+enum _BMDPixelFormat {
     bmdFormat8BitYUV                                             = /* '2vuy' */ 0x32767579,
     bmdFormat10BitYUV                                            = /* 'v210' */ 0x76323130,
     bmdFormat8BitARGB                                            = 32,
@@ -137,11 +141,12 @@ typedef [v1_enum] enum	_BMDPixelFormat {
     /* AVID DNxHR */
 
     bmdFormatDNxHR                                               = /* 'AVdh' */ 0x41566468
-} BMDPixelFormat;
+};
 
 /* Enum BMDDisplayModeFlags - Flags to describe the characteristics of an IDeckLinkDisplayMode. */
 
-[v1_enum] enum	_BMDDisplayModeFlags {
+typedef uint32_t BMDDisplayModeFlags;
+enum _BMDDisplayModeFlags {
     bmdDisplayModeSupports3D                                     = 1 << 0,
     bmdDisplayModeColorspaceRec601                               = 1 << 1,
     bmdDisplayModeColorspaceRec709                               = 1 << 2
@@ -149,39 +154,43 @@ typedef [v1_enum] enum	_BMDPixelFormat {
 
 // Forward Declarations
 
-interface IDeckLinkDisplayModeIterator;
-interface IDeckLinkDisplayMode;
+class IDeckLinkDisplayModeIterator;
+class IDeckLinkDisplayMode;
 
 /* Interface IDeckLinkDisplayModeIterator - enumerates over supported input/output display modes. */
 
-[
-    object,
-    uuid(9C88499F-F601-4021-B80B-032E4EB41C35),
-    helpstring("enumerates over supported input/output display modes.")
-] interface IDeckLinkDisplayModeIterator : IUnknown
+class IDeckLinkDisplayModeIterator : public IUnknown
 {
-    HRESULT Next([out] IDeckLinkDisplayMode **deckLinkDisplayMode);
+public:
+    virtual HRESULT Next (/* out */ IDeckLinkDisplayMode **deckLinkDisplayMode) = 0;
+
+protected:
+    virtual ~IDeckLinkDisplayModeIterator () {} // call Release method to drop reference count
 };
 
 /* Interface IDeckLinkDisplayMode - represents a display mode */
 
-[
-    object,
-    uuid(3EB2C1AB-0A3D-4523-A3AD-F40D7FB14E78),
-    helpstring("represents a display mode")
-] interface IDeckLinkDisplayMode : IUnknown
+class IDeckLinkDisplayMode : public IUnknown
 {
-    HRESULT GetName([out] BSTR *name);
-    BMDDisplayMode GetDisplayMode(void);
-    long GetWidth(void);
-    long GetHeight(void);
-    HRESULT GetFrameRate([out] BMDTimeValue *frameDuration, [out] BMDTimeScale *timeScale);
-    BMDFieldDominance GetFieldDominance(void);
-    BMDDisplayModeFlags GetFlags(void);
+public:
+    virtual HRESULT GetName (/* out */ const char **name) = 0;
+    virtual BMDDisplayMode GetDisplayMode (void) = 0;
+    virtual long GetWidth (void) = 0;
+    virtual long GetHeight (void) = 0;
+    virtual HRESULT GetFrameRate (/* out */ BMDTimeValue *frameDuration, /* out */ BMDTimeScale *timeScale) = 0;
+    virtual BMDFieldDominance GetFieldDominance (void) = 0;
+    virtual BMDDisplayModeFlags GetFlags (void) = 0;
+
+protected:
+    virtual ~IDeckLinkDisplayMode () {} // call Release method to drop reference count
 };
 
-/* Coclasses */
+/* Functions */
 
-importlib("stdole2.tlb");
+extern "C" {
 
 
+}
+
+
+#endif /* defined(BMD_DECKLINKAPIMODES_H) */

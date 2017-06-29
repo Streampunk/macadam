@@ -53,8 +53,8 @@ class IDeckLink;
 class IDeckLink : public IUnknown
 {
 public:
-    virtual HRESULT GetModelName (/* out */ CFStringRef *modelName) = 0;
-    virtual HRESULT GetDisplayName (/* out */ CFStringRef *displayName) = 0;
+    virtual HRESULT GetModelName (/* out */ const char **modelName) = 0;
+    virtual HRESULT GetDisplayName (/* out */ const char **displayName) = 0;
 
 protected:
     virtual ~IDeckLink () {} // call Release method to drop reference count

@@ -49,42 +49,42 @@ BMD_CONST REFIID IID_IDeckLinkDeckControl                         = /* 8E1C3ACE-
 
 typedef uint32_t BMDDeckControlMode;
 enum _BMDDeckControlMode {
-    bmdDeckControlNotOpened                                      = 'ntop',
-    bmdDeckControlVTRControlMode                                 = 'vtrc',
-    bmdDeckControlExportMode                                     = 'expm',
-    bmdDeckControlCaptureMode                                    = 'capm'
+    bmdDeckControlNotOpened                                      = /* 'ntop' */ 0x6E746F70,
+    bmdDeckControlVTRControlMode                                 = /* 'vtrc' */ 0x76747263,
+    bmdDeckControlExportMode                                     = /* 'expm' */ 0x6578706D,
+    bmdDeckControlCaptureMode                                    = /* 'capm' */ 0x6361706D
 };
 
 /* Enum BMDDeckControlEvent - DeckControl event */
 
 typedef uint32_t BMDDeckControlEvent;
 enum _BMDDeckControlEvent {
-    bmdDeckControlAbortedEvent                                   = 'abte',	// This event is triggered when a capture or edit-to-tape operation is aborted.
+    bmdDeckControlAbortedEvent                                   = /* 'abte' */ 0x61627465,	// This event is triggered when a capture or edit-to-tape operation is aborted.
 
     /* Export-To-Tape events */
 
-    bmdDeckControlPrepareForExportEvent                          = 'pfee',	// This event is triggered a few frames before reaching the in-point. IDeckLinkInput::StartScheduledPlayback() should be called at this point.
-    bmdDeckControlExportCompleteEvent                            = 'exce',	// This event is triggered a few frames after reaching the out-point. At this point, it is safe to stop playback.
+    bmdDeckControlPrepareForExportEvent                          = /* 'pfee' */ 0x70666565,	// This event is triggered a few frames before reaching the in-point. IDeckLinkInput::StartScheduledPlayback() should be called at this point.
+    bmdDeckControlExportCompleteEvent                            = /* 'exce' */ 0x65786365,	// This event is triggered a few frames after reaching the out-point. At this point, it is safe to stop playback.
 
     /* Capture events */
 
-    bmdDeckControlPrepareForCaptureEvent                         = 'pfce',	// This event is triggered a few frames before reaching the in-point. The serial timecode attached to IDeckLinkVideoInputFrames is now valid.
-    bmdDeckControlCaptureCompleteEvent                           = 'ccev'	// This event is triggered a few frames after reaching the out-point.
+    bmdDeckControlPrepareForCaptureEvent                         = /* 'pfce' */ 0x70666365,	// This event is triggered a few frames before reaching the in-point. The serial timecode attached to IDeckLinkVideoInputFrames is now valid.
+    bmdDeckControlCaptureCompleteEvent                           = /* 'ccev' */ 0x63636576	// This event is triggered a few frames after reaching the out-point.
 };
 
 /* Enum BMDDeckControlVTRControlState - VTR Control state */
 
 typedef uint32_t BMDDeckControlVTRControlState;
 enum _BMDDeckControlVTRControlState {
-    bmdDeckControlNotInVTRControlMode                            = 'nvcm',
-    bmdDeckControlVTRControlPlaying                              = 'vtrp',
-    bmdDeckControlVTRControlRecording                            = 'vtrr',
-    bmdDeckControlVTRControlStill                                = 'vtra',
-    bmdDeckControlVTRControlShuttleForward                       = 'vtsf',
-    bmdDeckControlVTRControlShuttleReverse                       = 'vtsr',
-    bmdDeckControlVTRControlJogForward                           = 'vtjf',
-    bmdDeckControlVTRControlJogReverse                           = 'vtjr',
-    bmdDeckControlVTRControlStopped                              = 'vtro'
+    bmdDeckControlNotInVTRControlMode                            = /* 'nvcm' */ 0x6E76636D,
+    bmdDeckControlVTRControlPlaying                              = /* 'vtrp' */ 0x76747270,
+    bmdDeckControlVTRControlRecording                            = /* 'vtrr' */ 0x76747272,
+    bmdDeckControlVTRControlStill                                = /* 'vtra' */ 0x76747261,
+    bmdDeckControlVTRControlShuttleForward                       = /* 'vtsf' */ 0x76747366,
+    bmdDeckControlVTRControlShuttleReverse                       = /* 'vtsr' */ 0x76747372,
+    bmdDeckControlVTRControlJogForward                           = /* 'vtjf' */ 0x76746A66,
+    bmdDeckControlVTRControlJogReverse                           = /* 'vtjr' */ 0x76746A72,
+    bmdDeckControlVTRControlStopped                              = /* 'vtro' */ 0x7674726F
 };
 
 /* Enum BMDDeckControlStatusFlags - Deck Control status flags */
@@ -124,22 +124,22 @@ enum _BMDDeckControlExportModeOpsFlags {
 
 typedef uint32_t BMDDeckControlError;
 enum _BMDDeckControlError {
-    bmdDeckControlNoError                                        = 'noer',
-    bmdDeckControlModeError                                      = 'moer',
-    bmdDeckControlMissedInPointError                             = 'mier',
-    bmdDeckControlDeckTimeoutError                               = 'dter',
-    bmdDeckControlCommandFailedError                             = 'cfer',
-    bmdDeckControlDeviceAlreadyOpenedError                       = 'dalo',
-    bmdDeckControlFailedToOpenDeviceError                        = 'fder',
-    bmdDeckControlInLocalModeError                               = 'lmer',
-    bmdDeckControlEndOfTapeError                                 = 'eter',
-    bmdDeckControlUserAbortError                                 = 'uaer',
-    bmdDeckControlNoTapeInDeckError                              = 'nter',
-    bmdDeckControlNoVideoFromCardError                           = 'nvfc',
-    bmdDeckControlNoCommunicationError                           = 'ncom',
-    bmdDeckControlBufferTooSmallError                            = 'btsm',
-    bmdDeckControlBadChecksumError                               = 'chks',
-    bmdDeckControlUnknownError                                   = 'uner'
+    bmdDeckControlNoError                                        = /* 'noer' */ 0x6E6F6572,
+    bmdDeckControlModeError                                      = /* 'moer' */ 0x6D6F6572,
+    bmdDeckControlMissedInPointError                             = /* 'mier' */ 0x6D696572,
+    bmdDeckControlDeckTimeoutError                               = /* 'dter' */ 0x64746572,
+    bmdDeckControlCommandFailedError                             = /* 'cfer' */ 0x63666572,
+    bmdDeckControlDeviceAlreadyOpenedError                       = /* 'dalo' */ 0x64616C6F,
+    bmdDeckControlFailedToOpenDeviceError                        = /* 'fder' */ 0x66646572,
+    bmdDeckControlInLocalModeError                               = /* 'lmer' */ 0x6C6D6572,
+    bmdDeckControlEndOfTapeError                                 = /* 'eter' */ 0x65746572,
+    bmdDeckControlUserAbortError                                 = /* 'uaer' */ 0x75616572,
+    bmdDeckControlNoTapeInDeckError                              = /* 'nter' */ 0x6E746572,
+    bmdDeckControlNoVideoFromCardError                           = /* 'nvfc' */ 0x6E766663,
+    bmdDeckControlNoCommunicationError                           = /* 'ncom' */ 0x6E636F6D,
+    bmdDeckControlBufferTooSmallError                            = /* 'btsm' */ 0x6274736D,
+    bmdDeckControlBadChecksumError                               = /* 'chks' */ 0x63686B73,
+    bmdDeckControlUnknownError                                   = /* 'uner' */ 0x756E6572
 };
 
 // Forward Declarations
@@ -182,7 +182,7 @@ public:
     virtual HRESULT StepBack (/* out */ BMDDeckControlError *error) = 0;
     virtual HRESULT Jog (/* in */ double rate, /* out */ BMDDeckControlError *error) = 0;
     virtual HRESULT Shuttle (/* in */ double rate, /* out */ BMDDeckControlError *error) = 0;
-    virtual HRESULT GetTimecodeString (/* out */ CFStringRef *currentTimeCode, /* out */ BMDDeckControlError *error) = 0;
+    virtual HRESULT GetTimecodeString (/* out */ const char **currentTimeCode, /* out */ BMDDeckControlError *error) = 0;
     virtual HRESULT GetTimecode (/* out */ IDeckLinkTimecode **currentTimecode, /* out */ BMDDeckControlError *error) = 0;
     virtual HRESULT GetTimecodeBCD (/* out */ BMDTimecodeBCD *currentTimecode, /* out */ BMDDeckControlError *error) = 0;
     virtual HRESULT SetPreroll (/* in */ uint32_t prerollSeconds) = 0;

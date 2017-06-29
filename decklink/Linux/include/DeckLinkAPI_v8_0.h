@@ -1,5 +1,5 @@
 /* -LICENSE-START-
-** Copyright (c) 2016 Blackmagic Design
+** Copyright (c) 2011 Blackmagic Design
 **
 ** Permission is hereby granted, free of charge, to any person or organization
 ** obtaining a copy of the software and accompanying documentation covered by
@@ -25,47 +25,39 @@
 ** -LICENSE-END-
 */
 
-#ifndef BMD_DECKLINKAPIDISCOVERY_H
-#define BMD_DECKLINKAPIDISCOVERY_H
+#ifndef BMD_DECKLINKAPI_v8_0_H
+#define BMD_DECKLINKAPI_v8_0_H
 
-
-#ifndef BMD_CONST
-    #if defined(_MSC_VER)
-        #define BMD_CONST __declspec(selectany) static const
-    #else
-        #define BMD_CONST static const
-    #endif
-#endif
-
-// Type Declarations
-
+#include "DeckLinkAPI.h"
 
 // Interface ID Declarations
 
-BMD_CONST REFIID IID_IDeckLink                                    = /* C418FBDD-0587-48ED-8FE5-640F0A14AF91 */ {0xC4,0x18,0xFB,0xDD,0x05,0x87,0x48,0xED,0x8F,0xE5,0x64,0x0F,0x0A,0x14,0xAF,0x91};
+#define IID_IDeckLink_v8_0                                    /* 62BFF75D-6569-4E55-8D4D-66AA03829ABC */ (REFIID){0x62,0xBF,0xF7,0x5D,0x65,0x69,0x4E,0x55,0x8D,0x4D,0x66,0xAA,0x03,0x82,0x9A,0xBC}
+#define IID_IDeckLinkIterator_v8_0                            /* 74E936FC-CC28-4A67-81A0-1E94E52D4E69 */ (REFIID){0x74,0xE9,0x36,0xFC,0xCC,0x28,0x4A,0x67,0x81,0xA0,0x1E,0x94,0xE5,0x2D,0x4E,0x69}
 
-// Forward Declarations
+#if defined (__cplusplus)
 
-class IDeckLink;
+/* Interface IDeckLink_v8_0 - represents a DeckLink device */
 
-/* Interface IDeckLink - represents a DeckLink device */
-
-class IDeckLink : public IUnknown
+class IDeckLink_v8_0 : public IUnknown
 {
 public:
-    virtual HRESULT GetModelName (/* out */ CFStringRef *modelName) = 0;
-    virtual HRESULT GetDisplayName (/* out */ CFStringRef *displayName) = 0;
-
-protected:
-    virtual ~IDeckLink () {} // call Release method to drop reference count
+    virtual HRESULT GetModelName (/* out */ const char **modelName) = 0;
 };
 
-/* Functions */
+/* Interface IDeckLinkIterator_v8_0 - enumerates installed DeckLink hardware */
+
+class IDeckLinkIterator_v8_0 : public IUnknown
+{
+public:
+    virtual HRESULT Next (/* out */ IDeckLink_v8_0 **deckLinkInstance) = 0;
+};
 
 extern "C" {
+    IDeckLinkIterator_v8_0*                     CreateDeckLinkIteratorInstance_v8_0 (void);
+};
 
+#endif	// defined __cplusplus
 
-}
+#endif /* defined(BMD_DECKLINKAPI_v8_0_H) */
 
-
-#endif /* defined(BMD_DECKLINKAPIDISCOVERY_H) */

@@ -102,7 +102,7 @@ class IDeckLinkTimecode : public IUnknown
 public:
     virtual BMDTimecodeBCD GetBCD (void) = 0;
     virtual HRESULT GetComponents (/* out */ uint8_t *hours, /* out */ uint8_t *minutes, /* out */ uint8_t *seconds, /* out */ uint8_t *frames) = 0;
-    virtual HRESULT GetString (/* out */ CFStringRef *timecode) = 0;
+    virtual HRESULT GetString (/* out */ const char **timecode) = 0;
     virtual BMDTimecodeFlags GetFlags (void) = 0;
     virtual HRESULT GetTimecodeUserBits (/* out */ BMDTimecodeUserBits *userBits) = 0;
 

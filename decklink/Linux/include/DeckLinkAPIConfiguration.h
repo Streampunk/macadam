@@ -25,6 +25,9 @@
 ** -LICENSE-END-
 */
 
+#ifndef BMD_DECKLINKAPICONFIGURATION_H
+#define BMD_DECKLINKAPICONFIGURATION_H
+
 
 #ifndef BMD_CONST
     #if defined(_MSC_VER)
@@ -37,14 +40,15 @@
 // Type Declarations
 
 
-// Enumeration Mapping
+// Interface ID Declarations
 
-cpp_quote("#if 0")
-cpp_quote("#endif")
+BMD_CONST REFIID IID_IDeckLinkConfiguration                       = /* CB71734A-FE37-4E8D-8E13-802133A1C3F2 */ {0xCB,0x71,0x73,0x4A,0xFE,0x37,0x4E,0x8D,0x8E,0x13,0x80,0x21,0x33,0xA1,0xC3,0xF2};
+BMD_CONST REFIID IID_IDeckLinkEncoderConfiguration                = /* 138050E5-C60A-4552-BF3F-0F358049327E */ {0x13,0x80,0x50,0xE5,0xC6,0x0A,0x45,0x52,0xBF,0x3F,0x0F,0x35,0x80,0x49,0x32,0x7E};
 
 /* Enum BMDDeckLinkConfigurationID - DeckLink Configuration ID */
 
-typedef [v1_enum] enum	_BMDDeckLinkConfigurationID {
+typedef uint32_t BMDDeckLinkConfigurationID;
+enum _BMDDeckLinkConfigurationID {
 
     /* Serial port Flags */
 
@@ -165,11 +169,12 @@ typedef [v1_enum] enum	_BMDDeckLinkConfigurationID {
     /* Deck Control Integers */
 
     bmdDeckLinkConfigDeckControlConnection                       = /* 'dcco' */ 0x6463636F
-} BMDDeckLinkConfigurationID;
+};
 
 /* Enum BMDDeckLinkEncoderConfigurationID - DeckLink Encoder Configuration ID */
 
-typedef [v1_enum] enum	_BMDDeckLinkEncoderConfigurationID {
+typedef uint32_t BMDDeckLinkEncoderConfigurationID;
+enum _BMDDeckLinkEncoderConfigurationID {
 
     /* Video Encoder Integers */
 
@@ -192,55 +197,57 @@ typedef [v1_enum] enum	_BMDDeckLinkEncoderConfigurationID {
 
     bmdDeckLinkEncoderConfigMPEG4SampleDescription               = /* 'stsE' */ 0x73747345,	// Full MPEG4 sample description (aka SampleEntry of an 'stsd' atom-box). Useful for MediaFoundation, QuickTime, MKV and more
     bmdDeckLinkEncoderConfigMPEG4CodecSpecificDesc               = /* 'esds' */ 0x65736473	// Sample description extensions only (atom stream, each with size and fourCC header). Useful for AVFoundation, VideoToolbox, MKV and more
-} BMDDeckLinkEncoderConfigurationID;
+};
 
 // Forward Declarations
 
-interface IDeckLinkConfiguration;
-interface IDeckLinkEncoderConfiguration;
+class IDeckLinkConfiguration;
+class IDeckLinkEncoderConfiguration;
 
 /* Interface IDeckLinkConfiguration - DeckLink Configuration interface */
 
-[
-    object,
-    uuid(CB71734A-FE37-4E8D-8E13-802133A1C3F2),
-    local, 
-    helpstring("DeckLink Configuration interface")
-] interface IDeckLinkConfiguration : IUnknown
+class IDeckLinkConfiguration : public IUnknown
 {
-    HRESULT SetFlag([in] BMDDeckLinkConfigurationID cfgID, [in] BOOL value);
-    HRESULT GetFlag([in] BMDDeckLinkConfigurationID cfgID, [out] BOOL *value);
-    HRESULT SetInt([in] BMDDeckLinkConfigurationID cfgID, [in] LONGLONG value);
-    HRESULT GetInt([in] BMDDeckLinkConfigurationID cfgID, [out] LONGLONG *value);
-    HRESULT SetFloat([in] BMDDeckLinkConfigurationID cfgID, [in] double value);
-    HRESULT GetFloat([in] BMDDeckLinkConfigurationID cfgID, [out] double *value);
-    HRESULT SetString([in] BMDDeckLinkConfigurationID cfgID, [in] BSTR value);
-    HRESULT GetString([in] BMDDeckLinkConfigurationID cfgID, [out] BSTR *value);
-    HRESULT WriteConfigurationToPreferences(void);
+public:
+    virtual HRESULT SetFlag (/* in */ BMDDeckLinkConfigurationID cfgID, /* in */ bool value) = 0;
+    virtual HRESULT GetFlag (/* in */ BMDDeckLinkConfigurationID cfgID, /* out */ bool *value) = 0;
+    virtual HRESULT SetInt (/* in */ BMDDeckLinkConfigurationID cfgID, /* in */ int64_t value) = 0;
+    virtual HRESULT GetInt (/* in */ BMDDeckLinkConfigurationID cfgID, /* out */ int64_t *value) = 0;
+    virtual HRESULT SetFloat (/* in */ BMDDeckLinkConfigurationID cfgID, /* in */ double value) = 0;
+    virtual HRESULT GetFloat (/* in */ BMDDeckLinkConfigurationID cfgID, /* out */ double *value) = 0;
+    virtual HRESULT SetString (/* in */ BMDDeckLinkConfigurationID cfgID, /* in */ const char *value) = 0;
+    virtual HRESULT GetString (/* in */ BMDDeckLinkConfigurationID cfgID, /* out */ const char **value) = 0;
+    virtual HRESULT WriteConfigurationToPreferences (void) = 0;
+
+protected:
+    virtual ~IDeckLinkConfiguration () {} // call Release method to drop reference count
 };
 
 /* Interface IDeckLinkEncoderConfiguration - DeckLink Encoder Configuration interface. Obtained from IDeckLinkEncoderInput */
 
-[
-    object,
-    uuid(138050E5-C60A-4552-BF3F-0F358049327E),
-    local, 
-    helpstring("DeckLink Encoder Configuration interface. Obtained from IDeckLinkEncoderInput")
-] interface IDeckLinkEncoderConfiguration : IUnknown
+class IDeckLinkEncoderConfiguration : public IUnknown
 {
-    HRESULT SetFlag([in] BMDDeckLinkEncoderConfigurationID cfgID, [in] BOOL value);
-    HRESULT GetFlag([in] BMDDeckLinkEncoderConfigurationID cfgID, [out] BOOL *value);
-    HRESULT SetInt([in] BMDDeckLinkEncoderConfigurationID cfgID, [in] LONGLONG value);
-    HRESULT GetInt([in] BMDDeckLinkEncoderConfigurationID cfgID, [out] LONGLONG *value);
-    HRESULT SetFloat([in] BMDDeckLinkEncoderConfigurationID cfgID, [in] double value);
-    HRESULT GetFloat([in] BMDDeckLinkEncoderConfigurationID cfgID, [out] double *value);
-    HRESULT SetString([in] BMDDeckLinkEncoderConfigurationID cfgID, [in] BSTR value);
-    HRESULT GetString([in] BMDDeckLinkEncoderConfigurationID cfgID, [out] BSTR *value);
-    HRESULT GetBytes([in] BMDDeckLinkEncoderConfigurationID cfgID, [out] void *buffer /* optional */, [in, out] unsigned int *bufferSize);
+public:
+    virtual HRESULT SetFlag (/* in */ BMDDeckLinkEncoderConfigurationID cfgID, /* in */ bool value) = 0;
+    virtual HRESULT GetFlag (/* in */ BMDDeckLinkEncoderConfigurationID cfgID, /* out */ bool *value) = 0;
+    virtual HRESULT SetInt (/* in */ BMDDeckLinkEncoderConfigurationID cfgID, /* in */ int64_t value) = 0;
+    virtual HRESULT GetInt (/* in */ BMDDeckLinkEncoderConfigurationID cfgID, /* out */ int64_t *value) = 0;
+    virtual HRESULT SetFloat (/* in */ BMDDeckLinkEncoderConfigurationID cfgID, /* in */ double value) = 0;
+    virtual HRESULT GetFloat (/* in */ BMDDeckLinkEncoderConfigurationID cfgID, /* out */ double *value) = 0;
+    virtual HRESULT SetString (/* in */ BMDDeckLinkEncoderConfigurationID cfgID, /* in */ const char *value) = 0;
+    virtual HRESULT GetString (/* in */ BMDDeckLinkEncoderConfigurationID cfgID, /* out */ const char **value) = 0;
+    virtual HRESULT GetBytes (/* in */ BMDDeckLinkEncoderConfigurationID cfgID, /* out */ void *buffer /* optional */, /* in, out */ uint32_t *bufferSize) = 0;
+
+protected:
+    virtual ~IDeckLinkEncoderConfiguration () {} // call Release method to drop reference count
 };
 
-/* Coclasses */
+/* Functions */
 
-importlib("stdole2.tlb");
+extern "C" {
 
 
+}
+
+
+#endif /* defined(BMD_DECKLINKAPICONFIGURATION_H) */
