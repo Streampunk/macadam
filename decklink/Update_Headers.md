@@ -1,4 +1,4 @@
-# Creating C++ headers on Decklink version update
+# Updating C++ headers on Decklink version update
 
 These notes document the process of upgrading the C++ header files to a new version
 of the Decklink SDK.
