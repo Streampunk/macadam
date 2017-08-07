@@ -1,4 +1,4 @@
-/* Copyright 2016 Streampunk Media Ltd
+/* Copyright 2017 Streampunk Media Ltd.
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -62,6 +62,7 @@ function Capture (deviceIndex, displayMode, pixelFormat) {
   } else {
     this.capture = new macadamNative.Capture(deviceIndex, displayMode, pixelFormat);
   }
+  this.initialised = false;
   EventEmitter.call(this);
 }
 
@@ -69,10 +70,16 @@ util.inherits(Capture, EventEmitter);
 
 Capture.prototype.start = function () {
   try {
-    this.capture.init();
-    this.capture.doCapture(function (x) {
-      this.emit('frame', x);
-    }.bind(this));
+    if (!this.initialised) {
+      this.initialised = this.capture.init() ? true : false;
+      if (!this.initialised) {
+        console.error('Cannot start capture when no device is present.');
+        return 'Cannot start capture when no device is present.';
+      }
+    }
+    this.capture.doCapture((v, a) => {
+      this.emit('frame', v, a);
+    });
   } catch (err) {
     this.emit('error', err);
   }
@@ -84,6 +91,24 @@ Capture.prototype.stop = function () {
     this.emit('done');
   } catch (err) {
     this.emit('error', err);
+  }
+}
+
+Capture.prototype.enableAudio = function (sampleRate, sampleType, channelCount) {
+  try {
+    if (!this.initialised) {
+      this.initialised = this.capture.init() ? true : false;
+      if (!this.initialised) {
+        console.error('Cannot initialise audio when no device is present.');
+        return 'Cannot initialise audio when no device is present.';
+      }
+    }
+    return this.capture.enableAudio(
+      typeof sampleRate === 'string' ? +sampleRate : sampleRate,
+      typeof sampleType === 'string' ? +sampleType: sampleType,
+      typeof channelCount === 'string' ? +channelCount : channelCount);
+  } catch (err) {
+    return "Error when enabling audio: " + err;
   }
 }
 
@@ -142,11 +167,11 @@ Playback.prototype.stop = function () {
 }
 
 function bmCodeToInt (s) {
-  return new Buffer(s.substring(0, 4)).readUInt32BE(0);
+  return Buffer.from(s.substring(0, 4)).readUInt32BE(0);
 }
 
 function intToBMCode(i) {
-  var b = new Buffer(4).writeUInt32(i, 0);
+  var b = Buffer.allocUnsafe(4).writeUInt32(i, 0);
   return b.toString();
 }
 
@@ -590,6 +615,9 @@ var macadam = {
   bmdDisplayModeSupports3D        : 1 << 0,
   bmdDisplayModeColorspaceRec601  : 1 << 1,
   bmdDisplayModeColorspaceRec709  : 1 << 2,
+  bmdAudioSampleRate48kHz	        : 48000,
+  bmdAudioSampleType16bitInteger	: 16,
+  bmdAudioSampleType32bitInteger	: 32,
   // Convert to and from Black Magic codes.
   intToBMCode : intToBMCode,
   bmCodeToInt : bmCodeToInt,
@@ -600,7 +628,7 @@ var macadam = {
   modeInterlace : modeInterlace,
   formatDepth : formatDepth,
   formatFourCC : formatFourCC,
-  fourCCFOrmat : fourCCFormat,
+  fourCCFormat : fourCCFormat,
   formatSampling : formatSampling,
   formatColorimetry : formatColorimetry,
   // access details about the currently connected devices

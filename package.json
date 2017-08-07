@@ -1,6 +1,6 @@
 {
   "name": "macadam",
-  "version": "0.1.9",
+  "version": "0.2.8",
   "description": "Async node.js interface to Blackmagic Design capture and playback devices.",
   "main": "index.js",
   "scripts": {
@@ -19,7 +19,7 @@
   "homepage": "https://github.com/Streampunk/macadam#readme",
   "dependencies": {
     "bindings": "^1.2.1",
-    "nan": "^2.1.0"
+    "nan": "^2.6.2"
   },
-  "gypfile" : true
+  "gypfile": true
 }

@@ -33,8 +33,15 @@ var macadam = require('macadam');
 // Set appropriate values from display mode and pixel format from those macadam provides.
 var capture = new macadam.Capture(0, macadam.bmdModeHD1080i50, macadam.bmdFormat10BitYUV);
 
-capture.on('frame', function (frameData) {
-  // Do something with each frame received. frameData is a node.js Buffer
+// If audio capture is required, call the following method on capture
+// First param is the audio sample rate, second is bits per sample, third in number of channels
+// Defaults are shown. BMD hardware only supports: 48kHz; 16 or 32 bits; 2, 8 or 16 channels.
+capture.enableAudio(macadam.bmdAudioSampleRate48kHz, macadam.bmdAudioSampleType16bitInteger, 2);
+
+capture.on('frame', function (videoData, audioData) {
+  // Do something with each frame received.
+  // frameData is a node.js Buffer, and may be null if only audio is provided
+  // audioData is a node.js Buffer, or null is audio is not enabled/available
 });
 
 capture.on('error', function (err) {
@@ -47,7 +54,7 @@ capture.start(); // Start capture.
 capture.stop(); // Stop capture.
 ```
 
-The audio and ancillary data inputs of the card are not yet supported.
+The ancillary data inputs of the card are not yet supported.
 
 ### Playback
 
@@ -114,6 +121,6 @@ Contributions can be made via pull requests and will be considered by the author
 
 ## License
 
-This software is released under the Apache 2.0 license. Copyright 2016 Streampunk Media Ltd.
+This software is released under the Apache 2.0 license. Copyright 2017 Streampunk Media Ltd.
 
 The software links to the BlackMagic Desktop Video libraries. Include files and examples from which this code is derived include the BlackMagic License in their respective header files. The BlackMagic DeckLink SDK can be downloaded from https://www.blackmagicdesign.com/support.
