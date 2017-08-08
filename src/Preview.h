@@ -40,52 +40,40 @@
  ** -LICENSE-END-
  */
 
-#ifndef PREVIEW_H
-#define PREVIEW_H
-
-#include <node.h>
-#include <node_object_wrap.h>
-#include <uv.h>
-#include <node_buffer.h>
-
+#pragma once
 #include "DeckLinkAPI.h"
+#include <nan.h>
 
 namespace streampunk {
 
-class Preview : public IDeckLinkScreenPreviewCallback, public node::ObjectWrap
+class Preview : public IDeckLinkScreenPreviewCallback, public Nan::ObjectWrap
 {
-  explicit Preview(uint32_t deviceIndex = 0, uint32_t displayMode = 0, uint32_t pixelFormat = 0);
-  ~Preview();
-
-  static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static v8::Persistent<v8::Function> constructor;
-
-  IDeckLink *					m_deckLink;
-  IDeckLinkGLScreenPreviewHelper *     m_deckLinkPreview;
-  uv_async_t *async;
-
-  bool setupDeckLinkPreview();
-
-  void cleanupDeckLinkPreview();
-
-  static void BMInit(const v8::FunctionCallbackInfo<v8::Value>& args);
-
-  // start the capture operation. returns when the operation has completed
-  static void DoCapture(const v8::FunctionCallbackInfo<v8::Value>& args);
-
-  static void StopCapture(const v8::FunctionCallbackInfo<v8::Value>& args);
-
-  static void FrameCallback(uv_async_t *handle);
-
-  uint32_t deviceIndex_;
+private:
+  ULONG m_refCount;
+  IDeckLinkGLScreenPreviewHelper* m_deckLinkScreenPreviewHelper;
+  HGLRC m_openGLctx;
   uint32_t displayMode_;
   uint32_t pixelFormat_;
-  v8::Persistent<v8::Function> captureCB_;
-protected:
-  
 
+  static NAN_METHOD(New);
+  static inline Nan::Persistent<v8::Function> &constructor();
+
+  bool initOpenGL();
+  explicit Preview(uint32_t displayMode = 0, uint32_t pixelFormat = 0);
+  ~Preview();
+
+public:
+  static NAN_MODULE_INIT(Init);
+
+  static NAN_METHOD(BMInit);
+  static NAN_METHOD(DrawNext);
+  static NAN_METHOD(Stop);
+
+  virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, LPVOID *ppv);
+  virtual ULONG STDMETHODCALLTYPE AddRef();
+  virtual ULONG STDMETHODCALLTYPE Release();
+
+  virtual HRESULT STDMETHODCALLTYPE DrawFrame(IDeckLinkVideoFrame* theFrame);
 };
 
-} // namespace streampunk
-
-#endif
+} // Namespace streampunk

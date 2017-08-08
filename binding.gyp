@@ -26,7 +26,7 @@
       }],
       ['OS=="win"', {
         "sources" : [ "src/macadam.cc", "src/Capture.cc", "src/Playback.cc",
-          "decklink/Win/include/DeckLinkAPI_i.c" ],
+          "decklink/Win/include/DeckLinkAPI_i.c", "src/Preview.cc" ],
         "configurations": {
           "Release": {
             "msvs_settings": {
@@ -37,6 +37,7 @@
           }
         },
         "libraries": [
+          "opengl32.lib"
         ],
         "include_dirs" : [
           "decklink/Win/include"

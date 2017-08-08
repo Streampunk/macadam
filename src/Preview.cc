@@ -40,65 +40,100 @@
  ** -LICENSE-END-
  */
 
+#include "stdafx.h"
+#include <gl/gl.h>
 #include "Preview.h"
-#include <string.h>
 
 namespace streampunk {
 
-using v8::Function;
-using v8::FunctionCallbackInfo;
-using v8::FunctionTemplate;
-using v8::Isolate;
-using v8::Local;
-using v8::Number;
-using v8::Object;
-using v8::Persistent;
-using v8::String;
-using v8::Value;
-using v8::EscapableHandleScope;
-using v8::HandleScope;
-using v8::Exception;
-
-Persistent<Function> Playback::constructor;
-
-void Playback::BMInit(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = args.GetIsolate();
-
-  IDeckLinkIterator* deckLinkIterator;
-  HRESULT	result;
-  IDeckLinkAPIInformation *deckLinkAPIInformation;
-  IDeckLink* deckLink;
-  #ifdef WIN32
-  CoCreateInstance(CLSID_CDeckLinkIterator, NULL, CLSCTX_ALL, IID_IDeckLinkIterator, (void**)&deckLinkIterator);
-  #else
-  deckLinkIterator = CreateDeckLinkIteratorInstance();
-  #endif
-  result = deckLinkIterator->QueryInterface(IID_IDeckLinkAPIInformation, (void**)&deckLinkAPIInformation);
-  if (result != S_OK) {
-    isolate->ThrowException(Exception::Error(
-      String::NewFromUtf8(isolate, "Error connecting to DeckLinkAPI.")));
-  }
-  Preview* obj = ObjectWrap::Unwrap<Preview>(args.Holder());
-
-  for ( uint32_t x = 0 ; x <= obj->deviceIndex_ ; x++ ) {
-    if (deckLinkIterator->Next(&deckLink) != S_OK) {
-      args.GetReturnValue().Set(Undefined(isolate));
-      return;
-    }
-  }
-
-  obj->m_deckLink = deckLink;
-
-  IDeckLinkGLScreenPreviewHelper *deckLinkPreview;
-  if (deckLink->QueryInterface(IID_IDeckLinkGLScreenPreviewHelper, (void **)&deckLinkPreview) != S_OK)
-  {
-    isolate->ThrowException(Exception::Error(
-      String::NewFromUtf8(isolate, "Could not obtain DeckLink GL Screen Preview interface.\n")));
-  }
-  obj->m_deckLinkPreview = deckLinkPreview;
-
-  if (obj->setupDeckLinkOutput())
-    args.GetReturnValue().Set(String::NewFromUtf8(isolate, "made it!"));
-  else
-    args.GetReturnValue().Set(String::NewFromUtf8(isolate, "sad :-("));
+inline Nan::Persistent<v8::Function> &Preview::constructor() {
+  static Nan::Persistent<v8::Function> myConstructor;
+  return myConstructor;
 }
+
+Preview::Preview(uint32_t displayMode, uint32_t pixelFormat)
+ : m_refCount(1), m_deckLinkScreenPreviewHelper(NULL), m_openGLctx(NULL),
+     displayMode_(displayMode), pixelFormat_(pixelFormat) {}
+
+Preview::~Preview() {
+  if (m_deckLinkScreenPreviewHelper != NULL) {
+    m_deckLinkScreenPreviewHelper->Release();
+    m_deckLinkScreenPreviewHelper = NULL;
+  }
+
+  if (m_openGLctx != NULL) {
+    wglDeleteContext(m_openGLctx);
+    m_openGLctx = NULL;
+  }
+}
+
+NAN_MODULE_INIT(Preview::Init) {
+  #ifdef WIN32
+  HRESULT result;
+  result = CoInitialize(NULL);
+	if (FAILED(result))
+	{
+		fprintf(stderr, "Initialization of COM failed - result = %08x.\n", result);
+	}
+  #endif
+
+  // Prepare constructor template
+  v8::Local<v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(New);
+  tpl->SetClassName(Nan::New("Preview").ToLocalChecked());
+  tpl->InstanceTemplate()->SetInternalFieldCount(1);
+
+  // Prototype
+  Nan::SetPrototypeMethod(tpl, "init", BMInit);
+  Nan::SetPrototypeMethod(tpl, "drawNext", DrawNext);
+  Nan::SetPrototypeMethod(tpl, "stop", Stop);
+
+  constructor().Reset(Nan::GetFunction(tpl).ToLocalChecked());
+  Nan::Set(target, Nan::New("Preview").ToLocalChecked(),
+               Nan::GetFunction(tpl).ToLocalChecked());
+}
+
+NAN_METHOD(Preview::New) {
+  if (info.IsConstructCall()) {
+    // Invoked as constructor: `new Preview(...)`
+    uint32_t displayMode = info[1]->IsUndefined() ? 0 : Nan::To<uint32_t>(info[1]).FromJust();
+    uint32_t pixelFormat = info[2]->IsUndefined() ? 0 : Nan::To<uint32_t>(info[2]).FromJust();
+    Preview* obj = new Preview(displayMode, pixelFormat);
+    obj->Wrap(info.This());
+    info.GetReturnValue().Set(info.This());
+  } else {
+    // Invoked as plain function `Preview(...)`, turn into construct call.
+    const int argc = 2;
+    v8::Local<v8::Value> argv[argc] = { info[0], info[1] };
+    v8::Local<v8::Function> cons = Nan::New(constructor());
+    info.GetReturnValue().Set(Nan::NewInstance(cons, argc, argv).ToLocalChecked());
+  }
+}
+
+NAN_METHOD(Preview::BMInit) { }
+NAN_METHOD(Preview::DrawNext) { }
+NAN_METHOD(Preview::Stop) { }
+
+HRESULT Preview::QueryInterface(REFIID iid, LPVOID *ppv) {
+  *ppv = NULL;
+  return E_NOINTERFACE;
+}
+
+ULONG Preview::AddRef() {
+  return InterlockedIncrement((LONG*) &m_refCount);
+}
+
+ULONG Preview::Release() {
+  ULONG newRefValue;
+
+  newRefValue = InterlockedDecrement((LONG*) &m_refCount);
+  if (newRefValue == 0) {
+    delete this;
+    return 0;
+  }
+}
+
+HRESULT Preview::DrawFrame(IDeckLinkVideoFrame* theFrame) {
+  return 0;
+}
+
+} // Namespace streampunk
