@@ -44,6 +44,7 @@
 #include <gl/gl.h>
 #include "Preview.h"
 
+
 namespace streampunk {
 
 inline Nan::Persistent<v8::Function> &Preview::constructor() {
@@ -133,7 +134,7 @@ ULONG Preview::Release() {
 }
 
 HRESULT Preview::DrawFrame(IDeckLinkVideoFrame* theFrame) {
-  return 0;
+
 }
 
 } // Namespace streampunk
