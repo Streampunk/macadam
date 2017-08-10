@@ -90,6 +90,8 @@ playback.stop();
 
 The audio and ancillary data outputs of the card are not yet supported.
 
+Note that experience shows that the `played` event is not a good way to clock the sending of frames to the video card. It provides an indication that the frame has played. It is best to send frames to the card regularly based on a clock, such as deriving a `setTimeout` interval from `process.hrtime()`.
+
 ### Check the DeckLink API version
 
 To check the DeckLinkAPI version:

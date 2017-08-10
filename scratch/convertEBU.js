@@ -13,6 +13,12 @@
   limitations under the License.
 */
 
+// Convert and play EBU test files in .yuv10 format
+// .yuv10 format is headerless 4:2:2 10-bit video in order U Y0 V Y1
+// Tightly packed - three samples in 30-bits followed by 2 zero bits
+
+// v210 documentation is here ... https://developer.apple.com/library/content/technotes/tn2162/_index.html#//apple_ref/doc/uid/DTS40013070-CH1-TNTAG8-V210__4_2_2_COMPRESSION_TYPE
+
 var H = require('highland');
 var fs = require('fs');
 var mac = require('../index.js');
@@ -56,7 +62,7 @@ H(function (push, next) { push(null, baseFolder); next(); })
   .ratelimit(1, 40)
   .map(z => {
     var x = z.contents;
-    for ( var y = 0 ; y < x.length ; y += 8) {
+    for ( var y = 0 ; y < x.length ; y += 16) {
       var a = x.readUInt8(y + 0);
       var b = x.readUInt8(y + 1);
       var c = x.readUInt8(y + 2);
@@ -67,6 +73,16 @@ H(function (push, next) { push(null, baseFolder); next(); })
       var g = x.readUInt8(y + 6);
       var h = x.readUInt8(y + 7);
 
+      var i = x.readUInt8(y + 8);
+      var j = x.readUInt8(y + 9);
+      var k = x.readUInt8(y + 10);
+      var l = x.readUInt8(y + 11);
+
+      var m = x.readUInt8(y + 12);
+      var n = x.readUInt8(y + 13);
+      var o = x.readUInt8(y + 14);
+      var p = x.readUInt8(y + 15);
+
       var cb0 = (a << 2) | (b >>> 6);
       var y0 = (((b & 0x3f) << 4) | (c >>> 4));
       var cr0 = (((c & 0x0f) << 6) | (d >>> 2));
@@ -74,7 +90,14 @@ H(function (push, next) { push(null, baseFolder); next(); })
       var y1 = (e << 2) | (f >>> 6);
       var cb1 = (((f & 0x3f) << 4) | (g >>> 4));
       var y2 = (((g & 0x0f) << 6) | (h >>> 2));
-      // console.log(a, b, c, d, cb0, y0, cr0);
+
+      var cr1 = (i << 2) | (j >>> 6);
+      var y3 = (((j & 0x3f) << 4) | (k >>> 4));
+      var cb2 = (((k & 0x0f) << 6) | (l >>> 2));
+
+      var y4 =  (m << 2) | (n >>> 6);
+      var cr2 = (((n & 0x3f) << 4) | (o >>> 4));
+      var y5 = (((o & 0x0f) << 6) | (p >>> 2));
 
       x.writeUInt8(cb0 & 0xff, y + 0);
       x.writeUInt8(((y0 & 0xf3) >>> 2) | (cb0 >>> 8), y + 1);
@@ -85,6 +108,16 @@ H(function (push, next) { push(null, baseFolder); next(); })
       x.writeUInt8(((cb1 & 0xf3) >>> 2) | (y1 >>> 8), y + 5);
       x.writeUInt8((cb1 >>> 6) | ((y2 && 0x0f) << 4), y + 6);
       x.writeUInt8((y2 >>> 4), y + 7);
+
+      x.writeUInt8(cr1 & 0xff, y + 8);
+      x.writeUInt8(((y3 & 0xf3) >>> 2) | (cr1>>> 8), y + 9);
+      x.writeUInt8((y3 >>> 6) | ((cb2 && 0x0f) << 4), y + 10);
+      x.writeUInt8((cb2 >>> 4), y + 11);
+
+      x.writeUInt8(y4 & 0xff, y + 12);
+      x.writeUInt8(((cr2 & 0xf3) >>> 2) | (y4 >>> 8), y + 13);
+      x.writeUInt8((cr2 >>> 6) | ((y5 && 0x0f) << 4), y + 14);
+      x.writeUInt8((y5 >>> 4), y + 15);
 
     }
     return { name : z.name, contents: x };

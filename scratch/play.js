@@ -1,7 +1,7 @@
 var macadam = require('../');
 var fs = require('fs');
 
-var frame = fs.readFileSync('frame_v210.raw');
+var frame = fs.readFileSync('EBU_3325_1080_7.v210');
 
 var playback = new macadam.Playback(0, macadam.bmdModeHD1080i50,
   macadam.bmdFormat10BitYUV);
@@ -26,18 +26,19 @@ var lastFrame = process.hrtime();
 
 playback.on('played', function() {
   console.log('Mind the gap', process.hrtime(lastFrame));
-  frame = Buffer.concat([frame.slice(frame.length - oneRow, frame.length),
-    frame.slice(0, frame.length - oneRow)], frame.length);
+  // frame = Buffer.concat([frame.slice(frame.length - oneRow, frame.length),
+  //   frame.slice(0, frame.length - oneRow)], frame.length);
   playback.frame(frame);
   lastFrame = process.hrtime();
 });
 
-process.on('exit', function () {
-  console.log('Exiting node.');
-  playback.stop();
-  process.exit(0);
-});
+// process.on('exit', function () {
+//   console.log('Exiting node.');
+//   playback.stop();
+//   process.exit(0);
+// });
 process.on('SIGINT', function () {
   console.log('Received SIGINT.');
   playback.stop();
+  process.exit();
 });

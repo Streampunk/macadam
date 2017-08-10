@@ -38,7 +38,10 @@ var material = {
   vegies: rootFolder + "vegies_1080i_/vegies_1080i_",
   waterfall: rootFolder + "waterfall_1080i_/waterfall_1080i_",
   waterrocks_close: rootFolder + "waterrocks_close_1080i_/waterrocks_close_1080i_",
-  waterrocks1: rootFolder + "waterrocks1_1080i_/waterrocks1_1080i_"
+  waterrocks1: rootFolder + "waterrocks1_1080i_/waterrocks1_1080i_",
+  sheep: "E:/media/streampunk/sheep",
+  tree: "E:/media/streampunk/tree",
+  view: "E:/media/streampunk/view"
 };
 
 var baseFolder = (process.argv[2] && material[process.argv[2]]) ?
@@ -46,14 +49,25 @@ var baseFolder = (process.argv[2] && material[process.argv[2]]) ?
 
 var count = 0;
 
-H(function (push, next) { push(null, baseFolder); next(); })
+var baseTime = process.hrtime();
+
+H((push, next) => { push(null, baseFolder); next(); })
   .take((process.argv[3] && !isNaN(+process.argv[3]) && +process.argv[3] > 0) ?
     +process.argv[3] : 1)
   .flatMap(x => readdir(x).flatten().filter(y => y.endsWith('v210')).sort())
   .map(x => baseFolder + '/' + x)
   .map(x => readFile(x).map(y => ({ name: x, contents: y })))
   .parallel(10)
-  .ratelimit(1, 40)
+  .consume((err, x, push, next) => {
+    if (err) { push(err); next(); }
+    else if (x === H.nil) { push(null, H.nil); }
+    else {
+      var diffTime = process.hrtime(baseTime);
+      var dtms = diffTime[0] * 1000 + diffTime[1] / 1000000|0;
+      var wait = count * 40 - dtms;
+      // console.log('dtms = ', dtms, 'so waiting', wait, 'at count', count);
+      setTimeout(() => { push(null, x); next(); }, (wait > 0) ? wait : 0); }
+  })
   .doto(x => { playback.frame(x.contents); })
   .doto(() => { if (count++ == 4) { playback.start(); } })
   .errors(H.log)
