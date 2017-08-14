@@ -95,28 +95,28 @@ H(function (push, next) { push(null, baseFolder); next(); })
       var y3 = (((j & 0x3f) << 4) | (k >>> 4));
       var cb2 = (((k & 0x0f) << 6) | (l >>> 2));
 
-      var y4 =  (m << 2) | (n >>> 6);
+      var y4 = (m << 2) | (n >>> 6);
       var cr2 = (((n & 0x3f) << 4) | (o >>> 4));
       var y5 = (((o & 0x0f) << 6) | (p >>> 2));
 
       x.writeUInt8(cb0 & 0xff, y + 0);
-      x.writeUInt8(((y0 & 0xf3) >>> 2) | (cb0 >>> 8), y + 1);
-      x.writeUInt8((y0 >>> 6) | ((cr0 && 0x0f) << 4), y + 2);
+      x.writeUInt8(((y0 & 0x3f) << 2) | (cb0 >>> 8), y + 1);
+      x.writeUInt8((y0 >>> 6) | ((cr0 & 0x0f) << 4), y + 2);
       x.writeUInt8((cr0 >>> 4), y + 3);
 
       x.writeUInt8(y1 & 0xff, y + 4);
-      x.writeUInt8(((cb1 & 0xf3) >>> 2) | (y1 >>> 8), y + 5);
-      x.writeUInt8((cb1 >>> 6) | ((y2 && 0x0f) << 4), y + 6);
+      x.writeUInt8(((cb1 & 0x3f) << 2) | (y1 >>> 8), y + 5);
+      x.writeUInt8((cb1 >>> 6) | ((y2 & 0x0f) << 4), y + 6);
       x.writeUInt8((y2 >>> 4), y + 7);
 
       x.writeUInt8(cr1 & 0xff, y + 8);
-      x.writeUInt8(((y3 & 0xf3) >>> 2) | (cr1>>> 8), y + 9);
-      x.writeUInt8((y3 >>> 6) | ((cb2 && 0x0f) << 4), y + 10);
+      x.writeUInt8(((y3 & 0x3f) << 2) | (cr1 >>> 8), y + 9);
+      x.writeUInt8((y3 >>> 6) | ((cb2 & 0x0f) << 4), y + 10);
       x.writeUInt8((cb2 >>> 4), y + 11);
 
       x.writeUInt8(y4 & 0xff, y + 12);
-      x.writeUInt8(((cr2 & 0xf3) >>> 2) | (y4 >>> 8), y + 13);
-      x.writeUInt8((cr2 >>> 6) | ((y5 && 0x0f) << 4), y + 14);
+      x.writeUInt8(((cr2 & 0x3f) << 2) | (y4 >>> 8), y + 13);
+      x.writeUInt8((cr2 >>> 6) | ((y5 & 0x0f) << 4), y + 14);
       x.writeUInt8((y5 >>> 4), y + 15);
 
     }
