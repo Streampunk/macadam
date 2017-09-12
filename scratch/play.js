@@ -23,12 +23,16 @@ playback.start();
 var oneRow = 4 * 1920 * 8 / 3;
 
 var lastFrame = process.hrtime();
+var begin = lastFrame;
+var count = 0;
 
 playback.on('played', function() {
-  console.log('Mind the gap', process.hrtime(lastFrame));
+  console.log('Mind the gap', count++, process.hrtime(lastFrame));
   // frame = Buffer.concat([frame.slice(frame.length - oneRow, frame.length),
   //   frame.slice(0, frame.length - oneRow)], frame.length);
-  playback.frame(frame);
+  var gap = process.hrtime(diffTime);
+  var diffTime = gap[0] * 1000 + gap[1] / 1000000|0 - 40 * count;
+  setTimeout(() => { playback.frame(frame); }, (diffTime > 0) ? diffTime : 0);
   lastFrame = process.hrtime();
 });
 
