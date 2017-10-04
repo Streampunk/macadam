@@ -69,26 +69,31 @@ var macadam = require('macadam');
 // Set appropriate values from display mode and pixel format from those macadam provides.
 var playback = new macadam.Playback(0, macadam.bmdModeHD1080i50, macadam.bmdFormat10BitYUV);
 
-playback.frame( /* first frame */);
-playback.frame( /* second frame */);
+// If you want to play audio alongside the video, enable audio
+// First param is the audio sample rate, second is bits per sample, third in number of channels
+// Defaults are shown. BMD hardware only supports: 48kHz; 16 or 32 bits; 2, 8 or 16 channels.
+playback.enableAudio(macadam.bmdAudioSampleRate48kHz, macadam.bmdAudioSampleType16bitInteger, 2);
+
+playback.frame( /* first frame */, /* opt frame of audio */);
+playback.frame( /* second frame */, /* opt frame of audio */);
 // Add more here to have a larger buffer to ensure smooth playback
 
 playback.on('played', function (x) {
-  // Send the next frame in sequence.
+  // Use this callback to send next frame, or use an accurate timer. See note below
 });
 
 playback.on('error', function (err) {
   // Handle errors found during playback.
 });
 
-// start playback, typically after 4-10 frames have been accumulatedvar
+// start playback, typically after 4-10 frames have been accumulated
 playback.start();
 
 // ... eventually ...
 playback.stop();
 ```
 
-The audio and ancillary data outputs of the card are not yet supported.
+Ancillary data outputs of the card are not yet supported.
 
 Note that experience shows that the `played` event is not a good way to clock the sending of frames to the video card. It provides an indication that the frame has played. It is best to send frames to the card regularly based on a clock, such as deriving a `setTimeout` interval from `process.hrtime()`.
 

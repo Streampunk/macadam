@@ -98,21 +98,32 @@ private:
 
 	void			cleanupDeckLinkOutput();
 
+  HRESULT setupAudioOutput(BMDAudioSampleRate sampleRate, BMDAudioSampleType sampleType,
+    uint32_t channelCount, BMDAudioOutputStreamType streamType);
+
   static NAN_METHOD(BMInit);
 
   static NAN_METHOD(DoPlayback);
 
   static NAN_METHOD(StopPlayback);
 
+  static NAN_METHOD(EnableAudio);
+
   static NAN_METHOD(ScheduleFrame);
 
+  static NAN_METHOD(SchedukeAudio);
+
   static NAUV_WORK_CB(FrameCallback);
+
+  static NAN_METHOD(TestStuff);
 
   uint32_t deviceIndex_;
   uint32_t displayMode_;
   uint32_t pixelFormat_;
+  uint32_t sampleByteFactor_;
   Nan::Persistent<v8::Function> playbackCB_;
   uint32_t result_;
+  bool hasAudio_ = false;
 public:
   static NAN_MODULE_INIT(Init);
 

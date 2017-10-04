@@ -41,7 +41,9 @@ var material = {
   waterrocks1: rootFolder + "waterrocks1_1080i_/waterrocks1_1080i_",
   sheep: "E:/media/streampunk/sheep",
   tree: "E:/media/streampunk/tree",
-  view: "E:/media/streampunk/view"
+  view: "E:/media/streampunk/view",
+  truffles: "E:/media/streampunk/truffles",
+  flowers: "E:/media/streampunk/flowers"
 };
 
 var baseFolder = (process.argv[2] && material[process.argv[2]]) ?

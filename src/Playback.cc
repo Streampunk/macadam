@@ -84,6 +84,8 @@ NAN_MODULE_INIT(Playback::Init) {
   Nan::SetPrototypeMethod(tpl, "scheduleFrame", ScheduleFrame);
   Nan::SetPrototypeMethod(tpl, "doPlayback", DoPlayback);
   Nan::SetPrototypeMethod(tpl, "stop", StopPlayback);
+  Nan::SetPrototypeMethod(tpl, "enableAudio", EnableAudio);
+  Nan::SetPrototypeMethod(tpl, "testStuff", TestStuff);
 
   constructor().Reset(Nan::GetFunction(tpl).ToLocalChecked());
   Nan::Set(target, Nan::New("Playback").ToLocalChecked(),
@@ -172,9 +174,18 @@ NAN_METHOD(Playback::StopPlayback) {
   info.GetReturnValue().Set(Nan::New("Playback stopped.").ToLocalChecked());
 }
 
+NAN_METHOD(Playback::TestStuff) {
+  printf("Test stuff %i.\n", info.Length());
+  Nan::MaybeLocal<v8::Object> audObj = Nan::MaybeLocal<v8::Object>();
+  printf("What is its value? %i\n", audObj.IsEmpty());
+}
+
 NAN_METHOD(Playback::ScheduleFrame) {
   Playback* obj = ObjectWrap::Unwrap<Playback>(info.Holder());
   v8::Local<v8::Object> bufObj = Nan::To<v8::Object>(info[0]).ToLocalChecked();
+  Nan::MaybeLocal<v8::Object> audBufObj = Nan::MaybeLocal<v8::Object>();
+  if (info.Length() >= 2) audBufObj = Nan::To<v8::Object>(info[1]);
+  bool processAudio = obj->hasAudio_ && !audBufObj.IsEmpty();
 
   uint32_t rowBytePixelRatioN = 1, rowBytePixelRatioD = 1;
   switch (obj->pixelFormat_) { // TODO expand to other pixel formats
@@ -214,9 +225,55 @@ NAN_METHOD(Playback::ScheduleFrame) {
     return;
   };
 
+  if (processAudio) {
+    uint32_t* sampleFramesWritten = NULL;
+    HRESULT saud = obj->m_deckLinkOutput->ScheduleAudioSamples(
+      node::Buffer::Data(audBufObj.ToLocalChecked()),
+      node::Buffer::Length(audBufObj.ToLocalChecked()) / obj->sampleByteFactor_,
+      (obj->m_totalFrameScheduled * 1920),
+      48000, sampleFramesWritten);
+    printf("Samples written %i.\n",obj->sampleByteFactor_);
+    if (saud != S_OK) {
+      printf("Failed to schedule audio. Code is %i.\n", saud);
+      info.GetReturnValue().Set(Nan::New("Failed to schedule audio.").ToLocalChecked());
+      uv_mutex_unlock(&obj->padlock);
+      return;
+    }
+  }
+
   obj->m_totalFrameScheduled++;
   uv_mutex_unlock(&obj->padlock);
   info.GetReturnValue().Set(obj->m_totalFrameScheduled);
+}
+
+NAN_METHOD(Playback::EnableAudio) {
+  Playback* obj = ObjectWrap::Unwrap<Playback>(info.Holder());
+  HRESULT result;
+  BMDAudioSampleRate sampleRate = info[0]->IsNumber() ?
+      (BMDAudioSampleRate) Nan::To<uint32_t>(info[0]).FromJust() : bmdAudioSampleRate48kHz;
+  BMDAudioSampleType sampleType = info[1]->IsNumber() ?
+      (BMDAudioSampleType) Nan::To<uint32_t>(info[1]).FromJust() : bmdAudioSampleType16bitInteger;
+  uint32_t channelCount = info[2]->IsNumber() ? Nan::To<uint32_t>(info[2]).FromJust() : 2;
+
+  // Setting stream type as timestamped - should be good enough
+  result = obj->setupAudioOutput(sampleRate, sampleType, channelCount, bmdAudioOutputStreamTimestamped);
+
+  switch (result) {
+    case E_INVALIDARG:
+      info.GetReturnValue().Set(
+        Nan::New<v8::String>("audio channel count must be 2, 8 or 16").ToLocalChecked());
+      break;
+    case E_ACCESSDENIED:
+      info.GetReturnValue().Set(
+        Nan::New<v8::String>("unable to access the hardware or audio output not enabled.").ToLocalChecked());
+      break;
+    case S_OK:
+      info.GetReturnValue().Set(Nan::New<v8::String>("audio enabled").ToLocalChecked());
+      break;
+    default:
+      info.GetReturnValue().Set(Nan::New<v8::String>("failed to start audio").ToLocalChecked());
+      break;
+  }
 }
 
 bool Playback::setupDeckLinkOutput() {
@@ -274,6 +331,16 @@ void Playback::cleanupDeckLinkOutput()
 	m_deckLinkOutput->StopScheduledPlayback(0, NULL, 0);
 	m_deckLinkOutput->DisableVideoOutput();
 	m_deckLinkOutput->SetScheduledFrameCompletionCallback(NULL);
+}
+
+HRESULT Playback::setupAudioOutput(BMDAudioSampleRate sampleRate, BMDAudioSampleType sampleType,
+  uint32_t channelCount, BMDAudioOutputStreamType streamType) {
+
+  hasAudio_ = true;
+  sampleByteFactor_ = channelCount * (sampleType / 8);
+  HRESULT result = m_deckLinkOutput->EnableAudioOutput(sampleRate, sampleType, channelCount, streamType);
+
+  return result;
 }
 
 NAUV_WORK_CB(Playback::FrameCallback) {

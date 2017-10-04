@@ -140,13 +140,14 @@ Playback.prototype.start = function () {
   }
 }
 
-Playback.prototype.frame = function (f) {
+Playback.prototype.frame = function (f, a) {
   try {
     if (!this.initialised) {
       this.playback.init();
       this.initialised = true;
     }
-    var result = this.playback.scheduleFrame(f);
+    console.log("a = ", a, typeof a);
+    var result = a ? this.playback.scheduleFrame(f, a) : this.playback.scheduleFrame(f);
     // console.log("*** playback.scheduleFrame", result);
     if (typeof result === 'string')
       throw new Error("Problem scheduling frame: " + result);
@@ -164,6 +165,28 @@ Playback.prototype.stop = function () {
   } catch (err) {
     this.emit('error', err);
   }
+}
+
+Playback.prototype.enableAudio = function (sampleRate, sampleType, channelCount) {
+  try {
+    if (!this.initialised) {
+      this.initialised = this.playback.init() ? true : false;
+      if (!this.initialised) {
+        console.error('Cannot initialise audio when no device is present.');
+        return 'Cannot initialise audio when no device is present.';
+      }
+    }
+    return this.playback.enableAudio(
+      typeof sampleRate === 'string' ? +sampleRate : sampleRate,
+      typeof sampleType === 'string' ? +sampleType: sampleType,
+      typeof channelCount === 'string' ? +channelCount : channelCount);
+  } catch (err) {
+    return "Error when enabling audio: " + err;
+  }
+}
+
+Playback.prototype.testStuff = function () {
+  this.playback.testStuff();
 }
 
 function bmCodeToInt (s) {
