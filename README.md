@@ -40,7 +40,7 @@ capture.enableAudio(macadam.bmdAudioSampleRate48kHz, macadam.bmdAudioSampleType1
 
 capture.on('frame', function (videoData, audioData) {
   // Do something with each frame received.
-  // frameData is a node.js Buffer, and may be null if only audio is provided
+  // videoData is a node.js Buffer, and may be null if only audio is provided
   // audioData is a node.js Buffer, or null is audio is not enabled/available
 });
 
