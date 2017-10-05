@@ -81,6 +81,7 @@ private:
 	IDeckLinkMutableVideoFrame** m_videoFrames;
 	uint32_t					m_nextFrameIndex;
 	uint32_t					m_totalFrameScheduled;
+  uint64_t          m_totalSampleScheduled;
 
 	// video mode
 	long						m_width;
@@ -121,6 +122,7 @@ private:
   uint32_t displayMode_;
   uint32_t pixelFormat_;
   uint32_t sampleByteFactor_;
+  BMDAudioSampleRate audioSampleRate_;
   Nan::Persistent<v8::Function> playbackCB_;
   uint32_t result_;
   bool hasAudio_ = false;

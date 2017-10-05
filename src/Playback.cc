@@ -153,6 +153,11 @@ NAN_METHOD(Playback::DoPlayback) {
   Playback* obj = ObjectWrap::Unwrap<Playback>(info.Holder());
   obj->playbackCB_.Reset(cb);
 
+  if (obj->hasAudio_) {
+    if (obj->m_deckLinkOutput->EndAudioPreroll() != S_OK)
+      printf("Failed to end audio preroll.\n");
+  }
+
   int result = obj->m_deckLinkOutput->StartScheduledPlayback(0, obj->m_timeScale, 1.0);
   // printf("Playback result code %i and timescale %I64d.\n", result, obj->m_timeScale);
 
@@ -226,13 +231,13 @@ NAN_METHOD(Playback::ScheduleFrame) {
   };
 
   if (processAudio) {
-    uint32_t* sampleFramesWritten = NULL;
+    uint32_t sampleFramesWritten = NULL;
     HRESULT saud = obj->m_deckLinkOutput->ScheduleAudioSamples(
       node::Buffer::Data(audBufObj.ToLocalChecked()),
       node::Buffer::Length(audBufObj.ToLocalChecked()) / obj->sampleByteFactor_,
-      (obj->m_totalFrameScheduled * 1920),
-      48000, sampleFramesWritten);
-    printf("Samples written %i.\n",obj->sampleByteFactor_);
+      obj->m_totalSampleScheduled,
+      obj->audioSampleRate_, &sampleFramesWritten);
+    obj->m_totalSampleScheduled += sampleFramesWritten;
     if (saud != S_OK) {
       printf("Failed to schedule audio. Code is %i.\n", saud);
       info.GetReturnValue().Set(Nan::New("Failed to schedule audio.").ToLocalChecked());
@@ -337,8 +342,13 @@ HRESULT Playback::setupAudioOutput(BMDAudioSampleRate sampleRate, BMDAudioSample
   uint32_t channelCount, BMDAudioOutputStreamType streamType) {
 
   hasAudio_ = true;
+  audioSampleRate_ = sampleRate;
   sampleByteFactor_ = channelCount * (sampleType / 8);
+  m_totalSampleScheduled = 0;
   HRESULT result = m_deckLinkOutput->EnableAudioOutput(sampleRate, sampleType, channelCount, streamType);
+
+  if (m_deckLinkOutput->BeginAudioPreroll() != S_OK)
+    printf("Failed to begin audio preroll.\n");
 
   return result;
 }

@@ -146,7 +146,6 @@ Playback.prototype.frame = function (f, a) {
       this.playback.init();
       this.initialised = true;
     }
-    console.log("a = ", a, typeof a);
     var result = a ? this.playback.scheduleFrame(f, a) : this.playback.scheduleFrame(f);
     // console.log("*** playback.scheduleFrame", result);
     if (typeof result === 'string')

@@ -58,7 +58,7 @@ The ancillary data inputs of the card are not yet supported.
 
 ### Playback
 
-The playback event emitter works by sending a sequence of frame buffers (node.js `Buffer` objects) to the playback object. For smooth playback, build a few frames first and then keep adding frames as they are played. A `played` event is emitted each time playback of a frame is complete.
+The playback event emitter works by sending a sequence of frame buffers and frame-sized chunks of interleaved audio data as node.js `Buffer` objects to a playback object. For smooth playback, build a few frames first and then keep adding frames as they are played. A `played` event is emitted each time playback of a frame is complete.
 
 Take care not to hold on to frame buffer references so that they can be garbage collected.
 
