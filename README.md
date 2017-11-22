@@ -62,7 +62,7 @@ The playback event emitter works by sending a sequence of frame buffers and fram
 
 Take care not to hold on to frame buffer references so that they can be garbage collected.
 
-``` javascript
+```javascript
 var macadam = require('macadam');
 
 // First argument is the DeckLink device number.
