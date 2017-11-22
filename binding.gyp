@@ -24,6 +24,20 @@
           "decklink/Mac/include"
         ]
       }],
+      ['OS=="linux"', {
+        'sources' : [ "src/macadam.cc", "src/Capture.cc", "src/Playback.cc" ],
+        'link_settings' : {
+          "libraries": [
+            "/usr/lib/libDeckLinkAPI.so"
+          ],
+          "ldflags" : [
+            "-lm -ldl -lpthread"
+	  ]
+        },
+        "include_dirs" : [
+          "decklink/Linux/include" 
+        ]       
+      }],
       ['OS=="win"', {
         "sources" : [ "src/macadam.cc", "src/Capture.cc", "src/Playback.cc",
           "decklink/Win/include/DeckLinkAPI_i.c" ],
