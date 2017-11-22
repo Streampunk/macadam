@@ -32,11 +32,11 @@
           ],
           "ldflags" : [
             "-lm -ldl -lpthread"
-	  ]
+	      ]
         },
         "include_dirs" : [
-          "decklink/Linux/include" 
-        ]       
+          "decklink/Linux/include"
+        ]
       }],
       ['OS=="win"', {
         "sources" : [ "src/macadam.cc", "src/Capture.cc", "src/Playback.cc",
