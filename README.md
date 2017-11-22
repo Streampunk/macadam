@@ -2,7 +2,7 @@
 
 Prototype bindings to link [Node.js](http://nodejs.org/) and the Blackmagic Desktop Video SDK, enabling asynchronous capture and playback to and from [Blackmagic Design](https://www.blackmagicdesign.com/) devices via a simple Javascript API.
 
-This is prototype software and is not yet suitable for production use. Currently supported platforms are Mac and Windows.
+This is prototype software and is not yet suitable for production use. Currently supported platforms are Mac and Windows. Linux support is now available but is experimental and the `getFirstDevice()` call does not work as expected.
 
 Why _macadam_? _Tarmacadam_ is the black stuff that magically makes roads, so it seemed appropriate as a name for a steampunk-style BlackMagic binding.
 
@@ -125,7 +125,7 @@ In summary, there are:
 
 This is prototype software that is not yet suitable for production use. The software is being actively tested and developed.
 
-A variant for the Linux platform is also planned. The developers currently lack a test platform for this work.
+A variant for the Linux platform is also available but still in an experimental stage.
 
 Contributions can be made via pull requests and will be considered by the author on their merits. Enhancement requests and bug reports should be raised as github issues. For support, please contact [Streampunk Media](http://www.streampunk.media/). For updates follow [@StrmPunkd](https://twitter.com/StrmPunkd) on Twitter.
 
