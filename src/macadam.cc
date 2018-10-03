@@ -211,7 +211,7 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
 
     #ifdef WIN32
     BSTR displayNameBSTR = NULL;
-    hresult = deckLink->GetDisplaylName(&displayNameBSTR);
+    hresult = deckLink->GetDisplayName(&displayNameBSTR);
     if (hresult == S_OK) {
       _bstr_t displayName(deviceNameBSTR, false);
       status = napi_create_string_utf8(env, (char*) displayName, NAPI_AUTO_LENGTH, &param);
@@ -243,7 +243,11 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
     // Query the DeckLink for its attributes interface
     hresult = deckLink->QueryInterface(IID_IDeckLinkAttributes, (void**)&deckLinkAttributes);
     if (hresult == S_OK) {
-      bool supported;
+      #ifdef WIN32
+      BOOL supported;
+      #else
+      bool supportedl
+      #endif
       int64_t value;
 
       hresult = deckLinkAttributes->GetInt(BMDDeckLinkMaximumAudioChannels, &value);
