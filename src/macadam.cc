@@ -130,6 +130,7 @@ napi_value getFirstDevice(napi_env env, napi_callback_info info) {
   if (hresult == S_OK) {
     _bstr_t deviceName(deviceNameBSTR, false);
     status = napi_create_string_utf8(env, (char*) deviceName, NAPI_AUTO_LENGTH, &result);
+    delete deviceName;
     CHECK_RELEASE;
   }
   #elif __APPLE__
@@ -138,6 +139,7 @@ napi_value getFirstDevice(napi_env env, napi_callback_info info) {
   if (hresult == S_OK) {
     char deviceName [64];
     CFStringGetCString(deviceNameCFString, deviceName, sizeof(deviceName), kCFStringEncodingMacRoman);
+    CFRelease(deviceNameCFString);
     status = napi_create_string_utf8(env, deviceName, NAPI_AUTO_LENGTH, &result);
     CHECK_RELEASE;
   }
@@ -146,6 +148,7 @@ napi_value getFirstDevice(napi_env env, napi_callback_info info) {
   hresult = deckLink->GetModelName(&deviceName);
   if (hresult == S_OK) {
     status = napi_create_string_utf8(env, deviceName, NAPI_AUTO_LENGTH, &result);
+    free(deviceName);
     CHECK_RELEASE;
   }
   #endif
@@ -184,6 +187,7 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
     if (hresult == S_OK) {
       _bstr_t deviceName(deviceNameBSTR, false);
       status = napi_create_string_utf8(env, (char*) deviceName, NAPI_AUTO_LENGTH, &param);
+      delete deviceName;
       CHECK_RELEASE;
     }
     #elif __APPLE__
@@ -192,6 +196,7 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
     if (hresult == S_OK) {
       char deviceName [64];
       CFStringGetCString(deviceNameCFString, deviceName, sizeof(deviceName), kCFStringEncodingMacRoman);
+      CFRelease(deviceNameCFString);
       status = napi_create_string_utf8(env, deviceName, NAPI_AUTO_LENGTH, &param);
       CHECK_RELEASE;
     }
@@ -200,6 +205,7 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
     hresult = deckLink->GetModelName(&deviceName);
     if (hresult == S_OK) {
       status = napi_create_string_utf8(env, deviceName, NAPI_AUTO_LENGTH, &param);
+      free(deviceName);
       CHECK_RELEASE;
     }
     #endif
@@ -215,6 +221,7 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
     if (hresult == S_OK) {
       _bstr_t displayName(deviceNameBSTR, false);
       status = napi_create_string_utf8(env, (char*) displayName, NAPI_AUTO_LENGTH, &param);
+      delete displayName;
       CHECK_RELEASE;
     }
     #elif __APPLE__
@@ -223,6 +230,7 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
     if (hresult == S_OK) {
       char displayName [64];
       CFStringGetCString(displayNameCFString, displayName, sizeof(displayName), kCFStringEncodingMacRoman);
+      CFRelease(displayNameCFString);
       status = napi_create_string_utf8(env, displayName, NAPI_AUTO_LENGTH, &param);
       CHECK_RELEASE;
     }
@@ -231,6 +239,7 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
     hresult = deckLink->GetDisplayName(&displayName);
     if (hresult == S_OK) {
       status = napi_create_string_utf8(env, displayName, NAPI_AUTO_LENGTH, &param);
+      free(displayName);
       CHECK_RELEASE;
     }
     #endif
@@ -245,10 +254,46 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
     if (hresult == S_OK) {
       #ifdef WIN32
       BOOL supported;
+      BSTR name;
+      #elif __APPLE__
+      bool supported;
+      CFStringRef name;
       #else
       bool supported;
+      const char* name;
       #endif
       int64_t value;
+
+      hresult = deckLinkAttributes->GetFlag(BMDDeckLinkHasSerialPort, &supported);
+      if (hresult == S_OK) {
+        status = napi_get_boolean(env, supported, &param);
+        CHECK_RELEASE;
+        status = napi_set_named_property(env, item, "hasSerialPort", param);
+        CHECK_RELEASE;
+        if (supported == true) {
+          hresult = deckLinkAttributes->GetString(BMDDeckLinkSerialPortDeviceName, &name);
+          if (hresult == S_OK) {
+            #ifdef WIN32
+            _bstr_t portName(deviceNameBSTR, false);
+            status = napi_create_string_utf8(env, (char*) portName, NAPI_AUTO_LENGTH, &param);
+            delete portName;
+            CHECK_RELEASE;
+            #elif __APPLE__
+            char portName[64];
+            CFStringGetCString(name, portName, sizeof(portName), kCFStringEncodingMacRoman);
+            CFRelease(name);
+            status = napi_create_string_utf8(env, portName, NAPI_AUTO_LENGTH, &param);
+            CHECK_RELEASE;
+            #else
+            status = napi_create_string_utf8(env, name, NAPI_AUTO_LENGTH, &param);
+            free(name);
+            CHECK_RELEASE;
+            #endif
+            status = napi_set_named_property(env, item, "serialPortDeviceName", param);
+            CHECK_RELEASE;
+          }
+        }
+      }
 
       hresult = deckLinkAttributes->GetInt(BMDDeckLinkMaximumAudioChannels, &value);
       if (hresult == S_OK) {
@@ -319,6 +364,111 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
         CHECK_RELEASE;
       }
 
+      hresult = deckLinkAttributes->GetInt(BMDDeckLinkVideoOutputConnections, &value);
+      if (hresult == S_OK) {
+        napi_value conna, conni;
+        uint32_t indexo = 0;
+        status = napi_create_array(env, &conna);
+        CHECK_RELEASE;
+
+        if (value & bmdVideoConnectionSDI) {
+          status = napi_create_string_utf8(env, "SDI", NAPI_AUTO_LENGTH, &conni);
+          CHECK_RELEASE;
+          status = napi_set_element(env, conna, indexo++, conni);
+          CHECK_RELEASE;
+        }
+
+        if (value & bmdVideoConnectionHDMI) {
+          status = napi_create_string_utf8(env, "HDMI", NAPI_AUTO_LENGTH, &conni);
+          CHECK_RELEASE;
+          status = napi_set_element(env, conna, indexo++, conni);
+          CHECK_RELEASE;
+        }
+
+        if (value & bmdVideoConnectionOpticalSDI) {
+          status = napi_create_string_utf8(env, "Optical SDI", NAPI_AUTO_LENGTH, &conni);
+          CHECK_RELEASE;
+          status = napi_set_element(env, conna, indexo++, conni);
+          CHECK_RELEASE;
+        }
+
+        if (value & bmdVideoConnectionComponent) {
+          status = napi_create_string_utf8(env, "Component", NAPI_AUTO_LENGTH, &conni);
+          CHECK_RELEASE;
+          status = napi_set_element(env, conna, indexo++, conni);
+          CHECK_RELEASE;
+        }
+
+        if (value & bmdVideoConnectionComposite){
+          status = napi_create_string_utf8(env, "Composite", NAPI_AUTO_LENGTH, &conni);
+          CHECK_RELEASE;
+          status = napi_set_element(env, conna, indexo++, conni);
+          CHECK_RELEASE;
+        }
+
+        if (value & bmdVideoConnectionSVideo) {
+          status = napi_create_string_utf8(env, "S-Video", NAPI_AUTO_LENGTH, &conni);
+          CHECK_RELEASE;
+          status = napi_set_element(env, conna, indexo++, conni);
+          CHECK_RELEASE;
+        }
+
+        status = napi_set_named_property(env, item, "videoOutputConnections", conna);
+        CHECK_RELEASE;
+      }
+
+      hresult = deckLinkAttributes->GetInt(BMDDeckLinkVideoInputConnections, &value);
+      if (hresult == S_OK) {
+        napi_value connb, connj;
+        uint32_t indexi = 0;
+        status = napi_create_array(env, &connb);
+        CHECK_RELEASE;
+
+        if (value & bmdVideoConnectionSDI) {
+          status = napi_create_string_utf8(env, "SDI", NAPI_AUTO_LENGTH, &connj);
+          CHECK_RELEASE;
+          status = napi_set_element(env, connb, indexi++, connj);
+          CHECK_RELEASE;
+        }
+
+        if (value & bmdVideoConnectionHDMI) {
+          status = napi_create_string_utf8(env, "HDMI", NAPI_AUTO_LENGTH, &connj);
+          CHECK_RELEASE;
+          status = napi_set_element(env, connb, indexi++, connj);
+          CHECK_RELEASE;
+        }
+
+        if (value & bmdVideoConnectionOpticalSDI) {
+          status = napi_create_string_utf8(env, "Optical SDI", NAPI_AUTO_LENGTH, &connj);
+          CHECK_RELEASE;
+          status = napi_set_element(env, connb, indexi++, connj);
+          CHECK_RELEASE;
+        }
+
+        if (value & bmdVideoConnectionComponent) {
+          status = napi_create_string_utf8(env, "Component", NAPI_AUTO_LENGTH, &connj);
+          CHECK_RELEASE;
+          status = napi_set_element(env, connb, indexi++, connj);
+          CHECK_RELEASE;
+        }
+
+        if (value & bmdVideoConnectionComposite){
+          status = napi_create_string_utf8(env, "Composite", NAPI_AUTO_LENGTH, &connj);
+          CHECK_RELEASE;
+          status = napi_set_element(env, connb, indexi++, connj);
+          CHECK_RELEASE;
+        }
+
+        if (value & bmdVideoConnectionSVideo) {
+          status = napi_create_string_utf8(env, "S-Video", NAPI_AUTO_LENGTH, &connj);
+          CHECK_RELEASE;
+          status = napi_set_element(env, connb, indexi++, connj);
+          CHECK_RELEASE;
+        }
+
+        status = napi_set_named_property(env, item, "videoInputConnections", connb);
+        CHECK_RELEASE;
+      }
 
       deckLinkAttributes->Release();
       deckLinkAttributes = nullptr;
