@@ -246,7 +246,7 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
       #ifdef WIN32
       BOOL supported;
       #else
-      bool supportedl
+      bool supported;
       #endif
       int64_t value;
 
