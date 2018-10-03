@@ -92,6 +92,13 @@ napi_value deckLinkVersion(napi_env env, napi_callback_info info) {
   return result;
 }
 
+#define CHECK_RELEASE if (checkStatus(env, status, __FILE__, __LINE__ - 1) != napi_ok) { \
+  deckLink->Release(); \
+  deckLinkIterator->Release(); \
+  if (deckLinkAttributes != nullptr) deckLinkAttributes->Release(); \
+  return nullptr; \
+}
+
 napi_value getFirstDevice(napi_env env, napi_callback_info info) {
   napi_status status;
   napi_value result;
@@ -102,6 +109,8 @@ napi_value getFirstDevice(napi_env env, napi_callback_info info) {
   IDeckLinkIterator* deckLinkIterator;
   HRESULT	hresult;
   IDeckLink* deckLink;
+  IDeckLinkAttributes* deckLinkAttributes = nullptr;
+
   #ifdef WIN32
   CoCreateInstance(CLSID_CDeckLinkIterator, NULL, CLSCTX_ALL, IID_IDeckLinkIterator, (void**)&deckLinkIterator);
   #else
@@ -109,9 +118,10 @@ napi_value getFirstDevice(napi_env env, napi_callback_info info) {
   #endif
   if (deckLinkIterator->Next(&deckLink) != S_OK) {
     status = napi_get_undefined(env, &result);
-    CHECK_STATUS;
-    deckLinkIterator->Release();
-    return result;
+    if (checkStatus(env, status, __FILE__, __LINE__ - 1) != napi_ok) {
+      deckLinkIterator->Release();
+      return result;
+    }
   }
 
   #ifdef WIN32
@@ -120,7 +130,7 @@ napi_value getFirstDevice(napi_env env, napi_callback_info info) {
   if (hresult == S_OK) {
     _bstr_t deviceName(deviceNameBSTR, false);
     status = napi_create_string_utf8(env, (char*) deviceName, NAPI_AUTO_LENGTH, &result);
-    CHECK_STATUS;
+    CHECK_RELEASE;
   }
   #elif __APPLE__
   CFStringRef deviceNameCFString = NULL;
@@ -129,18 +139,193 @@ napi_value getFirstDevice(napi_env env, napi_callback_info info) {
     char deviceName [64];
     CFStringGetCString(deviceNameCFString, deviceName, sizeof(deviceName), kCFStringEncodingMacRoman);
     status = napi_create_string_utf8(env, deviceName, NAPI_AUTO_LENGTH, &result);
-    CHECK_STATUS;
+    CHECK_RELEASE;
   }
   #else
   const char* deviceName;
   hresult = deckLink->GetModelName(&deviceName);
   if (hresult == S_OK) {
     status = napi_create_string_utf8(env, deviceName, NAPI_AUTO_LENGTH, &result);
-    CHECK_STATUS;
+    CHECK_RELEASE;
   }
   #endif
 
   deckLink->Release();
+  deckLinkIterator->Release();
+
+  return result;
+}
+
+napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
+  napi_status status;
+  napi_value result;
+
+  status = napi_create_array(env, &result);
+  CHECK_STATUS;
+
+  IDeckLinkIterator* deckLinkIterator;
+  HRESULT	hresult;
+  IDeckLink* deckLink;
+  IDeckLinkAttributes* deckLinkAttributes = nullptr;
+  #ifdef WIN32
+  CoCreateInstance(CLSID_CDeckLinkIterator, NULL, CLSCTX_ALL, IID_IDeckLinkIterator, (void**)&deckLinkIterator);
+  #else
+  deckLinkIterator = CreateDeckLinkIteratorInstance();
+  #endif
+
+  uint32_t index = 0;
+  while (deckLinkIterator->Next(&deckLink) == S_OK) {
+    napi_value item, param = nullptr;
+    status = napi_create_object(env, &item);
+    CHECK_RELEASE;
+    #ifdef WIN32
+    BSTR deviceNameBSTR = NULL;
+    hresult = deckLink->GetModelName(&deviceNameBSTR);
+    if (hresult == S_OK) {
+      _bstr_t deviceName(deviceNameBSTR, false);
+      status = napi_create_string_utf8(env, (char*) deviceName, NAPI_AUTO_LENGTH, &param);
+      CHECK_RELEASE;
+    }
+    #elif __APPLE__
+    CFStringRef deviceNameCFString = NULL;
+    hresult = deckLink->GetModelName(&deviceNameCFString);
+    if (hresult == S_OK) {
+      char deviceName [64];
+      CFStringGetCString(deviceNameCFString, deviceName, sizeof(deviceName), kCFStringEncodingMacRoman);
+      status = napi_create_string_utf8(env, deviceName, NAPI_AUTO_LENGTH, &param);
+      CHECK_RELEASE;
+    }
+    #else
+    const char* deviceName;
+    hresult = deckLink->GetModelName(&deviceName);
+    if (hresult == S_OK) {
+      status = napi_create_string_utf8(env, deviceName, NAPI_AUTO_LENGTH, &param);
+      CHECK_RELEASE;
+    }
+    #endif
+    if (param != nullptr) {
+      status = napi_set_named_property(env, item, "modelName", param);
+      CHECK_RELEASE;
+    }
+    param = nullptr;
+
+    #ifdef WIN32
+    BSTR displayNameBSTR = NULL;
+    hresult = deckLink->GetDisplaylName(&displayNameBSTR);
+    if (hresult == S_OK) {
+      _bstr_t displayName(deviceNameBSTR, false);
+      status = napi_create_string_utf8(env, (char*) displayName, NAPI_AUTO_LENGTH, &param);
+      CHECK_RELEASE;
+    }
+    #elif __APPLE__
+    CFStringRef displayNameCFString = NULL;
+    hresult = deckLink->GetDisplayName(&displayNameCFString);
+    if (hresult == S_OK) {
+      char displayName [64];
+      CFStringGetCString(displayNameCFString, displayName, sizeof(displayName), kCFStringEncodingMacRoman);
+      status = napi_create_string_utf8(env, displayName, NAPI_AUTO_LENGTH, &param);
+      CHECK_RELEASE;
+    }
+    #else
+    const char* displayName;
+    hresult = deckLink->GetDisplayName(&displayName);
+    if (hresult == S_OK) {
+      status = napi_create_string_utf8(env, displayName, NAPI_AUTO_LENGTH, &param);
+      CHECK_RELEASE;
+    }
+    #endif
+    if (param != nullptr) {
+      status = napi_set_named_property(env, item, "displayName", param);
+      CHECK_RELEASE;
+    }
+    param = nullptr;
+
+    // Query the DeckLink for its attributes interface
+    hresult = deckLink->QueryInterface(IID_IDeckLinkAttributes, (void**)&deckLinkAttributes);
+    if (hresult == S_OK) {
+      bool supported;
+      int64_t value;
+
+      hresult = deckLinkAttributes->GetInt(BMDDeckLinkMaximumAudioChannels, &value);
+      if (hresult == S_OK) {
+        status = napi_create_int64(env, value, &param);
+        CHECK_RELEASE;
+        status = napi_set_named_property(env, item, "maximumAudioChannels", param);
+        CHECK_RELEASE;
+      }
+
+      hresult = deckLinkAttributes->GetFlag(BMDDeckLinkSupportsInputFormatDetection, &supported);
+  	  if (hresult == S_OK) {
+        status = napi_get_boolean(env, supported, &param);
+        CHECK_RELEASE;
+        status = napi_set_named_property(env, item, "supportsInputFormatDetection", param);
+        CHECK_RELEASE;
+      }
+
+      hresult = deckLinkAttributes->GetFlag(BMDDeckLinkSupportsFullDuplex, &supported);
+      if (hresult == S_OK) {
+        status = napi_get_boolean(env, supported, &param);
+        CHECK_RELEASE;
+        status = napi_set_named_property(env, item, "supportsFullDuplex", param);
+        CHECK_RELEASE;
+      }
+
+      hresult = deckLinkAttributes->GetFlag(BMDDeckLinkSupportsExternalKeying, &supported);
+  	  if (hresult == S_OK) {
+        status = napi_get_boolean(env, supported, &param);
+        CHECK_RELEASE;
+        status = napi_set_named_property(env, item, "supportsExternalKeying", param);
+        CHECK_RELEASE;
+      }
+
+      hresult = deckLinkAttributes->GetFlag(BMDDeckLinkSupportsInternalKeying, &supported);
+  	  if (hresult == S_OK) {
+        status = napi_get_boolean(env, supported, &param);
+        CHECK_RELEASE;
+        status = napi_set_named_property(env, item, "supportsInernalKeying", param);
+        CHECK_RELEASE;
+      }
+
+      hresult = deckLinkAttributes->GetFlag(BMDDeckLinkSupportsHDKeying, &supported);
+  	  if (hresult == S_OK) {
+        status = napi_get_boolean(env, supported, &param);
+        CHECK_RELEASE;
+        status = napi_set_named_property(env, item, "supportsHDKeying", param);
+        CHECK_RELEASE;
+      }
+
+      hresult = deckLinkAttributes->GetInt(BMDDeckLinkDeviceInterface, &value);
+      if (hresult == S_OK) {
+        switch (value) {
+          case bmdDeviceInterfacePCI:
+            status = napi_create_string_utf8(env, "PCI", NAPI_AUTO_LENGTH, &param);
+            CHECK_RELEASE;
+            break;
+          case bmdDeviceInterfaceUSB:
+            status = napi_create_string_utf8(env, "USB", NAPI_AUTO_LENGTH, &param);
+            CHECK_RELEASE;
+            break;
+          case bmdDeviceInterfaceThunderbolt:
+            status = napi_create_string_utf8(env, "Thunderbolt", NAPI_AUTO_LENGTH, &param);
+            CHECK_RELEASE;
+            break;
+        }
+
+        status = napi_set_named_property(env, item, "deviceInterface", param);
+        CHECK_RELEASE;
+      }
+
+
+      deckLinkAttributes->Release();
+      deckLinkAttributes = nullptr;
+    } // Get deckLinkAttributes
+
+    status = napi_set_element(env, result, index++, item);
+    CHECK_RELEASE;
+
+    deckLink->Release();
+  }
+
   deckLinkIterator->Release();
 
   return result;
@@ -151,8 +336,9 @@ napi_value Init(napi_env env, napi_value exports) {
   napi_property_descriptor desc[] = {
     DECLARE_NAPI_METHOD("deckLinkVersion", deckLinkVersion),
     DECLARE_NAPI_METHOD("getFirstDevice", getFirstDevice),
+    DECLARE_NAPI_METHOD("getDeviceInfo", getDeviceInfo)
    };
-  status = napi_define_properties(env, exports, 2, desc);
+  status = napi_define_properties(env, exports, 3, desc);
   CHECK_STATUS;
 
   #ifdef WIN32

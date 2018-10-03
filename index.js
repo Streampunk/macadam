@@ -655,6 +655,7 @@ var macadam = {
   // access details about the currently connected devices
   deckLinkVersion : macadamNative.deckLinkVersion,
   getFirstDevice : macadamNative.getFirstDevice,
+  getDeviceInfo : macadamNative.getDeviceInfo,
   // Raw access to device classes
   DirectCapture : macadamNative.Capture,
   Capture : Capture,
