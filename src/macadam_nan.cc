@@ -42,8 +42,11 @@
 
 #define _WINSOCKAPI_
 
+#include <node.h>
+#include "node_buffer.h"
 #include "DeckLinkAPI.h"
 #include <stdio.h>
+#include <nan.h>
 
 #ifdef WIN32
 #include <tchar.h>
@@ -52,24 +55,25 @@
 #include <comdef.h>
 #endif
 
-#include "macadam_util.h"
+#include "Capture.h"
+#include "Playback.h"
 #include "node_api.h"
 
-napi_value deckLinkVersion(napi_env env, napi_callback_info info) {
-  napi_status status;
-  napi_value result;
+using namespace v8;
 
+NAN_METHOD(DeckLinkVersion) {
   IDeckLinkIterator* deckLinkIterator;
-  HRESULT hresult;
+  HRESULT	result;
   IDeckLinkAPIInformation*	deckLinkAPIInformation;
   #ifdef WIN32
   CoCreateInstance(CLSID_CDeckLinkIterator, NULL, CLSCTX_ALL, IID_IDeckLinkIterator, (void**)&deckLinkIterator);
   #else
   deckLinkIterator = CreateDeckLinkIteratorInstance();
   #endif
-
-  hresult = deckLinkIterator->QueryInterface(IID_IDeckLinkAPIInformation, (void**)&deckLinkAPIInformation);
-  if (hresult != S_OK) NAPI_THROW_ERROR("Error connecting to DeckLinkAPI.");
+  result = deckLinkIterator->QueryInterface(IID_IDeckLinkAPIInformation, (void**)&deckLinkAPIInformation);
+  if (result != S_OK) {
+    Nan::ThrowError("Error connecting to DeckLinkAPI.");
+  }
 
   char deckVer [80];
   int64_t	deckLinkVersion;
@@ -85,76 +89,74 @@ napi_value deckLinkVersion(napi_env env, napi_callback_info info) {
   sprintf(deckVer, "DeckLinkAPI version: %d.%d.%d", dlVerMajor, dlVerMinor, dlVerPoint);
 
   deckLinkAPIInformation->Release();
-  deckLinkIterator->Release();
 
-  status = napi_create_string_utf8(env, deckVer, NAPI_AUTO_LENGTH, &result);
-  CHECK_STATUS;
-  return result;
+  info.GetReturnValue().Set(Nan::New(deckVer).ToLocalChecked());
 }
 
-napi_value getFirstDevice(napi_env env, napi_callback_info info) {
-  napi_status status;
-  napi_value result;
-
-  status = napi_get_undefined(env, &result);
-  CHECK_STATUS;
-
+NAN_METHOD(GetFirstDevice) {
   IDeckLinkIterator* deckLinkIterator;
-  HRESULT	hresult;
+  HRESULT	result;
+  IDeckLinkAPIInformation *deckLinkAPIInformation;
   IDeckLink* deckLink;
   #ifdef WIN32
   CoCreateInstance(CLSID_CDeckLinkIterator, NULL, CLSCTX_ALL, IID_IDeckLinkIterator, (void**)&deckLinkIterator);
   #else
   deckLinkIterator = CreateDeckLinkIteratorInstance();
   #endif
-  if (deckLinkIterator->Next(&deckLink) != S_OK) {
-    status = napi_get_undefined(env, &result);
-    CHECK_STATUS;
-    deckLinkIterator->Release();
-    return result;
+  result = deckLinkIterator->QueryInterface(IID_IDeckLinkAPIInformation, (void**)&deckLinkAPIInformation);
+  if (result != S_OK) {
+    Nan::ThrowError("Error connecting to DeckLinkAPI.");
   }
-
+  if (deckLinkIterator->Next(&deckLink) != S_OK) {
+    info.GetReturnValue().SetUndefined();
+    return;
+  }
   #ifdef WIN32
   BSTR deviceNameBSTR = NULL;
-  hresult = deckLink->GetModelName(&deviceNameBSTR);
-  if (hresult == S_OK) {
+  result = deckLink->GetModelName(&deviceNameBSTR);
+  if (result == S_OK) {
     _bstr_t deviceName(deviceNameBSTR, false);
-    status = napi_create_string_utf8(env, (char*) deviceName, NAPI_AUTO_LENGTH, &result);
-    CHECK_STATUS;
+    info.GetReturnValue().Set(Nan::New((char*) deviceName).ToLocalChecked());
+    return;
   }
   #elif __APPLE__
   CFStringRef deviceNameCFString = NULL;
-  hresult = deckLink->GetModelName(&deviceNameCFString);
-  if (hresult == S_OK) {
+  result = deckLink->GetModelName(&deviceNameCFString);
+  if (result == S_OK) {
     char deviceName [64];
     CFStringGetCString(deviceNameCFString, deviceName, sizeof(deviceName), kCFStringEncodingMacRoman);
-    status = napi_create_string_utf8(env, deviceName, NAPI_AUTO_LENGTH, &result);
-    CHECK_STATUS;
-  }
-  #else
-  const char* deviceName;
-  hresult = deckLink->GetModelName(&deviceName);
-  if (hresult == S_OK) {
-    status = napi_create_string_utf8(env, deviceName, NAPI_AUTO_LENGTH, &result);
-    CHECK_STATUS;
+    info.GetReturnValue().Set(Nan::New(deviceName).ToLocalChecked());
+    return;
   }
   #endif
-
-  deckLink->Release();
-  deckLinkIterator->Release();
-
-  return result;
+  info.GetReturnValue().SetUndefined();
 }
 
-napi_value Init(napi_env env, napi_value exports) {
-  napi_status status;
-  napi_property_descriptor desc[] = {
-    DECLARE_NAPI_METHOD("deckLinkVersion", deckLinkVersion),
-    DECLARE_NAPI_METHOD("getFirstDevice", getFirstDevice),
-   };
-  status = napi_define_properties(env, exports, 2, desc);
-  CHECK_STATUS;
 
+
+/* static Local<Object> makeBuffer(char* data, size_t size) {
+  HandleScope scope;
+
+  // It ends up being kind of a pain to convert a slow buffer into a fast
+  // one since the fast part is implemented in JavaScript.
+  Local<Buffer> slowBuffer = Buffer::New(data, size);
+  // First get the Buffer from global scope...
+  Local<Object> global = Context::GetCurrent()->Global();
+  Local<Value> bv = global->Get(String::NewSymbol("Buffer"));
+  assert(bv->IsFunction());
+  Local<Function> b = Local<Function>::Cast(bv);
+  // ...call Buffer() with the slow buffer and get a fast buffer back...
+  Handle<Value> argv[3] = { slowBuffer->handle_, Integer::New(size), Integer::New(0) };
+  Local<Object> fastBuffer = b->NewInstance(3, argv);
+
+  return scope.Close(fastBuffer);
+} */
+
+NAN_MODULE_INIT(Init) {
+  Nan::Export(target, "deckLinkVersion", DeckLinkVersion);
+  Nan::Export(target, "getFirstDevice", GetFirstDevice);
+  streampunk::Capture::Init(target);
+  streampunk::Playback::Init(target);
   #ifdef WIN32
   HRESULT result;
   result = CoInitialize(NULL);
@@ -163,8 +165,6 @@ napi_value Init(napi_env env, napi_value exports) {
 		fprintf(stderr, "Initialization of COM failed - result = %08x.\n", result);
 	}
   #endif
-
-  return exports;
 }
 
-NAPI_MODULE(nodencl, Init)
+NODE_MODULE(macadam, Init);

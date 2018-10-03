@@ -28,3 +28,5 @@ node_modules
 
 # Gyp project - ignore build folder
 build
+
+.DS_Store

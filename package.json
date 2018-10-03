@@ -22,5 +22,8 @@
     "highland": "^2.11.1",
     "nan": "^2.6.2"
   },
+  "devDependencies": {
+    "segfault-handler": "^1.0.0"
+  },
   "gypfile": true
 }

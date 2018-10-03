@@ -1,4 +1,4 @@
-/* Copyright 2017 Streampunk Media Ltd.
+/* Copyright 2018 Streampunk Media Ltd.
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -46,12 +46,11 @@ var isWinOrMac = (os.platform() === 'win32') || (os.platform() === 'darwin');
 // if (!isWinOrMac)
 //   throw('Macadam is not currently supported on this platform');
 
-var bindings = require('bindings');
-var macadamNative = bindings('macadam');
+const macadamNative = require('bindings')('macadam');
 const util = require('util');
 const EventEmitter = require('events');
 
-// var SegfaultHandler = require('../node-segfault-handler');
+// var SegfaultHandler = require('node-segfault-handler');
 // SegfaultHandler.registerHandler("crash.log");
 
 function Capture (deviceIndex, displayMode, pixelFormat) {

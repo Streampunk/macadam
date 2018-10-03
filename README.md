@@ -131,6 +131,6 @@ Contributions can be made via pull requests and will be considered by the author
 
 ## License
 
-This software is released under the Apache 2.0 license. Copyright 2017 Streampunk Media Ltd.
+This software is released under the Apache 2.0 license. Copyright 2018 Streampunk Media Ltd.
 
 The software links to the BlackMagic Desktop Video libraries. Include files and examples from which this code is derived include the BlackMagic License in their respective header files. The BlackMagic DeckLink SDK can be downloaded from https://www.blackmagicdesign.com/support.
