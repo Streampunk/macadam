@@ -57,6 +57,7 @@
 
 #include "Capture.h"
 #include "Playback.h"
+#include "node_api.h"
 
 using namespace v8;
 
