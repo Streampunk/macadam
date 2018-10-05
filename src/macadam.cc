@@ -130,7 +130,7 @@ napi_value getFirstDevice(napi_env env, napi_callback_info info) {
   if (hresult == S_OK) {
     _bstr_t deviceName(deviceNameBSTR, false);
     status = napi_create_string_utf8(env, (char*) deviceName, NAPI_AUTO_LENGTH, &result);
-    delete deviceName;
+    // delete deviceName;
     CHECK_RELEASE;
   }
   #elif __APPLE__
@@ -187,7 +187,7 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
     if (hresult == S_OK) {
       _bstr_t deviceName(deviceNameBSTR, false);
       status = napi_create_string_utf8(env, (char*) deviceName, NAPI_AUTO_LENGTH, &param);
-      delete deviceName;
+      // delete deviceName;
       CHECK_RELEASE;
     }
     #elif __APPLE__
@@ -221,7 +221,7 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
     if (hresult == S_OK) {
       _bstr_t displayName(deviceNameBSTR, false);
       status = napi_create_string_utf8(env, (char*) displayName, NAPI_AUTO_LENGTH, &param);
-      delete displayName;
+      // delete displayName;
       CHECK_RELEASE;
     }
     #elif __APPLE__
@@ -276,7 +276,7 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
             #ifdef WIN32
             _bstr_t portName(deviceNameBSTR, false);
             status = napi_create_string_utf8(env, (char*) portName, NAPI_AUTO_LENGTH, &param);
-            delete portName;
+            // delete portName;
             CHECK_RELEASE;
             #elif __APPLE__
             char portName[64];
