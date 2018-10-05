@@ -295,6 +295,40 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
         }
       }
 
+      hresult = deckLinkAttributes->GetInt(BMDDeckLinkPersistentID, &value);
+      if (hresult == S_OK) {
+        status = napi_create_int64(env, value, &param);
+        CHECK_RELEASE;
+        status = napi_set_named_property(env, item, "persistentID", param);
+        CHECK_RELEASE;
+      }
+
+      hresult = deckLinkAttributes->GetInt(BMDDeckLinkTopologicalID, &value);
+      if (hresult == S_OK) {
+        status = napi_create_int64(env, value, &param);
+        CHECK_RELEASE;
+        status = napi_set_named_property(env, item, "topologicalID", param);
+        CHECK_RELEASE;
+      }
+
+      hresult = deckLinkAttributes->GetInt(BMDDeckLinkNumberOfSubDevices, &value);
+      if (hresult == S_OK) {
+        status = napi_create_int64(env, value, &param);
+        CHECK_RELEASE;
+        status = napi_set_named_property(env, item, "numberOfSubDevices", param);
+        CHECK_RELEASE;
+      }
+
+      if (value > 0) {
+        hresult = deckLinkAttributes->GetInt(BMDDeckLinkSubDeviceIndex, &value);
+        if (hresult == S_OK) {
+          status = napi_create_int64(env, value, &param);
+          CHECK_RELEASE;
+          status = napi_set_named_property(env, item, "subDeviceIndex", param);
+          CHECK_RELEASE;
+        }
+      }
+
       hresult = deckLinkAttributes->GetInt(BMDDeckLinkMaximumAudioChannels, &value);
       if (hresult == S_OK) {
         status = napi_create_int64(env, value, &param);
