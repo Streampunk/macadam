@@ -659,7 +659,8 @@ var macadam = {
   // Raw access to device classes
   DirectCapture : macadamNative.Capture,
   Capture : Capture,
-  Playback : Playback
+  Playback : Playback,
+  asyncTest: macadamNative.asyncTest
 };
 
 module.exports = macadam;
