@@ -56,8 +56,8 @@
 #include "node_api.h"
 
 // List of known pixel formats and their matching display names
-const BMDPixelFormat	gKnownPixelFormats[]		= {bmdFormat8BitYUV, bmdFormat10BitYUV, bmdFormat8BitARGB, bmdFormat8BitBGRA, bmdFormat10BitRGB, bmdFormat12BitRGB, bmdFormat12BitRGBLE, bmdFormat10BitRGBXLE, bmdFormat10BitRGBX, 0};
-const char *			gKnownPixelFormatNames[]	= {"8-bit YUV", "10-bit YUV", "8-bit ARGB", "8-bit BGRA", "10-bit RGB", "12-bit RGB", "12-bit RGBLE", "10-bit RGBXLE", "10-bit RGBX", NULL};
+const BMDPixelFormat gKnownPixelFormats[] = {bmdFormat8BitYUV, bmdFormat10BitYUV, bmdFormat8BitARGB, bmdFormat8BitBGRA, bmdFormat10BitRGB, bmdFormat12BitRGB, bmdFormat12BitRGBLE, bmdFormat10BitRGBXLE, bmdFormat10BitRGBX, (BMDPixelFormat) 0};
+const char* gKnownPixelFormatNames[] = {"8-bit YUV", "10-bit YUV", "8-bit ARGB", "8-bit BGRA", "10-bit RGB", "12-bit RGB", "12-bit RGBLE", "10-bit RGBXLE", "10-bit RGBX", NULL};
 
 napi_status queryOutputDisplayModes(napi_env env, IDeckLink* deckLink, napi_value result);
 napi_status queryInputDisplayModes(napi_env env, IDeckLink* deckLink, napi_value result);
@@ -277,7 +277,7 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
         CHECK_RELEASE;
         status = napi_set_named_property(env, item, "hasSerialPort", param);
         CHECK_RELEASE;
-        if (supported == true) {
+        if (supported == TRUE) {
           hresult = deckLinkAttributes->GetString(BMDDeckLinkSerialPortDeviceName, &name);
           if (hresult == S_OK) {
             #ifdef WIN32
@@ -580,10 +580,10 @@ napi_status queryOutputDisplayModes(napi_env env, IDeckLink* deckLink, napi_valu
     #ifdef WIN32
     BSTR			displayModeBSTR = NULL;
     hresult = displayMode->GetName(&displayModeBSTR);
-    if (result == S_OK)
+    if (hresult == S_OK)
     {
       _bstr_t	modeNameWin(displayModeBSTR, false);
-      modeName = (char*) modeNameWin;
+      strcpy(modeName, (const char*) modeNameWin);
     }
     #elif __APPLE__
     CFStringRef	displayModeCFString = NULL;
@@ -707,10 +707,10 @@ napi_status queryInputDisplayModes(napi_env env, IDeckLink* deckLink, napi_value
     #ifdef WIN32
     BSTR			displayModeBSTR = NULL;
     hresult = displayMode->GetName(&displayModeBSTR);
-    if (result == S_OK)
+    if (hresult == S_OK)
     {
-      _bstr_t	modeNameWin(displayModeBSTR, false);
-      modeName = (char*) modeNameWin;
+      _bstr_t displayMode(displayModeBSTR, false);
+      strcpy(modeName, (const char *) displayMode);
     }
     #elif __APPLE__
     CFStringRef	displayModeCFString = NULL;
