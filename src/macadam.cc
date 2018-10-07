@@ -55,6 +55,13 @@
 #include "macadam_util.h"
 #include "node_api.h"
 
+// List of known pixel formats and their matching display names
+const BMDPixelFormat	gKnownPixelFormats[]		= {bmdFormat8BitYUV, bmdFormat10BitYUV, bmdFormat8BitARGB, bmdFormat8BitBGRA, bmdFormat10BitRGB, bmdFormat12BitRGB, bmdFormat12BitRGBLE, bmdFormat10BitRGBXLE, bmdFormat10BitRGBX, 0};
+const char *			gKnownPixelFormatNames[]	= {"8-bit YUV", "10-bit YUV", "8-bit ARGB", "8-bit BGRA", "10-bit RGB", "12-bit RGB", "12-bit RGBLE", "10-bit RGBXLE", "10-bit RGBX", NULL};
+
+napi_status queryOutputDisplayModes(napi_env env, IDeckLink* deckLink, napi_value result);
+napi_status queryInputDisplayModes(napi_env env, IDeckLink* deckLink, napi_value result);
+
 napi_value deckLinkVersion(napi_env env, napi_callback_info info) {
   napi_status status;
   napi_value result;
@@ -398,59 +405,6 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
         CHECK_RELEASE;
       }
 
-      hresult = deckLinkAttributes->GetInt(BMDDeckLinkVideoOutputConnections, &value);
-      if (hresult == S_OK) {
-        napi_value conna, conni;
-        uint32_t indexo = 0;
-        status = napi_create_array(env, &conna);
-        CHECK_RELEASE;
-
-        if (value & bmdVideoConnectionSDI) {
-          status = napi_create_string_utf8(env, "SDI", NAPI_AUTO_LENGTH, &conni);
-          CHECK_RELEASE;
-          status = napi_set_element(env, conna, indexo++, conni);
-          CHECK_RELEASE;
-        }
-
-        if (value & bmdVideoConnectionHDMI) {
-          status = napi_create_string_utf8(env, "HDMI", NAPI_AUTO_LENGTH, &conni);
-          CHECK_RELEASE;
-          status = napi_set_element(env, conna, indexo++, conni);
-          CHECK_RELEASE;
-        }
-
-        if (value & bmdVideoConnectionOpticalSDI) {
-          status = napi_create_string_utf8(env, "Optical SDI", NAPI_AUTO_LENGTH, &conni);
-          CHECK_RELEASE;
-          status = napi_set_element(env, conna, indexo++, conni);
-          CHECK_RELEASE;
-        }
-
-        if (value & bmdVideoConnectionComponent) {
-          status = napi_create_string_utf8(env, "Component", NAPI_AUTO_LENGTH, &conni);
-          CHECK_RELEASE;
-          status = napi_set_element(env, conna, indexo++, conni);
-          CHECK_RELEASE;
-        }
-
-        if (value & bmdVideoConnectionComposite){
-          status = napi_create_string_utf8(env, "Composite", NAPI_AUTO_LENGTH, &conni);
-          CHECK_RELEASE;
-          status = napi_set_element(env, conna, indexo++, conni);
-          CHECK_RELEASE;
-        }
-
-        if (value & bmdVideoConnectionSVideo) {
-          status = napi_create_string_utf8(env, "S-Video", NAPI_AUTO_LENGTH, &conni);
-          CHECK_RELEASE;
-          status = napi_set_element(env, conna, indexo++, conni);
-          CHECK_RELEASE;
-        }
-
-        status = napi_set_named_property(env, item, "videoOutputConnections", conna);
-        CHECK_RELEASE;
-      }
-
       hresult = deckLinkAttributes->GetInt(BMDDeckLinkVideoInputConnections, &value);
       if (hresult == S_OK) {
         napi_value connb, connj;
@@ -504,19 +458,340 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
         CHECK_RELEASE;
       }
 
+      hresult = deckLinkAttributes->GetInt(BMDDeckLinkVideoOutputConnections, &value);
+      if (hresult == S_OK) {
+        napi_value conna, conni;
+        uint32_t indexo = 0;
+        status = napi_create_array(env, &conna);
+        CHECK_RELEASE;
+
+        if (value & bmdVideoConnectionSDI) {
+          status = napi_create_string_utf8(env, "SDI", NAPI_AUTO_LENGTH, &conni);
+          CHECK_RELEASE;
+          status = napi_set_element(env, conna, indexo++, conni);
+          CHECK_RELEASE;
+        }
+
+        if (value & bmdVideoConnectionHDMI) {
+          status = napi_create_string_utf8(env, "HDMI", NAPI_AUTO_LENGTH, &conni);
+          CHECK_RELEASE;
+          status = napi_set_element(env, conna, indexo++, conni);
+          CHECK_RELEASE;
+        }
+
+        if (value & bmdVideoConnectionOpticalSDI) {
+          status = napi_create_string_utf8(env, "Optical SDI", NAPI_AUTO_LENGTH, &conni);
+          CHECK_RELEASE;
+          status = napi_set_element(env, conna, indexo++, conni);
+          CHECK_RELEASE;
+        }
+
+        if (value & bmdVideoConnectionComponent) {
+          status = napi_create_string_utf8(env, "Component", NAPI_AUTO_LENGTH, &conni);
+          CHECK_RELEASE;
+          status = napi_set_element(env, conna, indexo++, conni);
+          CHECK_RELEASE;
+        }
+
+        if (value & bmdVideoConnectionComposite){
+          status = napi_create_string_utf8(env, "Composite", NAPI_AUTO_LENGTH, &conni);
+          CHECK_RELEASE;
+          status = napi_set_element(env, conna, indexo++, conni);
+          CHECK_RELEASE;
+        }
+
+        if (value & bmdVideoConnectionSVideo) {
+          status = napi_create_string_utf8(env, "S-Video", NAPI_AUTO_LENGTH, &conni);
+          CHECK_RELEASE;
+          status = napi_set_element(env, conna, indexo++, conni);
+          CHECK_RELEASE;
+        }
+
+        status = napi_set_named_property(env, item, "videoOutputConnections", conna);
+        CHECK_RELEASE;
+      }
+
       deckLinkAttributes->Release();
       deckLinkAttributes = nullptr;
     } // Get deckLinkAttributes
 
+    status = queryInputDisplayModes(env, deckLink, item);
+    CHECK_RELEASE;
+
+    status = queryOutputDisplayModes(env, deckLink, item);
+    CHECK_RELEASE;
+
     status = napi_set_element(env, result, index++, item);
     CHECK_RELEASE;
 
+
     deckLink->Release();
-  }
+  } // end while look
 
   deckLinkIterator->Release();
 
   return result;
+}
+
+#define DISPLAY_RELEASE if (checkStatus(env, status, __FILE__, __LINE__ - 1) != napi_ok) { \
+  if (deckLinkIO != nullptr) deckLinkIO->Release(); \
+  if (displayModeIterator != nullptr) displayModeIterator->Release(); \
+  if (displayMode != nullptr) displayMode->Release(); \
+  return status; \
+}
+
+napi_status queryOutputDisplayModes(napi_env env, IDeckLink* deckLink, napi_value result) {
+
+  IDeckLinkOutput* deckLinkIO = nullptr;
+  IDeckLinkDisplayModeIterator* displayModeIterator = nullptr;
+  IDeckLinkDisplayMode* displayMode = nullptr;
+  HRESULT hresult;
+  napi_status status = napi_ok;
+  napi_value modes, modeobj, item, itemPart;
+  uint32_t modeIndex = 0, partIndex = 0;
+
+  char					modeName[64];
+  int						modeWidth;
+  int						modeHeight;
+  BMDTimeValue			frameRateDuration;
+  BMDTimeScale			frameRateScale;
+  int						pixelFormatIndex = 0; // index into the gKnownPixelFormats / gKnownFormatNames arrays
+  BMDDisplayModeSupport	displayModeSupport;
+
+  status = napi_create_array(env, &modes);
+  DISPLAY_RELEASE;
+  status = napi_set_named_property(env, result, "outputDisplayModes", modes);
+  DISPLAY_RELEASE;
+
+  // Query the DeckLink for its configuration interface
+  hresult = deckLink->QueryInterface(IID_IDeckLinkOutput, (void**)&deckLinkIO);
+  if (hresult != S_OK) { goto bail; }
+
+  // Obtain an IDeckLinkDisplayModeIterator to enumerate the display modes supported on output
+  hresult = deckLinkIO->GetDisplayModeIterator(&displayModeIterator);
+  if (hresult != S_OK) { goto bail; }
+
+  // List all supported output display modes
+  while (displayModeIterator->Next(&displayMode) == S_OK) {
+
+    status = napi_create_object(env, &modeobj);
+    DISPLAY_RELEASE;
+
+    #ifdef WIN32
+    BSTR			displayModeBSTR = NULL;
+    hresult = displayMode->GetName(&displayModeBSTR);
+    if (result == S_OK)
+    {
+      _bstr_t	modeNameWin(displayModeBSTR, false);
+      modeName = (char*) modeNameWin;
+    }
+    #elif __APPLE__
+    CFStringRef	displayModeCFString = NULL;
+    hresult = displayMode->GetName(&displayModeCFString);
+  	if (hresult == S_OK) {
+  	  CFStringGetCString(displayModeCFString, modeName, sizeof(modeName), kCFStringEncodingMacRoman);
+  	  CFRelease(displayModeCFString);
+    }
+    #else
+    hresult = displayMode->GetName((const char **) &modeName);
+    #endif
+
+    status = napi_create_string_utf8(env, modeName, NAPI_AUTO_LENGTH, &item);
+    DISPLAY_RELEASE;
+    status = napi_set_named_property(env, modeobj, "name", item);
+    DISPLAY_RELEASE;
+
+		modeWidth = displayMode->GetWidth();
+    status = napi_create_int64(env, modeWidth, &item);
+    DISPLAY_RELEASE;
+    status = napi_set_named_property(env, modeobj, "width", item);
+    DISPLAY_RELEASE;
+
+		modeHeight = displayMode->GetHeight();
+    status = napi_create_int64(env, modeHeight, &item);
+    DISPLAY_RELEASE;
+    status = napi_set_named_property(env, modeobj, "height", item);
+    DISPLAY_RELEASE;
+
+	  displayMode->GetFrameRate(&frameRateDuration, &frameRateScale);
+		// printf(" %-20s \t %d x %d \t %7g FPS\t", displayModeString, modeWidth, modeHeight, (double)frameRateScale / (double)frameRateDuration);
+    status = napi_create_array(env, &item);
+    DISPLAY_RELEASE;
+    status = napi_create_int64(env, frameRateDuration, &itemPart);
+    DISPLAY_RELEASE;
+    status = napi_set_element(env, item, 0, itemPart);
+    DISPLAY_RELEASE;
+    status = napi_create_int64(env, frameRateScale, &itemPart);
+    DISPLAY_RELEASE;
+    status = napi_set_element(env, item, 1, itemPart);
+    DISPLAY_RELEASE;
+    status = napi_set_named_property(env, modeobj, "frameRate", item);
+    DISPLAY_RELEASE;
+
+    status = napi_create_array(env, &item);
+    DISPLAY_RELEASE;
+
+    partIndex = 0;
+    pixelFormatIndex = 0;
+
+		while ((gKnownPixelFormats[pixelFormatIndex] != 0) &&
+        (gKnownPixelFormatNames[pixelFormatIndex] != NULL)) {
+			if ((deckLinkIO->DoesSupportVideoMode(
+        displayMode->GetDisplayMode(), gKnownPixelFormats[pixelFormatIndex],
+        bmdVideoOutputFlagDefault, &displayModeSupport, NULL) == S_OK)
+					&& (displayModeSupport != bmdDisplayModeNotSupported)) {
+
+				status = napi_create_string_utf8(env, gKnownPixelFormatNames[pixelFormatIndex],
+          NAPI_AUTO_LENGTH, &itemPart);
+        DISPLAY_RELEASE;
+        status = napi_set_element(env, item, partIndex++, itemPart);
+        DISPLAY_RELEASE;
+			}
+
+			pixelFormatIndex++;
+		}
+    status = napi_set_named_property(env, modeobj, "videoModes", item);
+    DISPLAY_RELEASE;
+
+    status = napi_set_element(env, modes, modeIndex++, modeobj);
+    DISPLAY_RELEASE;
+
+    displayMode->Release();
+  }
+
+  bail:
+    if (deckLinkIO != nullptr) deckLinkIO->Release();
+    if (displayModeIterator != nullptr) displayModeIterator->Release();
+    if (displayMode != nullptr) displayMode->Release();
+
+    return napi_ok;
+}
+
+napi_status queryInputDisplayModes(napi_env env, IDeckLink* deckLink, napi_value result) {
+
+  IDeckLinkInput* deckLinkIO = nullptr;
+  IDeckLinkDisplayModeIterator* displayModeIterator = nullptr;
+  IDeckLinkDisplayMode* displayMode = nullptr;
+  HRESULT hresult;
+  napi_status status = napi_ok;
+  napi_value modes, modeobj, item, itemPart;
+  uint32_t modeIndex = 0, partIndex = 0;
+
+  char					modeName[64];
+  int						modeWidth;
+  int						modeHeight;
+  BMDTimeValue			frameRateDuration;
+  BMDTimeScale			frameRateScale;
+  int						pixelFormatIndex = 0; // index into the gKnownPixelFormats / gKnownFormatNames arrays
+  BMDDisplayModeSupport	displayModeSupport;
+
+  status = napi_create_array(env, &modes);
+  DISPLAY_RELEASE;
+  status = napi_set_named_property(env, result, "inputDisplayModes", modes);
+  DISPLAY_RELEASE;
+
+  // Query the DeckLink for its configuration interface
+  hresult = deckLink->QueryInterface(IID_IDeckLinkInput, (void**)&deckLinkIO);
+  if (hresult != S_OK) { goto bail; }
+
+  // Obtain an IDeckLinkDisplayModeIterator to enumerate the display modes supported on output
+  hresult = deckLinkIO->GetDisplayModeIterator(&displayModeIterator);
+  if (hresult != S_OK) { goto bail; }
+
+  // List all supported output display modes
+  while (displayModeIterator->Next(&displayMode) == S_OK) {
+
+    status = napi_create_object(env, &modeobj);
+    DISPLAY_RELEASE;
+
+    #ifdef WIN32
+    BSTR			displayModeBSTR = NULL;
+    hresult = displayMode->GetName(&displayModeBSTR);
+    if (result == S_OK)
+    {
+      _bstr_t	modeNameWin(displayModeBSTR, false);
+      modeName = (char*) modeNameWin;
+    }
+    #elif __APPLE__
+    CFStringRef	displayModeCFString = NULL;
+    hresult = displayMode->GetName(&displayModeCFString);
+  	if (hresult == S_OK) {
+  	  CFStringGetCString(displayModeCFString, modeName, sizeof(modeName), kCFStringEncodingMacRoman);
+  	  CFRelease(displayModeCFString);
+    }
+    #else
+    hresult = displayMode->GetName((const char **) &modeName);
+    #endif
+
+    status = napi_create_string_utf8(env, modeName, NAPI_AUTO_LENGTH, &item);
+    DISPLAY_RELEASE;
+    status = napi_set_named_property(env, modeobj, "name", item);
+    DISPLAY_RELEASE;
+
+		modeWidth = displayMode->GetWidth();
+    status = napi_create_int64(env, modeWidth, &item);
+    DISPLAY_RELEASE;
+    status = napi_set_named_property(env, modeobj, "width", item);
+    DISPLAY_RELEASE;
+
+		modeHeight = displayMode->GetHeight();
+    status = napi_create_int64(env, modeHeight, &item);
+    DISPLAY_RELEASE;
+    status = napi_set_named_property(env, modeobj, "height", item);
+    DISPLAY_RELEASE;
+
+	  displayMode->GetFrameRate(&frameRateDuration, &frameRateScale);
+		// printf(" %-20s \t %d x %d \t %7g FPS\t", displayModeString, modeWidth, modeHeight, (double)frameRateScale / (double)frameRateDuration);
+    status = napi_create_array(env, &item);
+    DISPLAY_RELEASE;
+    status = napi_create_int64(env, frameRateDuration, &itemPart);
+    DISPLAY_RELEASE;
+    status = napi_set_element(env, item, 0, itemPart);
+    DISPLAY_RELEASE;
+    status = napi_create_int64(env, frameRateScale, &itemPart);
+    DISPLAY_RELEASE;
+    status = napi_set_element(env, item, 1, itemPart);
+    DISPLAY_RELEASE;
+    status = napi_set_named_property(env, modeobj, "frameRate", item);
+    DISPLAY_RELEASE;
+
+    status = napi_create_array(env, &item);
+    DISPLAY_RELEASE;
+
+    partIndex = 0;
+    pixelFormatIndex = 0;
+
+		while ((gKnownPixelFormats[pixelFormatIndex] != 0) &&
+        (gKnownPixelFormatNames[pixelFormatIndex] != NULL)) {
+			if ((deckLinkIO->DoesSupportVideoMode(
+        displayMode->GetDisplayMode(), gKnownPixelFormats[pixelFormatIndex],
+        bmdVideoOutputFlagDefault, &displayModeSupport, NULL) == S_OK)
+					&& (displayModeSupport != bmdDisplayModeNotSupported)) {
+
+				status = napi_create_string_utf8(env, gKnownPixelFormatNames[pixelFormatIndex],
+          NAPI_AUTO_LENGTH, &itemPart);
+        DISPLAY_RELEASE;
+        status = napi_set_element(env, item, partIndex++, itemPart);
+        DISPLAY_RELEASE;
+			}
+
+			pixelFormatIndex++;
+		}
+    status = napi_set_named_property(env, modeobj, "vidoModes", item);
+    DISPLAY_RELEASE;
+
+    status = napi_set_element(env, modes, modeIndex++, modeobj);
+    DISPLAY_RELEASE;
+
+    displayMode->Release();
+  }
+
+  bail:
+    if (deckLinkIO != nullptr) deckLinkIO->Release();
+    if (displayModeIterator != nullptr) displayModeIterator->Release();
+    if (displayMode != nullptr) displayMode->Release();
+
+    return napi_ok;
 }
 
 napi_value Init(napi_env env, napi_value exports) {

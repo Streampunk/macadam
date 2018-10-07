@@ -41,8 +41,8 @@
 */
 
 'use strict';
-var os = require('os');
-var isWinOrMac = (os.platform() === 'win32') || (os.platform() === 'darwin');
+//var os = require('os');
+//var isWinOrMac = (os.platform() === 'win32') || (os.platform() === 'darwin');
 // if (!isWinOrMac)
 //   throw('Macadam is not currently supported on this platform');
 
@@ -50,8 +50,8 @@ const macadamNative = require('bindings')('macadam');
 const util = require('util');
 const EventEmitter = require('events');
 
-// var SegfaultHandler = require('node-segfault-handler');
-// SegfaultHandler.registerHandler("crash.log");
+var SegfaultHandler = require('segfault-handler');
+SegfaultHandler.registerHandler("crash.log");
 
 function Capture (deviceIndex, displayMode, pixelFormat) {
   if (arguments.length !== 3 || typeof deviceIndex !== 'number' ||
