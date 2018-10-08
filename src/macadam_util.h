@@ -19,6 +19,7 @@
 #include <chrono>
 #include <stdio.h>
 #include <string>
+#include "DeckLinkAPI.h"
 #include "node_api.h"
 
 #define DECLARE_NAPI_METHOD(name, func) { name, 0, func, 0, 0, 0, napi_default, 0 }
@@ -81,5 +82,9 @@ int32_t rejectStatus(napi_env env, carrier* c, char* file, int32_t line);
   c->status = stat; \
   REJECT_RETURN; \
 }
+
+// List of known pixel formats and their matching display names
+extern const BMDPixelFormat gKnownPixelFormats[]; // = {bmdFormat8BitYUV, bmdFormat10BitYUV, bmdFormat8BitARGB, bmdFormat8BitBGRA, bmdFormat10BitRGB, bmdFormat12BitRGB, bmdFormat12BitRGBLE, bmdFormat10BitRGBXLE, bmdFormat10BitRGBX, (BMDPixelFormat) 0};
+extern const char* gKnownPixelFormatNames[]; //= {"8-bit YUV", "10-bit YUV", "8-bit ARGB", "8-bit BGRA", "10-bit RGB", "12-bit RGB", "12-bit RGBLE", "10-bit RGBXLE", "10-bit RGBX", NULL};
 
 #endif // MACADAM_UTIL_H

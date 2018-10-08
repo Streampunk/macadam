@@ -6,7 +6,8 @@
     ],
     "conditions": [
       ['OS=="mac"', {
-        'sources' : [ "src/macadam_util.cc", "src/macadam.cc", "src/async_test.cc" ],
+        'sources' : [ "src/macadam_util.cc", "src/macadam.cc", "src/async_test.cc",
+          "src/capture_promise.cc" ],
         'xcode_settings': {
           'GCC_ENABLE_CPP_RTTI': 'YES',
           'MACOSX_DEPLOYMENT_TARGET': '10.7',

@@ -52,8 +52,10 @@
 #include <comdef.h>
 #endif
 
+#define NAPI_EXPERIMENTAL
 #include "macadam_util.h"
 #include "async_test.h"
+#include "capture_promise.h"
 #include "node_api.h"
 
 // List of known pixel formats and their matching display names
@@ -778,7 +780,7 @@ napi_status queryInputDisplayModes(napi_env env, IDeckLink* deckLink, napi_value
 
 			pixelFormatIndex++;
 		}
-    status = napi_set_named_property(env, modeobj, "vidoModes", item);
+    status = napi_set_named_property(env, modeobj, "videoModes", item);
     DISPLAY_RELEASE;
 
     status = napi_set_element(env, modes, modeIndex++, modeobj);
@@ -801,9 +803,10 @@ napi_value Init(napi_env env, napi_value exports) {
     DECLARE_NAPI_METHOD("deckLinkVersion", deckLinkVersion),
     DECLARE_NAPI_METHOD("getFirstDevice", getFirstDevice),
     DECLARE_NAPI_METHOD("getDeviceInfo", getDeviceInfo),
-    DECLARE_NAPI_METHOD("asyncTest", asyncTest)
+    DECLARE_NAPI_METHOD("asyncTest", asyncTest),
+    DECLARE_NAPI_METHOD("capture", capture)
    };
-  status = napi_define_properties(env, exports, 4, desc);
+  status = napi_define_properties(env, exports, 5, desc);
   CHECK_STATUS;
 
   #ifdef WIN32
