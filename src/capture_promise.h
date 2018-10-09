@@ -57,6 +57,9 @@ struct captureCarrier : carrier {
   uint32_t deviceIndex = 0;
   BMDDisplayMode requestedDisplayMode;
   BMDPixelFormat requestedPixelFormat;
+  BMDAudioSampleRate requestedSampleRate = bmdAudioSampleRate48kHz;
+  BMDAudioSampleType requestedSampleType = bmdAudioSampleType16bitInteger;
+  uint32_t channels = 0; // Set to zero for no channels
   IDeckLinkDisplayMode* selectedDisplayMode = nullptr;
   ~captureCarrier() {
     if (deckLinkInput != nullptr) { deckLinkInput->Release(); }
@@ -78,6 +81,9 @@ struct captureThreadsafe : IDeckLinkInputCallback {
   IDeckLinkDisplayMode* displayMode = nullptr;
   BMDPixelFormat pixelFormat;
   BMDTimeScale timeScale;
+  BMDAudioSampleRate sampleRate;
+  BMDAudioSampleType sampleType;
+  uint32_t channels = 0; // Set to zero for no channels
   ~captureThreadsafe() {
     if (deckLinkInput != nullptr) { deckLinkInput->Release(); }
     if (displayMode != nullptr) { displayMode->Release(); }

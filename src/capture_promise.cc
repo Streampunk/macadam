@@ -204,7 +204,7 @@ void captureExecute(napi_env env, void* data) {
   switch (hresult) {
     case E_INVALIDARG: // Should have been picked up by DoesSupportVideoMode
       c->status = MACADAM_INVALID_ARGS;
-      c->errorMsg = "Invalid arguments to enable video input.";
+      c->errorMsg = "Invalid arguments used to enable video input.";
       return;
     case E_ACCESSDENIED:
       c->status = MACADAM_ACCESS_DENIED;
@@ -222,7 +222,21 @@ void captureExecute(napi_env env, void* data) {
       break;
   }
 
-  // Enable audio
+  if (c->channels == 0) return; // Do not enable audio if channels is set to
+  hresult = deckLinkInput->EnableAudioInput(c->requestedSampleRate,
+    c->requestedSampleType, c->channels);
+  switch (hresult)  {
+    case E_INVALIDARG:
+      c->status = MACADAM_INVALID_ARGS;
+      c->errorMsg = "Invalid arguments used to enable audio input. BMD supports 48kHz, 16- or 32-bit integer only.";
+      return;
+    case E_FAIL:
+      c->status = MACADAM_CALL_FAILURE;
+      c->errorMsg = "Failed to enable audio input.";
+      return;
+    case S_OK:
+      break;
+  }
 }
 
 void captureComplete(napi_env env, napi_status asyncStatus, void* data) {
@@ -335,6 +349,28 @@ void captureComplete(napi_env env, napi_status asyncStatus, void* data) {
     pixelFormatIndex++;
   }
 
+  c->status = napi_get_boolean(env, (c->channels > 0), &param);
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "audioEnabled", param);
+  REJECT_STATUS;
+
+  if (c->channels > 0) {
+    c->status = napi_create_int32(env, c->requestedSampleRate, &param);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "sampleRate", param);
+    REJECT_STATUS;
+
+    c->status = napi_create_int32(env, c->requestedSampleType, &param);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "sampleType", param);
+    REJECT_STATUS;
+
+    c->status = napi_create_int32(env, c->channels, &param);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "channels", param);
+    REJECT_STATUS;
+  }
+
   c->status = napi_create_external(env, c, finalizeCarrier, nullptr, &param);
   REJECT_STATUS;
   c->status = napi_set_named_property(env, result, "deckLinkInput", param);
@@ -353,6 +389,11 @@ void captureComplete(napi_env env, napi_status asyncStatus, void* data) {
   c->selectedDisplayMode = nullptr;
   crts->timeScale = frameRateScale;
   crts->pixelFormat = c->requestedPixelFormat;
+  crts->channels = c->channels;
+  if (c->channels > 0) {
+    crts->sampleRate = c->requestedSampleRate;
+    crts->sampleType = c->requestedSampleType;
+  }
 
   c->status = napi_create_external(env, crts, finalizeCarrier, nullptr, &param);
   REJECT_STATUS;
@@ -427,6 +468,39 @@ napi_value capture(napi_env env, napi_callback_info info) {
     if (type != napi_number) REJECT_ERROR_RETURN(
       "Pixel format must be an enumeration value.", MACADAM_INVALID_ARGS);
     c->status = napi_get_value_uint32(env, param, &c->requestedPixelFormat);
+    REJECT_RETURN;
+  }
+
+  c->status = napi_get_named_property(env, options, "channels", &param);
+  REJECT_RETURN;
+  c->status = napi_typeof(env, param, &type);
+  REJECT_RETURN;
+  if (type != napi_undefined) {
+    if (type != napi_number) REJECT_ERROR_RETURN(
+      "Audio channel count must be a number.", MACADAM_INVALID_ARGS);
+    c->status = napi_get_value_uint32(env, param, &c->channels);
+    REJECT_RETURN;
+  }
+
+  c->status = napi_get_named_property(env, options, "sampleRate", &param);
+  REJECT_RETURN;
+  c->status = napi_typeof(env, param, &type);
+  REJECT_RETURN;
+  if (type != napi_undefined) {
+    if (type != napi_number) REJECT_ERROR_RETURN(
+      "Audio sample rate must be an enumeration value.", MACADAM_INVALID_ARGS);
+    c->status = napi_get_value_uint32(env, param, &c->requestedSampleRate);
+    REJECT_RETURN;
+  }
+
+  c->status = napi_get_named_property(env, options, "sampleType", &param);
+  REJECT_RETURN;
+  c->status = napi_typeof(env, param, &type);
+  REJECT_RETURN;
+  if (type != napi_undefined) {
+    if (type != napi_number) REJECT_ERROR_RETURN(
+      "Audio sample type must be an enumeration value.", MACADAM_INVALID_ARGS);
+    c->status = napi_get_value_uint32(env, param, &c->requestedSampleType);
     REJECT_RETURN;
   }
 
