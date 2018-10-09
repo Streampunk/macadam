@@ -99,4 +99,9 @@ struct captureThreadsafe : IDeckLinkInputCallback {
   };
 };
 
+struct frameData {
+  IDeckLinkVideoInputFrame* videoFrame;
+  IDeckLinkAudioInputPacket* audioPacket;
+};
+
  #endif // CAPTURE_PROMISE_H

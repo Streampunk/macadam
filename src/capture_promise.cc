@@ -89,7 +89,13 @@ HRESULT captureThreadsafe::VideoInputFrameArrived(
   printf("Status on acquiring tsFn %i\n", status);
 
   videoFrame->AddRef();
-  status = napi_call_threadsafe_function(tsFn, videoFrame, napi_tsfn_nonblocking);
+  if (audioPacket != nullptr) {
+    audioPacket->AddRef();
+  }
+  frameData* data = (frameData*) malloc(sizeof(frameData));
+  data->videoFrame = videoFrame;
+  data->audioPacket = audioPacket;
+  status = napi_call_threadsafe_function(tsFn, data, napi_tsfn_nonblocking);
   printf("Status on calling tsFn %i\n", status);
 
   status = napi_release_threadsafe_function(tsFn, napi_tsfn_release);
@@ -577,20 +583,24 @@ napi_value framePromise(napi_env env, napi_callback_info info) {
 void frameResolver(napi_env env, napi_value jsCb, void* context, void* data) {
   napi_status status;
   napi_value result;
-  IDeckLinkVideoInputFrame* frame = (IDeckLinkVideoInputFrame*) data;
+  frameData* frame = (frameData*) data;
   captureThreadsafe* crts = (captureThreadsafe*) context;
 
-  printf("Received an input frame %lix%li\n", frame->GetWidth(), frame->GetHeight());
+  printf("Received an input frame %lix%li\n", frame->videoFrame->GetWidth(),
+    frame->videoFrame->GetHeight());
 
   if (crts->waitingPromise != nullptr) {
-    status = napi_create_int32(env, frame->GetWidth(), &result);
+    status = napi_create_int32(env, frame->videoFrame->GetHeight(), &result);
     status = napi_resolve_deferred(env, crts->waitingPromise->_deferred, result);
+    tidyCarrier(env, crts->waitingPromise);
     crts->waitingPromise = nullptr;
   }
   else {
     printf("No promise to receive frame.\n");
   }
-  frame->Release();
+  frame->videoFrame->Release();
+  if (frame->audioPacket != nullptr) frame->audioPacket->Release();
+  free(&frame);
 
   return;
 }
