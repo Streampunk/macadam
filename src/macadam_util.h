@@ -42,6 +42,14 @@ napi_status checkArgs(napi_env env, napi_callback_info info, char* methodName,
 
 // Async error handling
 #define MACADAM_ERROR_START 4000
+#define MACADAM_OUT_OF_BOUNDS 4001
+#define MACADAM_NO_INPUT 4002
+#define MACADAM_CALL_FAILURE 4003
+#define MACADAM_NO_CONVERESION 4004
+#define MACADAM_MODE_NOT_SUPPORTED 4005
+#define MACADAM_INVALID_ARGS 4006
+#define MACADAM_ACCESS_DENIED 4007
+#define MACADAM_OUT_OF_MEMORY 4008
 #define MACADAM_SUCCESS 0
 
 struct carrier {
@@ -57,8 +65,8 @@ struct carrier {
 void tidyCarrier(napi_env env, carrier* c);
 int32_t rejectStatus(napi_env env, carrier* c, char* file, int32_t line);
 
-#define REJECT_STATUS if (rejectStatus(env, c, __FILE__, __LINE__) != MACADAM_SUCCESS) return;
-#define REJECT_RETURN if (rejectStatus(env, c, __FILE__, __LINE__) != MACADAM_SUCCESS) return promise;
+#define REJECT_STATUS if (rejectStatus(env, c, (char*) __FILE__, __LINE__) != MACADAM_SUCCESS) return;
+#define REJECT_RETURN if (rejectStatus(env, c, (char*) __FILE__, __LINE__) != MACADAM_SUCCESS) return promise;
 #define FLOATING_STATUS if (status != napi_ok) { \
   printf("Unexpected N-API status not OK in file %s at line %d value %i.\n", \
     __FILE__, __LINE__ - 1, status); \

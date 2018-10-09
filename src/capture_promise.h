@@ -51,7 +51,20 @@
 napi_value capture(napi_env env, napi_callback_info info);
 napi_value nop(napi_env env, napi_callback_info info);
 
-struct captureCarrier : IDeckLinkInputCallback {
+// Carrier used to create a capture instance off-thread
+struct captureCarrier : carrier {
+  IDeckLinkInput* deckLinkInput = nullptr;
+  uint32_t deviceIndex = 0;
+  BMDDisplayMode requestedDisplayMode;
+  BMDPixelFormat requestedPixelFormat;
+  IDeckLinkDisplayMode* selectedDisplayMode = nullptr;
+  ~captureCarrier() {
+    if (deckLinkInput != nullptr) { deckLinkInput->Release(); }
+    if (selectedDisplayMode != nullptr) { selectedDisplayMode->Release(); }
+  }
+};
+
+struct captureThreadsafe : IDeckLinkInputCallback {
   HRESULT VideoInputFrameArrived(IDeckLinkVideoInputFrame *videoFrame, IDeckLinkAudioInputPacket *audioPacket);
   HRESULT VideoInputFormatChanged(BMDVideoInputFormatChangedEvents notificationEvents,
     IDeckLinkDisplayMode *newDisplayMode,
@@ -64,7 +77,8 @@ struct captureCarrier : IDeckLinkInputCallback {
   IDeckLinkInput* deckLinkInput = nullptr;
   IDeckLinkDisplayMode* displayMode = nullptr;
   BMDPixelFormat pixelFormat;
-  ~captureCarrier() {
+  BMDTimeScale timeScale;
+  ~captureThreadsafe() {
     if (deckLinkInput != nullptr) { deckLinkInput->Release(); }
     if (displayMode != nullptr) { displayMode->Release(); }
   };

@@ -57,9 +57,30 @@ let capture = { await? } macadam.capture({
 });
 
 let frame = await capture.frame();
+
+... where frame is ...
+
+{
+  video: {
+    streamTime: <tbc>,
+    hardwareReferenceTimestamp: <tbc>,
+    width: 1920,
+    height: 1080,
+    rowBytes: 3840,
+    pixelFormat: macadam.bmdFormat8BitYUV,
+    bytes: Buffer < ... >,
+    timecode: '10:11:12:13',
+    // ancillaryData: to follow
+  },
+  audio: { // if present
+    sampleFrameCount: 1920,
+    bytes: Buffer < ... >,
+    packaetTime: <tbc>
+  }
+}
 */
 
-HRESULT captureCarrier::VideoInputFrameArrived(
+HRESULT captureThreadsafe::VideoInputFrameArrived(
   IDeckLinkVideoInputFrame *videoFrame,
   IDeckLinkAudioInputPacket *audioPacket) {
 
@@ -70,7 +91,7 @@ HRESULT captureCarrier::VideoInputFrameArrived(
   return 0;
 };
 
-HRESULT captureCarrier::VideoInputFormatChanged(
+HRESULT captureThreadsafe::VideoInputFormatChanged(
   BMDVideoInputFormatChangedEvents notificationEvents,
   IDeckLinkDisplayMode *newDisplayMode,
   BMDDetectedVideoInputFormatFlags detectedSignalFlags) {
@@ -80,235 +101,342 @@ HRESULT captureCarrier::VideoInputFormatChanged(
 
 // Should never get called
 napi_value nop(napi_env env, napi_callback_info info) {
-
-  return nullptr;
+  napi_value value;
+  napi_status status;
+  status = napi_get_undefined(env, &value);
+  if (status != napi_ok) NAPI_THROW_ERROR("Failed to retrieve undefined in nop.");
+  return value;
 }
 
 void finalizeCarrier(napi_env env, void* finalize_data, void* finalize_hint) {
-  printf("Finalizing capture carrier.\n");
-  captureCarrier* c = (captureCarrier*) finalize_data;
+  printf("Finalizing capture threadsafe.\n");
+  captureThreadsafe* c = (captureThreadsafe*) finalize_data;
   delete c;
 }
 
-napi_value capture(napi_env env, napi_callback_info info) {
+napi_value stopStreams(napi_env env, napi_callback_info info) {
   napi_status status;
-  napi_value result;
-  napi_valuetype type;
+  napi_value value, param, capture;
+  captureThreadsafe* crts;
   HRESULT hresult;
-  napi_value param, paramPart;
+
+  size_t argc = 0;
+  status = napi_get_cb_info(env, info, &argc, nullptr, &capture, nullptr);
+  CHECK_STATUS;
+
+  status = napi_get_named_property(env, capture, "deckLinkInput", &param);
+  CHECK_STATUS;
+  status = napi_get_value_external(env, param, (void**) &crts);
+  CHECK_STATUS;
+
+  hresult = crts->deckLinkInput->StopStreams();
+  if (hresult != S_OK) NAPI_THROW_ERROR("Unable to stop streams. May be already stopped?");
+
+  // crts->deckLinkInput->Release();
+  // crts->deckLinkInput = nullptr;
+
+  status = napi_get_undefined(env, &value);
+  CHECK_STATUS;
+  return value;
+}
+
+void captureExecute(napi_env env, void* data) {
+  captureCarrier* c = (captureCarrier*) data;
 
   IDeckLinkIterator* deckLinkIterator;
-  IDeckLink* deckLink = nullptr;
-  IDeckLinkInput* deckLinkInput = nullptr;
-  IDeckLinkDisplayMode* selectedDisplayMode = nullptr;
-  BMDTimeValue			frameRateDuration;
-  BMDTimeScale			frameRateScale;
-
-  uint32_t deviceIndex = 0;
-  BMDDisplayMode displayMode = bmdModeHD1080i50;
-  BMDPixelFormat pixelFormat = bmdFormat10BitYUV;
-  size_t argc = 3;
-  napi_value args[3];
-  status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-  CHECK_STATUS;
-  if (argc != 3) {
-    NAPI_THROW_ERROR("Capture calls must have three arguments: device index, mode and format.");
-  }
-
-  status = napi_typeof(env, args[0], &type);
-  CHECK_STATUS;
-  if (type != napi_number) NAPI_THROW_ERROR("Device index must be a number.");
-  status = napi_get_value_uint32(env, args[0], &deviceIndex);
-  CHECK_STATUS;
-
-  status = napi_typeof(env, args[1], &type);
-  CHECK_STATUS;
-  if (type != napi_number) NAPI_THROW_ERROR("Mode must be an enumeration value.");
-  status = napi_get_value_uint32(env, args[1], &displayMode);
-  CHECK_STATUS;
-
-  status = napi_typeof(env, args[2], &type);
-  CHECK_STATUS;
-  if (type != napi_number) NAPI_THROW_ERROR("Format must be an enumeration value.");
-  status = napi_get_value_uint32(env, args[2], &pixelFormat);
-  CHECK_STATUS;
-
-  status = napi_create_object(env, &result);
-  CHECK_STATUS;
-  status = napi_create_string_utf8(env, "capture", NAPI_AUTO_LENGTH, &param);
-  CHECK_STATUS;
-  status = napi_set_named_property(env, result, "type", param);
-  CHECK_STATUS;
+  IDeckLink* deckLink;
+  IDeckLinkInput* deckLinkInput;
+  HRESULT hresult;
 
   #ifdef WIN32
-  CoCreateInstance(CLSID_CDeckLinkIterator, NULL, CLSCTX_ALL, IID_IDeckLinkIterator, (void**)&deckLinkIterator);
+  CoCreateInstance(CLSID_CDeckLinkIterator, NULL, CLSCTX_ALL,
+    IID_IDeckLinkIterator, (void**)&deckLinkIterator);
   #else
   deckLinkIterator = CreateDeckLinkIteratorInstance();
   #endif
 
-  for ( uint32_t x = 0 ; x <= deviceIndex ; x++ ) {
+  for ( uint32_t x = 0 ; x <= c->deviceIndex ; x++ ) {
     if (deckLinkIterator->Next(&deckLink) != S_OK) {
       deckLinkIterator->Release();
-      NAPI_THROW_ERROR("Device index exceeds the number of installed devices.");
+      c->status = MACADAM_OUT_OF_BOUNDS;
+      c->errorMsg = "Device index exceeds the number of installed devices.";
+      return;
     }
   }
 
   deckLinkIterator->Release();
 
-  status = napi_set_named_property(env, result, "deviceIndex", args[0]);
-  CHECK_STATUS;
-
-  #ifdef WIN32
-  BSTR deviceNameBSTR = NULL;
-  hresult = deckLink->GetDisplayName(&deviceNameBSTR);
-  if (hresult == S_OK) {
-    _bstr_t deviceName(deviceNameBSTR, false);
-    status = napi_create_string_utf8(env, (char*) deviceName, NAPI_AUTO_LENGTH, &param);
-    CHECK_STATUS;
-  }
-  #elif __APPLE__
-  CFStringRef deviceNameCFString = NULL;
-  hresult = deckLink->GetDisplayName(&deviceNameCFString);
-  if (hresult == S_OK) {
-    char deviceName [64];
-    CFStringGetCString(deviceNameCFString, deviceName, sizeof(deviceName), kCFStringEncodingMacRoman);
-    CFRelease(deviceNameCFString);
-    status = napi_create_string_utf8(env, deviceName, NAPI_AUTO_LENGTH, &param);
-    CHECK_STATUS;
-  }
-  #else
-  const char* deviceName;
-  hresult = deckLink->GetDisplayName(&deviceName);
-  if (hresult == S_OK) {
-    status = napi_create_string_utf8(env, deviceName, NAPI_AUTO_LENGTH, &param);
-    free(deviceName);
-    CHECK_STATUS;
-  }
-  #endif
-
-  status = napi_set_named_property(env, result, "displayName", param);
-  CHECK_STATUS;
-
-  captureCarrier* c = new captureCarrier;
-  c->pixelFormat = pixelFormat;
-
   if (deckLink->QueryInterface(IID_IDeckLinkInput, (void **)&deckLinkInput) != S_OK) {
     deckLink->Release();
-    NAPI_THROW_ERROR("Could not obtain the DeckLink Input interface.");
-	}
+    c->status = MACADAM_NO_INPUT;
+    c->errorMsg = "Could not obtain the DeckLink Input interface. Does the device have an input?";
+    return;
+  }
 
   deckLink->Release();
   c->deckLinkInput = deckLinkInput;
 
   BMDDisplayModeSupport supported;
 
-  hresult = deckLinkInput->DoesSupportVideoMode(displayMode, pixelFormat,
-    bmdVideoInputFlagDefault, &supported, &selectedDisplayMode);
+  hresult = deckLinkInput->DoesSupportVideoMode(c->requestedDisplayMode,
+    c->requestedPixelFormat, bmdVideoInputFlagDefault,
+    &supported, &c->selectedDisplayMode);
+  if (hresult != S_OK) {
+    c->status = MACADAM_CALL_FAILURE;
+    c->errorMsg = "Unable to determine is video mode is supported by input device.";
+    return;
+  }
   switch (supported) {
     case bmdDisplayModeSupported:
       break;
     case bmdDisplayModeSupportedWithConversion:
-      NAPI_THROW_ERROR("Display mode is supported via conversion and not by macadam.");
-      break;
+      c->status = MACADAM_NO_CONVERESION;
+      c->errorMsg = "Display mode is supported via conversion and not by macadam.";
+      return;
     default:
-      NAPI_THROW_ERROR("Requested display mode is not supported.");
+      c->status = MACADAM_MODE_NOT_SUPPORTED;
+      c->errorMsg = "Requested display mode is not supported.";
+      return;
+  }
+
+  hresult = deckLinkInput->EnableVideoInput(c->requestedDisplayMode,
+    c->requestedPixelFormat, bmdVideoInputFlagDefault);
+  switch (hresult) {
+    case E_INVALIDARG: // Should have been picked up by DoesSupportVideoMode
+      c->status = MACADAM_INVALID_ARGS;
+      c->errorMsg = "Invalid arguments to enable video input.";
+      return;
+    case E_ACCESSDENIED:
+      c->status = MACADAM_ACCESS_DENIED;
+      c->errorMsg = "Unable to access the hardware or input stream is currently active.";
+      return;
+    case E_OUTOFMEMORY:
+      c->status = MACADAM_OUT_OF_MEMORY;
+      c->errorMsg = "Unable to create a new video frame - out of memory.";
+      return;
+    case E_FAIL:
+      c->status = MACADAM_CALL_FAILURE;
+      c->errorMsg = "Failed to enable video input.";
+      return;
+    case S_OK:
       break;
   }
 
-  c->displayMode = selectedDisplayMode;
+  // Enable audio
+}
+
+void captureComplete(napi_env env, napi_status asyncStatus, void* data) {
+  captureCarrier* c = (captureCarrier*) data;
+  napi_value param, paramPart, result;
+  BMDTimeValue frameRateDuration;
+  BMDTimeScale frameRateScale;
+  HRESULT hresult;
+
+  if (asyncStatus != napi_ok) {
+    c->status = asyncStatus;
+    c->errorMsg = "Async capture creator failed to complete.";
+  }
+  REJECT_STATUS;
+
+  c->status = napi_create_object(env, &result);
+  REJECT_STATUS;
+  c->status = napi_create_string_utf8(env, "capture", NAPI_AUTO_LENGTH, &param);
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "type", param);
+  REJECT_STATUS;
 
   #ifdef WIN32
   BSTR displayModeBSTR = NULL;
-  hresult = selectedDisplayMode->GetName(&displayModeBSTR);
+  hresult = c->selectedDisplayMode->GetName(&displayModeBSTR);
   if (hresult == S_OK) {
     _bstr_t deviceName(displayModeBSTR, false);
-    status = napi_create_string_utf8(env, (char*) deviceName, NAPI_AUTO_LENGTH, &param);
-    CHECK_STATUS;
+    c->status = napi_create_string_utf8(env, (char*) deviceName, NAPI_AUTO_LENGTH, &param);
+    REJECT_STATUS;
   }
   #elif __APPLE__
   CFStringRef displayModeCFString = NULL;
-  hresult = selectedDisplayMode->GetName(&displayModeCFString);
+  hresult = c->selectedDisplayMode->GetName(&displayModeCFString);
   if (hresult == S_OK) {
     char displayModeName[64];
     CFStringGetCString(displayModeCFString, displayModeName, sizeof(displayModeName), kCFStringEncodingMacRoman);
     CFRelease(displayModeCFString);
-    status = napi_create_string_utf8(env, displayModeName, NAPI_AUTO_LENGTH, &param);
-    CHECK_STATUS;
+    c->status = napi_create_string_utf8(env, displayModeName, NAPI_AUTO_LENGTH, &param);
+    REJECT_STATUS;
   }
   #else
   const char* displayModeName;
-  hresult = selectedDisplayMode->GetName(&displayModeName);
+  hresult = c->selectedDisplayMode->GetName(&displayModeName);
   if (hresult == S_OK) {
-    status = napi_create_string_utf8(env, displayModeName, NAPI_AUTO_LENGTH, &param);
+    c->status = napi_create_string_utf8(env, displayModeName, NAPI_AUTO_LENGTH, &param);
     free(displayModeName);
-    CHECK_STATUS;
+    REJECT_STATUS;
   }
   #endif
 
-  status = napi_set_named_property(env, result, "displayModeName", param);
-  CHECK_STATUS;
+  c->status = napi_set_named_property(env, result, "displayModeName", param);
+  REJECT_STATUS;
 
-  status = napi_create_int32(env, selectedDisplayMode->GetWidth(), &param);
-  CHECK_STATUS;
-  status = napi_set_named_property(env, result, "width", param);
-  CHECK_STATUS;
+  c->status = napi_create_int32(env, c->selectedDisplayMode->GetWidth(), &param);
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "width", param);
+  REJECT_STATUS;
 
-  status = napi_create_int32(env, selectedDisplayMode->GetHeight(), &param);
-  CHECK_STATUS;
-  status = napi_set_named_property(env, result, "height", param);
-  CHECK_STATUS;
+  c->status = napi_create_int32(env, c->selectedDisplayMode->GetHeight(), &param);
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "height", param);
+  REJECT_STATUS;
 
-  switch (selectedDisplayMode->GetFieldDominance()) {
+  switch (c->selectedDisplayMode->GetFieldDominance()) {
     case bmdLowerFieldFirst:
-      status = napi_create_string_utf8(env, "lowerFieldFirst", NAPI_AUTO_LENGTH, &param);
+      c->status = napi_create_string_utf8(env, "lowerFieldFirst", NAPI_AUTO_LENGTH, &param);
       break;
     case bmdUpperFieldFirst:
-      status = napi_create_string_utf8(env, "upperFieldFirst", NAPI_AUTO_LENGTH, &param);
+      c->status = napi_create_string_utf8(env, "upperFieldFirst", NAPI_AUTO_LENGTH, &param);
       break;
     case bmdProgressiveFrame:
-      status = napi_create_string_utf8(env, "progressiveFrame", NAPI_AUTO_LENGTH, &param);
+      c->status = napi_create_string_utf8(env, "progressiveFrame", NAPI_AUTO_LENGTH, &param);
       break;
     default:
-      status = napi_create_string_utf8(env, "unknown", NAPI_AUTO_LENGTH, &param);
+      c->status = napi_create_string_utf8(env, "unknown", NAPI_AUTO_LENGTH, &param);
       break;
   }
-  CHECK_STATUS;
-  status = napi_set_named_property(env, result, "fieldDominance", param);
-  CHECK_STATUS;
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "fieldDominance", param);
+  REJECT_STATUS;
 
-  selectedDisplayMode->GetFrameRate(&frameRateDuration, &frameRateScale);
-  status = napi_create_array(env, &param);
-  CHECK_STATUS;
-  status = napi_create_int64(env, frameRateDuration, &paramPart);
-  CHECK_STATUS;
-  status = napi_set_element(env, param, 0, paramPart);
-  CHECK_STATUS;
-  status = napi_create_int64(env, frameRateScale, &paramPart);
-  CHECK_STATUS;
-  status = napi_set_element(env, param, 1, paramPart);
-  CHECK_STATUS;
-  status = napi_set_named_property(env, result, "frameRate", param);
-  CHECK_STATUS;
+  hresult = c->selectedDisplayMode->GetFrameRate(&frameRateDuration, &frameRateScale);
+  if (hresult == S_OK) {
+    c->status = napi_create_array(env, &param);
+    REJECT_STATUS;
+    c->status = napi_create_int64(env, frameRateDuration, &paramPart);
+    REJECT_STATUS;
+    c->status = napi_set_element(env, param, 0, paramPart);
+    REJECT_STATUS;
+    c->status = napi_create_int64(env, frameRateScale, &paramPart);
+    REJECT_STATUS;
+    c->status = napi_set_element(env, param, 1, paramPart);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "frameRate", param);
+    REJECT_STATUS;
+  }
 
   uint32_t pixelFormatIndex = 0;
 
   while ((gKnownPixelFormats[pixelFormatIndex] != 0) &&
       (gKnownPixelFormatNames[pixelFormatIndex] != NULL)) {
-    if (pixelFormat == gKnownPixelFormats[pixelFormatIndex]) {
-      status = napi_create_string_utf8(env, gKnownPixelFormatNames[pixelFormatIndex],
+    if (c->requestedPixelFormat == gKnownPixelFormats[pixelFormatIndex]) {
+      c->status = napi_create_string_utf8(env, gKnownPixelFormatNames[pixelFormatIndex],
         NAPI_AUTO_LENGTH, &param);
-      CHECK_STATUS;
-      status = napi_set_named_property(env, result, "pixelFormat", param);
-      CHECK_STATUS;
+      REJECT_STATUS;
+      c->status = napi_set_named_property(env, result, "pixelFormat", param);
+      REJECT_STATUS;
       break;
     }
     pixelFormatIndex++;
   }
 
-  status = napi_create_external(env, c, finalizeCarrier, nullptr, &param);
-  CHECK_STATUS;
-  status = napi_set_named_property(env, result, "deckLinkInput", param);
-  CHECK_STATUS;
+  c->status = napi_create_external(env, c, finalizeCarrier, nullptr, &param);
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "deckLinkInput", param);
+  REJECT_STATUS;
 
-  return result;
+  c->status = napi_create_function(env, "stop", NAPI_AUTO_LENGTH, stopStreams,
+    nullptr, &param);
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "stop", param);
+  REJECT_STATUS;
+
+  captureThreadsafe* crts = new captureThreadsafe;
+  crts->deckLinkInput = c->deckLinkInput;
+  c->deckLinkInput = nullptr;
+  crts->displayMode = c->selectedDisplayMode;
+  c->selectedDisplayMode = nullptr;
+  crts->timeScale = frameRateScale;
+  crts->pixelFormat = c->requestedPixelFormat;
+
+  c->status = napi_create_external(env, crts, finalizeCarrier, nullptr, &param);
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "deckLinkInput", param);
+  REJECT_STATUS;
+
+  napi_status status;
+  status = napi_resolve_deferred(env, c->_deferred, result);
+  FLOATING_STATUS;
+
+  tidyCarrier(env, c);
+}
+
+napi_value capture(napi_env env, napi_callback_info info) {
+  napi_value options, param, promise, resourceName;
+  napi_valuetype type;
+  bool isArray;
+  captureCarrier* c = new captureCarrier;
+
+  c->status = napi_create_promise(env, &c->_deferred, &promise);
+  REJECT_RETURN;
+
+  c->requestedDisplayMode = bmdModeHD1080i50;
+  c->requestedPixelFormat = bmdFormat10BitYUV;
+  size_t argc = 1;
+  napi_value args[1];
+  c->status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+  REJECT_RETURN;
+
+  if (argc >= 1) {
+    c->status = napi_typeof(env, args[0], &type);
+    REJECT_RETURN;
+    c->status = napi_is_array(env, args[0], &isArray);
+    REJECT_RETURN;
+    if ((type != napi_object) || (isArray == true)) REJECT_ERROR_RETURN(
+        "Options provided to capture create must be an object and not an array.",
+        MACADAM_INVALID_ARGS);
+    options = args[0];
+  }
+  else {
+    c->status = napi_create_object(env, &options);
+    REJECT_RETURN;
+  }
+
+  c->status = napi_get_named_property(env, options, "deviceIndex", &param);
+  REJECT_RETURN;
+  c->status = napi_typeof(env, param, &type);
+  REJECT_RETURN;
+  if (type != napi_undefined) {
+    if (type != napi_number) REJECT_ERROR_RETURN(
+      "Device index must be a number.", MACADAM_INVALID_ARGS);
+    c->status = napi_get_value_uint32(env, param, &c->deviceIndex);
+    REJECT_RETURN;
+  }
+
+  c->status = napi_get_named_property(env, options, "displayMode", &param);
+  REJECT_RETURN;
+  c->status = napi_typeof(env, param, &type);
+  REJECT_RETURN;
+  if (type != napi_undefined) {
+    if (type != napi_number) REJECT_ERROR_RETURN(
+      "Display mode must be an enumeration value.", MACADAM_INVALID_ARGS);
+    c->status = napi_get_value_uint32(env, param, &c->requestedDisplayMode);
+    REJECT_RETURN;
+  }
+
+  c->status = napi_get_named_property(env, options, "pixelFormat", &param);
+  REJECT_RETURN;
+  c->status = napi_typeof(env, param, &type);
+  REJECT_RETURN;
+  if (type != napi_undefined) {
+    if (type != napi_number) REJECT_ERROR_RETURN(
+      "Pixel format must be an enumeration value.", MACADAM_INVALID_ARGS);
+    c->status = napi_get_value_uint32(env, param, &c->requestedPixelFormat);
+    REJECT_RETURN;
+  }
+
+  c->status = napi_create_string_utf8(env, "CreateCapture", NAPI_AUTO_LENGTH, &resourceName);
+  REJECT_RETURN;
+  c->status = napi_create_async_work(env, NULL, resourceName, captureExecute,
+    captureComplete, c, &c->_request);
+  REJECT_RETURN;
+  c->status = napi_queue_async_work(env, c->_request);
+  REJECT_RETURN;
+
+  return promise;
 }
