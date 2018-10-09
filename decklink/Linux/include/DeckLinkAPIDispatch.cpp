@@ -39,6 +39,7 @@ typedef IDeckLinkAPIInformation* (*CreateAPIInformationFunc)(void);
 typedef IDeckLinkGLScreenPreviewHelper* (*CreateOpenGLScreenPreviewHelperFunc)(void);
 typedef IDeckLinkVideoConversion* (*CreateVideoConversionInstanceFunc)(void);
 typedef IDeckLinkDiscovery* (*CreateDeckLinkDiscoveryInstanceFunc)(void);
+typedef IDeckLinkVideoFrameAncillaryPackets* (*CreateVideoFrameAncillaryPacketsInstanceFunc)(void);
 
 static pthread_once_t					gDeckLinkOnceControl = PTHREAD_ONCE_INIT;
 static pthread_once_t					gPreviewOnceControl = PTHREAD_ONCE_INIT;
@@ -50,8 +51,9 @@ static CreateAPIInformationFunc				gCreateAPIInformationFunc = NULL;
 static CreateOpenGLScreenPreviewHelperFunc	gCreateOpenGLPreviewFunc = NULL;
 static CreateVideoConversionInstanceFunc	gCreateVideoConversionFunc	= NULL;
 static CreateDeckLinkDiscoveryInstanceFunc	gCreateDeckLinkDiscoveryFunc = NULL;
+static CreateVideoFrameAncillaryPacketsInstanceFunc	gCreateVideoFrameAncillaryPacketsFunc = NULL;
 
-void	InitDeckLinkAPI (void)
+static void	InitDeckLinkAPI (void)
 {
 	void *libraryHandle;
 	
@@ -76,9 +78,12 @@ void	InitDeckLinkAPI (void)
 	gCreateDeckLinkDiscoveryFunc = (CreateDeckLinkDiscoveryInstanceFunc)dlsym(libraryHandle, "CreateDeckLinkDiscoveryInstance_0002");
 	if (!gCreateDeckLinkDiscoveryFunc)
 		fprintf(stderr, "%s\n", dlerror());
+	gCreateVideoFrameAncillaryPacketsFunc = (CreateVideoFrameAncillaryPacketsInstanceFunc)dlsym(libraryHandle, "CreateVideoFrameAncillaryPacketsInstance_0001");
+	if (!gCreateVideoFrameAncillaryPacketsFunc)
+		fprintf(stderr, "%s\n", dlerror());
 }
 
-void	InitDeckLinkPreviewAPI (void)
+static void	InitDeckLinkPreviewAPI (void)
 {
 	void *libraryHandle;
 	
@@ -143,4 +148,13 @@ IDeckLinkDiscovery* CreateDeckLinkDiscoveryInstance (void)
 	if (gCreateDeckLinkDiscoveryFunc == NULL)
 		return NULL;
 	return gCreateDeckLinkDiscoveryFunc();
+}
+
+IDeckLinkVideoFrameAncillaryPackets* CreateVideoFrameAncillaryPacketsInstance (void)
+{
+	pthread_once(&gDeckLinkOnceControl, InitDeckLinkAPI);
+	
+	if (gCreateVideoFrameAncillaryPacketsFunc == NULL)
+		return NULL;
+	return gCreateVideoFrameAncillaryPacketsFunc();
 }

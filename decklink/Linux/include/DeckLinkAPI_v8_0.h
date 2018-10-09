@@ -39,7 +39,7 @@
 
 /* Interface IDeckLink_v8_0 - represents a DeckLink device */
 
-class IDeckLink_v8_0 : public IUnknown
+class BMD_PUBLIC IDeckLink_v8_0 : public IUnknown
 {
 public:
     virtual HRESULT GetModelName (/* out */ const char **modelName) = 0;
@@ -47,14 +47,14 @@ public:
 
 /* Interface IDeckLinkIterator_v8_0 - enumerates installed DeckLink hardware */
 
-class IDeckLinkIterator_v8_0 : public IUnknown
+class BMD_PUBLIC IDeckLinkIterator_v8_0 : public IUnknown
 {
 public:
     virtual HRESULT Next (/* out */ IDeckLink_v8_0 **deckLinkInstance) = 0;
 };
 
 extern "C" {
-    IDeckLinkIterator_v8_0*                     CreateDeckLinkIteratorInstance_v8_0 (void);
+    IDeckLinkIterator_v8_0*                     BMD_PUBLIC CreateDeckLinkIteratorInstance_v8_0 (void);
 };
 
 #endif	// defined __cplusplus

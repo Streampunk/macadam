@@ -42,6 +42,23 @@
 
 #include "capture_promise.h"
 
+/*
+Interface sketch:
+
+let macadam = require('macadam');
+let capture = { await? } macadam.capture({
+  deviceIndex: 0, // default 0
+  displayMode: macamdam.bmdModeHD1080i50, // Default is bmdModeHD1080i50
+  pixelFormat: macadam.bmdFormat10BitYUV, // Default is bmdFormat10BitYUV
+  // Set the following to enable audio, otherwise omit
+  sampleRate: macadam.bmdAudioSampleRate48kHz, // Default is bmdAudioSampleRate48kHz
+  sampleType: bmdAudioSampleType16bitInteger, // Default is bmdAudioSampleType16bitInteger
+  channels: 2 // Default is 2
+});
+
+let frame = await capture.frame();
+*/
+
 HRESULT captureCarrier::VideoInputFrameArrived(
   IDeckLinkVideoInputFrame *videoFrame,
   IDeckLinkAudioInputPacket *audioPacket) {

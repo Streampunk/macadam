@@ -1,5 +1,5 @@
 /* -LICENSE-START-
-** Copyright (c) 2016 Blackmagic Design
+** Copyright (c) 2018 Blackmagic Design
 **
 ** Permission is hereby granted, free of charge, to any person or organization
 ** obtaining a copy of the software and accompanying documentation covered by
@@ -35,6 +35,10 @@
     #else
         #define BMD_CONST static const
     #endif
+#endif
+
+#ifndef BMD_PUBLIC
+	#define BMD_PUBLIC
 #endif
 
 // Type Declarations
@@ -97,7 +101,7 @@ class IDeckLinkTimecode;
 
 /* Interface IDeckLinkTimecode - Used for video frame timecode representation. */
 
-class IDeckLinkTimecode : public IUnknown
+class BMD_PUBLIC IDeckLinkTimecode : public IUnknown
 {
 public:
     virtual BMDTimecodeBCD GetBCD (void) = 0;
