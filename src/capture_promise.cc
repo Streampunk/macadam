@@ -86,9 +86,16 @@ HRESULT captureThreadsafe::VideoInputFrameArrived(
 
   napi_status status;
   status = napi_acquire_threadsafe_function(tsFn);
+  printf("Status on acquiring tsFn %i\n", status);
+
+  videoFrame->AddRef();
+  status = napi_call_threadsafe_function(tsFn, videoFrame, napi_tsfn_nonblocking);
+  printf("Status on calling tsFn %i\n", status);
 
   status = napi_release_threadsafe_function(tsFn, napi_tsfn_release);
-  return 0;
+  printf("Status on releasing tsFn %i\n", status);
+
+  return S_OK;
 };
 
 HRESULT captureThreadsafe::VideoInputFormatChanged(
@@ -131,9 +138,10 @@ napi_value stopStreams(napi_env env, napi_callback_info info) {
 
   hresult = crts->deckLinkInput->StopStreams();
   if (hresult != S_OK) NAPI_THROW_ERROR("Unable to stop streams. May be already stopped?");
-
-  // crts->deckLinkInput->Release();
-  // crts->deckLinkInput = nullptr;
+  hresult = crts->deckLinkInput->DisableVideoInput();
+  if (hresult != S_OK) NAPI_THROW_ERROR("Unable to disable video input.");
+	hresult = crts->deckLinkInput->SetCallback(NULL);
+  if (hresult != S_OK) NAPI_THROW_ERROR("Unable to unset callback for decklink input.");
 
   status = napi_get_undefined(env, &value);
   CHECK_STATUS;
@@ -222,26 +230,27 @@ void captureExecute(napi_env env, void* data) {
       break;
   }
 
-  if (c->channels == 0) return; // Do not enable audio if channels is set to
-  hresult = deckLinkInput->EnableAudioInput(c->requestedSampleRate,
-    c->requestedSampleType, c->channels);
-  switch (hresult)  {
-    case E_INVALIDARG:
-      c->status = MACADAM_INVALID_ARGS;
-      c->errorMsg = "Invalid arguments used to enable audio input. BMD supports 48kHz, 16- or 32-bit integer only.";
-      return;
-    case E_FAIL:
-      c->status = MACADAM_CALL_FAILURE;
-      c->errorMsg = "Failed to enable audio input.";
-      return;
-    case S_OK:
-      break;
+  if (c->channels > 0) {
+    hresult = deckLinkInput->EnableAudioInput(c->requestedSampleRate,
+      c->requestedSampleType, c->channels);
+    switch (hresult)  {
+      case E_INVALIDARG:
+        c->status = MACADAM_INVALID_ARGS;
+        c->errorMsg = "Invalid arguments used to enable audio input. BMD supports 48kHz, 16- or 32-bit integer only.";
+        return;
+      case E_FAIL:
+        c->status = MACADAM_CALL_FAILURE;
+        c->errorMsg = "Failed to enable audio input.";
+        return;
+      case S_OK:
+        break;
+    }
   }
 }
 
 void captureComplete(napi_env env, napi_status asyncStatus, void* data) {
   captureCarrier* c = (captureCarrier*) data;
-  napi_value param, paramPart, result;
+  napi_value param, paramPart, result, asyncName;
   BMDTimeValue frameRateDuration;
   BMDTimeScale frameRateScale;
   HRESULT hresult;
@@ -382,6 +391,12 @@ void captureComplete(napi_env env, napi_status asyncStatus, void* data) {
   c->status = napi_set_named_property(env, result, "stop", param);
   REJECT_STATUS;
 
+  c->status = napi_create_function(env, "frame", NAPI_AUTO_LENGTH, framePromise,
+    nullptr, &param);
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "frame", param);
+  REJECT_STATUS;
+
   captureThreadsafe* crts = new captureThreadsafe;
   crts->deckLinkInput = c->deckLinkInput;
   c->deckLinkInput = nullptr;
@@ -394,6 +409,21 @@ void captureComplete(napi_env env, napi_status asyncStatus, void* data) {
     crts->sampleRate = c->requestedSampleRate;
     crts->sampleType = c->requestedSampleType;
   }
+
+  hresult = crts->deckLinkInput->SetCallback(crts);
+  if (hresult != S_OK) {
+    c->status = MACADAM_CALL_FAILURE;
+    c->errorMsg = "Unable to set callback for deck link input.";
+    REJECT_STATUS;
+  }
+
+  c->status = napi_create_string_utf8(env, "capture", NAPI_AUTO_LENGTH, &asyncName);
+  REJECT_STATUS;
+  c->status = napi_create_function(env, "nop", NAPI_AUTO_LENGTH, nop, nullptr, &param);
+  REJECT_STATUS;
+  c->status = napi_create_threadsafe_function(env, param, nullptr, asyncName,
+    20, 1, nullptr, captureTsFnFinalize, crts, frameResolver, &crts->tsFn);
+  REJECT_STATUS;
 
   c->status = napi_create_external(env, crts, finalizeCarrier, nullptr, &param);
   REJECT_STATUS;
@@ -513,4 +543,58 @@ napi_value capture(napi_env env, napi_callback_info info) {
   REJECT_RETURN;
 
   return promise;
+}
+
+napi_value framePromise(napi_env env, napi_callback_info info) {
+  napi_status status;
+  napi_value promise, capture, param;
+  captureThreadsafe* crts;
+  frameCarrier* c = new frameCarrier;
+  HRESULT hresult;
+
+  status = napi_create_promise(env, &c->_deferred, &promise);
+  REJECT_RETURN;
+
+  size_t argc = 0;
+  status = napi_get_cb_info(env, info, &argc, nullptr, &capture, nullptr);
+  CHECK_STATUS;
+
+  status = napi_get_named_property(env, capture, "deckLinkInput", &param);
+  CHECK_STATUS;
+  status = napi_get_value_external(env, param, (void**) &crts);
+  CHECK_STATUS;
+
+  if (!crts->started) {
+    hresult = crts->deckLinkInput->StartStreams();
+    crts->started = true;
+  }
+
+  crts->waitingPromise = c;
+
+  return promise;
+}
+
+void frameResolver(napi_env env, napi_value jsCb, void* context, void* data) {
+  napi_status status;
+  napi_value result;
+  IDeckLinkVideoInputFrame* frame = (IDeckLinkVideoInputFrame*) data;
+  captureThreadsafe* crts = (captureThreadsafe*) context;
+
+  printf("Received an input frame %lix%li\n", frame->GetWidth(), frame->GetHeight());
+
+  if (crts->waitingPromise != nullptr) {
+    status = napi_create_int32(env, frame->GetWidth(), &result);
+    status = napi_resolve_deferred(env, crts->waitingPromise->_deferred, result);
+    crts->waitingPromise = nullptr;
+  }
+  else {
+    printf("No promise to receive frame.\n");
+  }
+  frame->Release();
+
+  return;
+}
+
+void captureTsFnFinalize(napi_env env, void* data, void* hint) {
+  printf("Threadsafe capture finalizer called.\n");
 }

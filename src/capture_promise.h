@@ -50,6 +50,10 @@
 
 napi_value capture(napi_env env, napi_callback_info info);
 napi_value nop(napi_env env, napi_callback_info info);
+napi_value framePromise(napi_env env, napi_callback_info info);
+napi_value stopStreams(napi_env env, napi_callback_info info);
+void frameResolver(napi_env env, napi_value jsCb, void* context, void* data);
+void captureTsFnFinalize(napi_env env, void* data, void* hint);
 
 // Carrier used to create a capture instance off-thread
 struct captureCarrier : carrier {
@@ -65,6 +69,10 @@ struct captureCarrier : carrier {
     if (deckLinkInput != nullptr) { deckLinkInput->Release(); }
     if (selectedDisplayMode != nullptr) { selectedDisplayMode->Release(); }
   }
+};
+
+struct frameCarrier : carrier {
+  ~frameCarrier() { }
 };
 
 struct captureThreadsafe : IDeckLinkInputCallback {
@@ -84,6 +92,7 @@ struct captureThreadsafe : IDeckLinkInputCallback {
   BMDAudioSampleRate sampleRate;
   BMDAudioSampleType sampleType;
   uint32_t channels = 0; // Set to zero for no channels
+  frameCarrier* waitingPromise = nullptr;
   ~captureThreadsafe() {
     if (deckLinkInput != nullptr) { deckLinkInput->Release(); }
     if (displayMode != nullptr) { displayMode->Release(); }
