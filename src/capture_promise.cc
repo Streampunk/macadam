@@ -190,6 +190,30 @@ napi_value stopStreams(napi_env env, napi_callback_info info) {
   return value;
 }
 
+napi_value pauseStreams(napi_env env, napi_callback_info info) {
+  napi_status status;
+  napi_value value, param, capture;
+  captureThreadsafe* crts;
+  HRESULT hresult;
+
+  size_t argc = 0;
+  status = napi_get_cb_info(env, info, &argc, nullptr, &capture, nullptr);
+  CHECK_STATUS;
+
+  status = napi_get_named_property(env, capture, "deckLinkInput", &param);
+  CHECK_STATUS;
+  status = napi_get_value_external(env, param, (void**) &crts);
+  CHECK_STATUS;
+
+  if (crts->stopped) NAPI_THROW_ERROR("Already stopped.");
+  hresult = crts->deckLinkInput->PauseStreams();
+  if (hresult != S_OK) NAPI_THROW_ERROR("Unable to pause or restart streams.");
+
+  status = napi_get_undefined(env, &value);
+  CHECK_STATUS;
+  return value;
+}
+
 void captureExecute(napi_env env, void* data) {
   captureCarrier* c = (captureCarrier*) data;
 
@@ -421,6 +445,12 @@ void captureComplete(napi_env env, napi_status asyncStatus, void* data) {
     c->status = napi_set_named_property(env, result, "channels", param);
     REJECT_STATUS;
   }
+
+  c->status = napi_create_function(env, "pause", NAPI_AUTO_LENGTH, pauseStreams,
+    nullptr, &param);
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "pause", param);
+  REJECT_STATUS;
 
   c->status = napi_create_function(env, "stop", NAPI_AUTO_LENGTH, stopStreams,
     nullptr, &param);

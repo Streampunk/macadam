@@ -67,8 +67,6 @@ struct captureCarrier : carrier {
   uint32_t channels = 0; // Set to zero for no channels
   IDeckLinkDisplayMode* selectedDisplayMode = nullptr;
   ~captureCarrier() {
-    printf("Destructing capture carrier deckLinkInput %i displayMode %i.\n",
-      deckLinkInput, selectedDisplayMode);
     if (deckLinkInput != nullptr) { deckLinkInput->Release(); }
     if (selectedDisplayMode != nullptr) { selectedDisplayMode->Release(); }
   }
