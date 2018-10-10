@@ -14,6 +14,8 @@
 */
 
 #include <assert.h>
+#include <stdlib.h>
+
 // #include "async_test.h"
 #define NAPI_EXPERIMENTAL
 #include <unistd.h>

@@ -353,8 +353,8 @@ void captureComplete(napi_env env, napi_status asyncStatus, void* data) {
     REJECT_STATUS;
   }
   #else
-  const char* displayModeName;
-  hresult = c->selectedDisplayMode->GetName(&displayModeName);
+  char* displayModeName;
+  hresult = c->selectedDisplayMode->GetName((const char **) &displayModeName);
   if (hresult == S_OK) {
     c->status = napi_create_string_utf8(env, displayModeName, NAPI_AUTO_LENGTH, &param);
     free(displayModeName);
@@ -636,6 +636,19 @@ napi_value framePromise(napi_env env, napi_callback_info info) {
 
   if (!crts->started) {
     hresult = crts->deckLinkInput->StartStreams();
+    switch (hresult) {
+      case E_FAIL:
+        REJECT_ERROR_RETURN("Call to start streams failed.",
+          MACADAM_CALL_FAILURE);
+        break;
+      case E_UNEXPECTED:
+        REJECT_ERROR_RETURN("Video and/or audio inputs are not enabled.",
+          MACADAM_CALL_FAILURE);
+        break;
+      case E_ACCESSDENIED: // Streams are already running
+      case S_OK:
+        break;
+    }
     crts->started = true;
   }
 
@@ -645,7 +658,6 @@ napi_value framePromise(napi_env env, napi_callback_info info) {
 }
 
 void frameResolver(napi_env env, napi_value jsCb, void* context, void* data) {
-  napi_status status;
   napi_value result, obj, param;
   captureThreadsafe* crts = (captureThreadsafe*) context;
   frameData* frame = (frameData*) data;
@@ -662,7 +674,7 @@ void frameResolver(napi_env env, napi_value jsCb, void* context, void* data) {
   // TODO : Add support for ancillary data
 
   //printf("Received an input frame %lix%li\n", frame->videoFrame->GetWidth(),
-    //frame->videoFrame->GetHeight());
+  //  frame->videoFrame->GetHeight());
 
   if (!crts->framePromises.empty()) {
     c = crts->framePromises.front();
@@ -730,7 +742,7 @@ void frameResolver(napi_env env, napi_value jsCb, void* context, void* data) {
     // printf("External memory %li\n", externalMemory);
     REJECT_BAIL;
 
-    status = napi_get_boolean(env, true, &param);
+    c->status = napi_get_boolean(env, true, &param);
     REJECT_BAIL;
     videoFlags = frame->videoFrame->GetFlags();
     if ((videoFlags & bmdFrameFlagFlipVertical) != 0) {
@@ -752,10 +764,12 @@ void frameResolver(napi_env env, napi_value jsCb, void* context, void* data) {
         c->errorMsg = "Unable to access timecode information for video frame.";
         c->status = MACADAM_CALL_FAILURE;
         REJECT_BAIL;
+        break;
       case E_ACCESSDENIED:
         c->errorMsg = "An invlid or unsupported timecode format was requested.";
         c->status = MACADAM_ACCESS_DENIED;
         REJECT_BAIL;
+        break;
       case S_FALSE:
         c->status = napi_get_boolean(env, false, &param);
         REJECT_BAIL;
@@ -782,8 +796,8 @@ void frameResolver(napi_env env, napi_value jsCb, void* context, void* data) {
           REJECT_BAIL;
         }
         #else
-        const char* timcodeString;
-        hresult = timecode->GetString(&timcodeString);
+        char* timcodeString;
+        hresult = timecode->GetString((const char **) &timcodeString);
         if (hresult == S_OK) {
           c->status = napi_create_string_utf8(env, timcodeString, NAPI_AUTO_LENGTH, &param);
           free(timcodeString);
@@ -845,7 +859,7 @@ void frameResolver(napi_env env, napi_value jsCb, void* context, void* data) {
       REJECT_BAIL;
     }
 
-    status = napi_resolve_deferred(env, c->_deferred, result);
+    c->status = napi_resolve_deferred(env, c->_deferred, result);
     REJECT_BAIL;
     tidyCarrier(env, c);
   }
@@ -855,7 +869,7 @@ void frameResolver(napi_env env, napi_value jsCb, void* context, void* data) {
 
 bail:
   if (!crts->framePromises.empty()) crts->framePromises.pop();
-  free(&frame);
+  free(frame);
 
   return;
 }

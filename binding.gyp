@@ -26,7 +26,8 @@
         ]
       }],
       ['OS=="linux"', {
-        'sources' : [ "src/macadam_util.cc", "src/macadam.cc" ],
+        'sources' : [ "src/macadam_util.cc", "src/macadam.cc", "src/async_test.c",
+          "src/capture_promise.cc" ],
         'link_settings' : {
           "libraries": [
             "/usr/lib/libDeckLinkAPI.so"

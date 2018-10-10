@@ -154,8 +154,8 @@ napi_value getFirstDevice(napi_env env, napi_callback_info info) {
     CHECK_RELEASE;
   }
   #else
-  const char* deviceName;
-  hresult = deckLink->GetModelName(&deviceName);
+  char* deviceName;
+  hresult = deckLink->GetModelName((const char **) &deviceName);
   if (hresult == S_OK) {
     status = napi_create_string_utf8(env, deviceName, NAPI_AUTO_LENGTH, &result);
     free(deviceName);
@@ -211,8 +211,8 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
       CHECK_RELEASE;
     }
     #else
-    const char* deviceName;
-    hresult = deckLink->GetModelName(&deviceName);
+    char* deviceName;
+    hresult = deckLink->GetModelName((const char **) &deviceName);
     if (hresult == S_OK) {
       status = napi_create_string_utf8(env, deviceName, NAPI_AUTO_LENGTH, &param);
       free(deviceName);
@@ -245,8 +245,8 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
       CHECK_RELEASE;
     }
     #else
-    const char* displayName;
-    hresult = deckLink->GetDisplayName(&displayName);
+    char* displayName;
+    hresult = deckLink->GetDisplayName((const char **) &displayName);
     if (hresult == S_OK) {
       status = napi_create_string_utf8(env, displayName, NAPI_AUTO_LENGTH, &param);
       free(displayName);
@@ -270,7 +270,7 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
       CFStringRef name;
       #else
       bool supported;
-      const char* name;
+      char* name;
       #endif
       int64_t value;
 
@@ -280,30 +280,34 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
         CHECK_RELEASE;
         status = napi_set_named_property(env, item, "hasSerialPort", param);
         CHECK_RELEASE;
-        if (supported == TRUE) {
+        if (supported == true) {
+          #ifdef WIN32
           hresult = deckLinkAttributes->GetString(BMDDeckLinkSerialPortDeviceName, &name);
           if (hresult == S_OK) {
-            #ifdef WIN32
             _bstr_t portName(deviceNameBSTR, false);
             status = napi_create_string_utf8(env, (char*) portName, NAPI_AUTO_LENGTH, &param);
             // delete portName;
             CHECK_RELEASE;
-            #elif __APPLE__
+          #elif __APPLE__
+          hresult = deckLinkAttributes->GetString(BMDDeckLinkSerialPortDeviceName, &name);
+          if (hresult == S_OK) {
             char portName[64];
             CFStringGetCString(name, portName, sizeof(portName), kCFStringEncodingMacRoman);
             CFRelease(name);
             status = napi_create_string_utf8(env, portName, NAPI_AUTO_LENGTH, &param);
             CHECK_RELEASE;
-            #else
+          #else
+          hresult = deckLinkAttributes->GetString(BMDDeckLinkSerialPortDeviceName, (const char **) &name);
+          if (hresult == S_OK) {
             status = napi_create_string_utf8(env, name, NAPI_AUTO_LENGTH, &param);
             free(name);
             CHECK_RELEASE;
-            #endif
+          #endif
             status = napi_set_named_property(env, item, "serialPortDeviceName", param);
             CHECK_RELEASE;
           }
         }
-      }
+      } 
 
       hresult = deckLinkAttributes->GetInt(BMDDeckLinkPersistentID, &value);
       if (hresult == S_OK) {
