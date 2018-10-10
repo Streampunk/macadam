@@ -135,6 +135,28 @@ void finalizeCarrier(napi_env env, void* finalize_data, void* finalize_hint) {
   delete c;
 }
 
+void finalizeVideoBuffer(napi_env env, void* finalize_data, void* finalize_hint) {
+  napi_status status;
+  int64_t externalMemory;
+  IDeckLinkVideoInputFrame* video = (IDeckLinkVideoInputFrame*) finalize_hint;
+  status = napi_adjust_external_memory(env, -video->GetRowBytes()*video->GetHeight(),
+    &externalMemory);
+  FLOATING_STATUS;
+  video->Release();
+  // printf("Releasing video frame - ext mem now %li\n", externalMemory);
+}
+
+void finalizeAudioPacket(napi_env env, void* finalize_data, void* finalize_hint) {
+  napi_status status;
+  int64_t externalMemory = 0;
+  audioData* audio = (audioData*) finalize_hint;
+  status = napi_adjust_external_memory(env, -((int64_t) audio->dataSize), &externalMemory);
+  FLOATING_STATUS;
+  audio->audioPacket->Release();
+  // printf("Releasing audio packet - ext mem now %li\n", externalMemory);
+  free(audio);
+}
+
 napi_value stopStreams(napi_env env, napi_callback_info info) {
   napi_status status;
   napi_value value, param, capture;
@@ -150,6 +172,8 @@ napi_value stopStreams(napi_env env, napi_callback_info info) {
   status = napi_get_value_external(env, param, (void**) &crts);
   CHECK_STATUS;
 
+  if (crts->stopped) NAPI_THROW_ERROR("Already stopped.");
+
   hresult = crts->deckLinkInput->StopStreams();
   if (hresult != S_OK) NAPI_THROW_ERROR("Unable to stop streams. May be already stopped?");
   hresult = crts->deckLinkInput->DisableVideoInput();
@@ -159,6 +183,7 @@ napi_value stopStreams(napi_env env, napi_callback_info info) {
 
   status = napi_release_threadsafe_function(crts->tsFn, napi_tsfn_release);
   CHECK_STATUS;
+  crts->stopped = true;
 
   status = napi_get_undefined(env, &value);
   CHECK_STATUS;
@@ -397,11 +422,6 @@ void captureComplete(napi_env env, napi_status asyncStatus, void* data) {
     REJECT_STATUS;
   }
 
-  c->status = napi_create_external(env, c, finalizeCarrier, nullptr, &param);
-  REJECT_STATUS;
-  c->status = napi_set_named_property(env, result, "deckLinkInput", param);
-  REJECT_STATUS;
-
   c->status = napi_create_function(env, "stop", NAPI_AUTO_LENGTH, stopStreams,
     nullptr, &param);
   REJECT_STATUS;
@@ -425,6 +445,7 @@ void captureComplete(napi_env env, napi_status asyncStatus, void* data) {
   if (c->channels > 0) {
     crts->sampleRate = c->requestedSampleRate;
     crts->sampleType = c->requestedSampleType;
+    crts->sampleByteFactor = c->channels * (crts->sampleType / 8);
   }
 
   hresult = crts->deckLinkInput->SetCallback(crts);
@@ -563,23 +584,25 @@ napi_value capture(napi_env env, napi_callback_info info) {
 }
 
 napi_value framePromise(napi_env env, napi_callback_info info) {
-  napi_status status;
   napi_value promise, capture, param;
   captureThreadsafe* crts;
   frameCarrier* c = new frameCarrier;
   HRESULT hresult;
 
-  status = napi_create_promise(env, &c->_deferred, &promise);
+  c->status = napi_create_promise(env, &c->_deferred, &promise);
   REJECT_RETURN;
 
   size_t argc = 0;
-  status = napi_get_cb_info(env, info, &argc, nullptr, &capture, nullptr);
-  CHECK_STATUS;
+  c->status = napi_get_cb_info(env, info, &argc, nullptr, &capture, nullptr);
+  REJECT_RETURN;
 
-  status = napi_get_named_property(env, capture, "deckLinkInput", &param);
-  CHECK_STATUS;
-  status = napi_get_value_external(env, param, (void**) &crts);
-  CHECK_STATUS;
+  c->status = napi_get_named_property(env, capture, "deckLinkInput", &param);
+  REJECT_RETURN;
+  c->status = napi_get_value_external(env, param, (void**) &crts);
+  REJECT_RETURN;
+
+  if (crts->stopped) REJECT_ERROR_RETURN(
+    "Cannot request frames after stream stop.", MACADAM_ALREADY_STOPPED);
 
   if (!crts->started) {
     hresult = crts->deckLinkInput->StartStreams();
@@ -593,29 +616,215 @@ napi_value framePromise(napi_env env, napi_callback_info info) {
 
 void frameResolver(napi_env env, napi_value jsCb, void* context, void* data) {
   napi_status status;
-  napi_value result;
+  napi_value result, obj, param;
   captureThreadsafe* crts = (captureThreadsafe*) context;
   frameData* frame = (frameData*) data;
-  frameCarrier* c;
+  frameCarrier* c = nullptr;
   BMDTimeValue frameTime;
   BMDTimeValue frameDuration;
+  BMDFrameFlags videoFlags;
+  int32_t rowBytes, height, sampleFrameCount;
+  int64_t externalMemory;
+  void* bytes;
+  IDeckLinkTimecode* timecode;
+  audioData* audioFinalizeData;
+  HRESULT hresult;
+  // TODO : Add support for ancillary data
 
-  printf("Received an input frame %lix%li\n", frame->videoFrame->GetWidth(),
-    frame->videoFrame->GetHeight());
+  //printf("Received an input frame %lix%li\n", frame->videoFrame->GetWidth(),
+    //frame->videoFrame->GetHeight());
 
   if (!crts->framePromises.empty()) {
     c = crts->framePromises.front();
-    frame->videoFrame->GetStreamTime(&frameTime, &frameDuration, crts->timeScale);
-    status = napi_create_int32(env, frameTime, &result);
+
+    c->status = napi_create_object(env, &result);
+    REJECT_BAIL;
+    c->status = napi_create_string_utf8(env, "frame", NAPI_AUTO_LENGTH, &param);
+    REJECT_BAIL;
+    c->status = napi_set_named_property(env, result, "type", param);
+    REJECT_BAIL;
+    c->status = napi_create_object(env, &obj);
+    REJECT_BAIL;
+    c->status = napi_set_named_property(env, result, "video", obj);
+    REJECT_BAIL;
+
+    c->status = napi_create_string_utf8(env, "videoFrame", NAPI_AUTO_LENGTH, &param);
+    REJECT_BAIL;
+    c->status = napi_set_named_property(env, obj, "type", param);
+    REJECT_BAIL;
+
+    c->status = napi_create_int32(env, frame->videoFrame->GetWidth(), &param);
+    REJECT_BAIL;
+    c->status = napi_set_named_property(env, obj, "width", param);
+    REJECT_BAIL;
+
+    height = frame->videoFrame->GetHeight();
+    c->status = napi_create_int32(env, height, &param);
+    REJECT_BAIL;
+    c->status = napi_set_named_property(env, obj, "height", param);
+    REJECT_BAIL;
+
+    rowBytes = frame->videoFrame->GetRowBytes();
+    c->status = napi_create_int32(env, rowBytes, &param);
+    REJECT_BAIL;
+    c->status = napi_set_named_property(env, obj, "rowBytes", param);
+    REJECT_BAIL;
+
+    hresult = frame->videoFrame->GetStreamTime(&frameTime, &frameDuration, crts->timeScale);
+    if (hresult != S_OK) {
+      c->errorMsg = "Failed to retrieve frame time for video frame.";
+      c->status = MACADAM_CALL_FAILURE;
+      REJECT_BAIL;
+    }
+    c->status = napi_create_int32(env, frameTime, &param);
+    REJECT_BAIL;
+    c->status = napi_set_named_property(env, obj, "frameTime", param);
+    REJECT_BAIL;
+    c->status = napi_create_int32(env, frameDuration, &param);
+    REJECT_BAIL;
+    c->status = napi_set_named_property(env, obj, "frameDuration", param);
+    REJECT_BAIL;
+
+    hresult = frame->videoFrame->GetBytes(&bytes);
+    if (hresult != S_OK) {
+      c->errorMsg = "Failed to access the byte buffer of a video frame.";
+      c->status = MACADAM_CALL_FAILURE;
+      REJECT_BAIL;
+    }
+    c->status = napi_create_external_buffer(env, rowBytes*height, bytes,
+      finalizeVideoBuffer, frame->videoFrame, &param);
+    REJECT_BAIL;
+    c->status = napi_set_named_property(env, obj, "data", param);
+    REJECT_BAIL;
+    c->status = napi_adjust_external_memory(env, rowBytes*height, &externalMemory);
+    // printf("External memory %li\n", externalMemory);
+    REJECT_BAIL;
+
+    status = napi_get_boolean(env, true, &param);
+    REJECT_BAIL;
+    videoFlags = frame->videoFrame->GetFlags();
+    if ((videoFlags & bmdFrameFlagFlipVertical) != 0) {
+      c->status = napi_set_named_property(env, obj, "flipVertical", param);
+      REJECT_BAIL;
+    }
+    if ((videoFlags & bmdFrameHasNoInputSource) != 0) {
+      c->status = napi_set_named_property(env, obj, "hasNoInputSource", param);
+      REJECT_BAIL;
+    }
+    if ((videoFlags & bmdFrameCapturedAsPsF) != 0) {
+      c->status = napi_set_named_property(env, obj, "capturedAsPsF", param);
+      REJECT_BAIL;
+    }
+
+    hresult = frame->videoFrame->GetTimecode(bmdTimecodeRP188Any, &timecode);
+    switch (hresult) {
+      case E_FAIL:
+        c->errorMsg = "Unable to access timecode information for video frame.";
+        c->status = MACADAM_CALL_FAILURE;
+        REJECT_BAIL;
+      case E_ACCESSDENIED:
+        c->errorMsg = "An invlid or unsupported timecode format was requested.";
+        c->status = MACADAM_ACCESS_DENIED;
+        REJECT_BAIL;
+      case S_FALSE:
+        c->status = napi_get_boolean(env, false, &param);
+        REJECT_BAIL;
+        c->status = napi_set_named_property(env, obj, "timecode", param);
+        REJECT_BAIL;
+        break;
+      case S_OK:
+        #ifdef WIN32
+        BSTR timecodeBSTR = NULL;
+        hresult = timecode->GetString(&timecodeBSTR);
+        if (hresult == S_OK) {
+          _bstr_t timecodeString(displayModeBSTR, false);
+          c->status = napi_create_string_utf8(env, (char*) timecodeString, NAPI_AUTO_LENGTH, &param);
+          REJECT_BAIL;
+        }
+        #elif __APPLE__
+        CFStringRef timecodeCFString = NULL;
+        hresult = timecode->GetString(&timecodeCFString);
+        if (hresult == S_OK) {
+          char timecodeString[64];
+          CFStringGetCString(timecodeCFString, timecodeString, sizeof(timecodeString), kCFStringEncodingMacRoman);
+          CFRelease(timecodeCFString);
+          c->status = napi_create_string_utf8(env, timecodeString, NAPI_AUTO_LENGTH, &param);
+          REJECT_BAIL;
+        }
+        #else
+        const char* timcodeString;
+        hresult = timecode->GetString(&timcodeString);
+        if (hresult == S_OK) {
+          c->status = napi_create_string_utf8(env, timcodeString, NAPI_AUTO_LENGTH, &param);
+          free(timcodeString);
+          REJECT_STATUS;
+        }
+        #endif
+
+        c->status = napi_set_named_property(env, obj, "timecode", param);
+        REJECT_BAIL;
+        break;
+    } // switch GetTimecode
+
+    hresult = frame->videoFrame->GetHardwareReferenceTimestamp(crts->timeScale,
+      &frameTime, &frameDuration);
+    if (hresult == S_OK) {
+      c->status = napi_create_int64(env, frameTime, &param);
+      REJECT_BAIL;
+      c->status = napi_set_named_property(env, obj, "hardwareRefFrameTime", param);
+      REJECT_BAIL;
+      c->status = napi_create_int32(env, frameDuration, &param);
+      REJECT_BAIL;
+      c->status = napi_set_named_property(env, obj, "hardwareRefFrameDuration", param);
+      REJECT_BAIL;
+    }
+
+    if (frame->audioPacket != nullptr) {
+      c->status = napi_create_object(env, &obj);
+      REJECT_BAIL;
+      c->status = napi_set_named_property(env, result, "audio", obj);
+      REJECT_BAIL;
+      c->status = napi_create_string_utf8(env, "audioPacket", NAPI_AUTO_LENGTH, &param);
+      REJECT_BAIL;
+      c->status = napi_set_named_property(env, obj, "type", param);
+      REJECT_BAIL;
+
+      sampleFrameCount = frame->audioPacket->GetSampleFrameCount();
+      c->status = napi_create_int32(env, sampleFrameCount, &param);
+      REJECT_BAIL;
+      c->status = napi_set_named_property(env, obj, "sampleFrameCount", param);
+      REJECT_BAIL;
+
+      hresult = frame->audioPacket->GetBytes(&bytes);
+      if (hresult != S_OK) {
+        c->errorMsg = "Failed to access the byte buffer of an audio packet.";
+        c->status = MACADAM_CALL_FAILURE;
+        REJECT_BAIL;
+      }
+      audioFinalizeData = (audioData*) malloc(sizeof(audioData));
+      audioFinalizeData->audioPacket = frame->audioPacket;
+      audioFinalizeData->dataSize = sampleFrameCount * crts->sampleByteFactor;
+      c->status = napi_create_external_buffer(env,
+        audioFinalizeData->dataSize, bytes, finalizeAudioPacket, audioFinalizeData, &param);
+      REJECT_BAIL;
+      c->status = napi_set_named_property(env, obj, "data", param);
+      REJECT_BAIL;
+      c->status = napi_adjust_external_memory(env,
+        audioFinalizeData->dataSize, &externalMemory);
+      // printf("External memory %li\n", externalMemory);
+      REJECT_BAIL;
+    }
+
     status = napi_resolve_deferred(env, c->_deferred, result);
+    REJECT_BAIL;
     tidyCarrier(env, c);
-    crts->framePromises.pop();
   }
   else {
     printf("No promise to receive frame.\n");
   }
-  frame->videoFrame->Release();
-  if (frame->audioPacket != nullptr) frame->audioPacket->Release();
+
+bail:
+  if (!crts->framePromises.empty()) crts->framePromises.pop();
   free(&frame);
 
   return;

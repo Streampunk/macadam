@@ -125,7 +125,8 @@ int32_t rejectStatus(napi_env env, carrier* c, char* file, int32_t line) {
       const napi_extended_error_info *errorInfo;
       status = napi_get_last_error_info(env, &errorInfo);
       FLOATING_STATUS;
-      c->errorMsg = std::string(errorInfo->error_message);
+      c->errorMsg = std::string(
+        (errorInfo->error_message != nullptr) ? errorInfo->error_message : "(no message)");
     }
     char* extMsg = (char *) malloc(sizeof(char) * c->errorMsg.length() + 200);
     sprintf(extMsg, "In file %s on line %i, found error: %s", file, line, c->errorMsg.c_str());

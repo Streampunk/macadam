@@ -67,6 +67,8 @@ struct captureCarrier : carrier {
   uint32_t channels = 0; // Set to zero for no channels
   IDeckLinkDisplayMode* selectedDisplayMode = nullptr;
   ~captureCarrier() {
+    printf("Destructing capture carrier deckLinkInput %i displayMode %i.\n",
+      deckLinkInput, selectedDisplayMode);
     if (deckLinkInput != nullptr) { deckLinkInput->Release(); }
     if (selectedDisplayMode != nullptr) { selectedDisplayMode->Release(); }
   }
@@ -86,12 +88,14 @@ struct captureThreadsafe : IDeckLinkInputCallback {
   ULONG Release() { return 1; }
   napi_threadsafe_function tsFn;
   bool started = false;
+  bool stopped = false;
   IDeckLinkInput* deckLinkInput = nullptr;
   IDeckLinkDisplayMode* displayMode = nullptr;
   BMDPixelFormat pixelFormat;
   BMDTimeScale timeScale;
   BMDAudioSampleRate sampleRate;
   BMDAudioSampleType sampleType;
+  uint32_t sampleByteFactor;
   uint32_t channels = 0; // Set to zero for no channels
   std::queue<frameCarrier*> framePromises;
   ~captureThreadsafe() {
@@ -105,4 +109,9 @@ struct frameData {
   IDeckLinkAudioInputPacket* audioPacket;
 };
 
- #endif // CAPTURE_PROMISE_H
+struct audioData {
+  IDeckLinkAudioInputPacket* audioPacket;
+  uint32_t dataSize;
+};
+
+#endif // CAPTURE_PROMISE_H
