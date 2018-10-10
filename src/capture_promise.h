@@ -43,6 +43,7 @@
 #ifndef CAPTURE_PROMISE_H
 #define CAPTURE_PROMISE_H
 
+#include <queue>
 #define NAPI_EXPERIMENTAL
 #include "macadam_util.h"
 #include "node_api.h"
@@ -92,7 +93,7 @@ struct captureThreadsafe : IDeckLinkInputCallback {
   BMDAudioSampleRate sampleRate;
   BMDAudioSampleType sampleType;
   uint32_t channels = 0; // Set to zero for no channels
-  frameCarrier* waitingPromise = nullptr;
+  std::queue<frameCarrier*> framePromises;
   ~captureThreadsafe() {
     if (deckLinkInput != nullptr) { deckLinkInput->Release(); }
     if (displayMode != nullptr) { displayMode->Release(); }

@@ -6,8 +6,11 @@ async function run() {
     channels: 0
   });
   for ( let x = 0 ; x < 100 ; x++ ) {
-    let frame = await capture.frame();
-    console.log(x, frame);
+    //let frame = await capture.frame();
+    let frames = await Promise.all([
+      capture.frame(), capture.frame(), capture.frame()
+    ]);
+    console.log(x, frames);
   }
   setTimeout(() => { capture.stop(); }, 500);
 }

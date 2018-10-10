@@ -84,9 +84,12 @@ HRESULT captureThreadsafe::VideoInputFrameArrived(
   IDeckLinkVideoInputFrame *videoFrame,
   IDeckLinkAudioInputPacket *audioPacket) {
 
-  napi_status status;
+  napi_status status, hangover;
   status = napi_acquire_threadsafe_function(tsFn);
-  printf("Status on acquiring tsFn %i\n", status);
+  if (status != napi_ok) {
+    printf("DEBUG: Failed to acquire NAPI failsafe function on capture.");
+    return E_FAIL;
+  }
 
   videoFrame->AddRef();
   if (audioPacket != nullptr) {
@@ -95,13 +98,18 @@ HRESULT captureThreadsafe::VideoInputFrameArrived(
   frameData* data = (frameData*) malloc(sizeof(frameData));
   data->videoFrame = videoFrame;
   data->audioPacket = audioPacket;
-  status = napi_call_threadsafe_function(tsFn, data, napi_tsfn_nonblocking);
-  printf("Status on calling tsFn %i\n", status);
+  hangover = napi_call_threadsafe_function(tsFn, data, napi_tsfn_nonblocking);
+  if (hangover != napi_ok) {
+    printf("DEBUG: Failed to call NAPI failsafe function on capture.");
+  }
 
   status = napi_release_threadsafe_function(tsFn, napi_tsfn_release);
-  printf("Status on releasing tsFn %i\n", status);
+  if (status != napi_ok) {
+    printf("DEBUG: Failed to acquire NAPI failsafe function on capture.");
+    return E_FAIL;
+  }
 
-  return S_OK;
+  return (hangover == napi_ok) ? S_OK : E_FAIL;
 };
 
 HRESULT captureThreadsafe::VideoInputFormatChanged(
@@ -109,7 +117,7 @@ HRESULT captureThreadsafe::VideoInputFormatChanged(
   IDeckLinkDisplayMode *newDisplayMode,
   BMDDetectedVideoInputFormatFlags detectedSignalFlags) {
 
-  return 0;
+  return E_FAIL;
 }
 
 // Should never get called
@@ -148,6 +156,9 @@ napi_value stopStreams(napi_env env, napi_callback_info info) {
   if (hresult != S_OK) NAPI_THROW_ERROR("Unable to disable video input.");
 	hresult = crts->deckLinkInput->SetCallback(NULL);
   if (hresult != S_OK) NAPI_THROW_ERROR("Unable to unset callback for decklink input.");
+
+  status = napi_release_threadsafe_function(crts->tsFn, napi_tsfn_release);
+  CHECK_STATUS;
 
   status = napi_get_undefined(env, &value);
   CHECK_STATUS;
@@ -575,7 +586,7 @@ napi_value framePromise(napi_env env, napi_callback_info info) {
     crts->started = true;
   }
 
-  crts->waitingPromise = c;
+  crts->framePromises.push(c);
 
   return promise;
 }
@@ -583,17 +594,22 @@ napi_value framePromise(napi_env env, napi_callback_info info) {
 void frameResolver(napi_env env, napi_value jsCb, void* context, void* data) {
   napi_status status;
   napi_value result;
-  frameData* frame = (frameData*) data;
   captureThreadsafe* crts = (captureThreadsafe*) context;
+  frameData* frame = (frameData*) data;
+  frameCarrier* c;
+  BMDTimeValue frameTime;
+  BMDTimeValue frameDuration;
 
   printf("Received an input frame %lix%li\n", frame->videoFrame->GetWidth(),
     frame->videoFrame->GetHeight());
 
-  if (crts->waitingPromise != nullptr) {
-    status = napi_create_int32(env, frame->videoFrame->GetHeight(), &result);
-    status = napi_resolve_deferred(env, crts->waitingPromise->_deferred, result);
-    tidyCarrier(env, crts->waitingPromise);
-    crts->waitingPromise = nullptr;
+  if (!crts->framePromises.empty()) {
+    c = crts->framePromises.front();
+    frame->videoFrame->GetStreamTime(&frameTime, &frameDuration, crts->timeScale);
+    status = napi_create_int32(env, frameTime, &result);
+    status = napi_resolve_deferred(env, c->_deferred, result);
+    tidyCarrier(env, c);
+    crts->framePromises.pop();
   }
   else {
     printf("No promise to receive frame.\n");
