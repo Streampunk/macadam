@@ -336,7 +336,7 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
           #ifdef WIN32
           hresult = deckLinkAttributes->GetString(BMDDeckLinkSerialPortDeviceName, &name);
           if (hresult == S_OK) {
-            _bstr_t portName(deviceNameBSTR, false);
+            _bstr_t portName(name, false);
             status = napi_create_string_utf8(env, (char*) portName, NAPI_AUTO_LENGTH, &param);
             // delete portName;
             CHECK_BAIL;
