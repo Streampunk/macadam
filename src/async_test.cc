@@ -18,7 +18,8 @@
 
 // #include "async_test.h"
 #define NAPI_EXPERIMENTAL
-#include <unistd.h>
+#include <chrono>
+#include <thread>
 #include "node_api.h"
 #include <uv.h>
 
@@ -52,7 +53,7 @@ static void one_thread(void* data) {
   napi_status status;
   ThreadData* thread_data = (ThreadData*) data;
 
-  sleep(2);
+  std::this_thread::sleep_for(std::chrono::milliseconds(2000));
   // The first step is always to acquire the thread-safe function. This
   // indicates that the function must not be destroyed, because it's still in
   // use.

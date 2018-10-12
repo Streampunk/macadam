@@ -42,6 +42,7 @@
       }],
       ['OS=="win"', {
         "sources" : [ "src/macadam_util.cc", "src/macadam.cc",
+          "src/async_test.cc", "src/capture_promise.cc",
           "decklink/Win/include/DeckLinkAPI_i.c" ],
         "configurations": {
           "Release": {

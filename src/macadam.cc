@@ -126,6 +126,8 @@ napi_value getFirstDevice(napi_env env, napi_callback_info info) {
   #else
   deckLinkIterator = CreateDeckLinkIteratorInstance();
   #endif
+  printf("DeckLinkIterator is %i.\n", deckLinkIterator);
+
   if (deckLinkIterator->Next(&deckLink) != S_OK) {
     status = napi_get_undefined(env, &result);
     if (checkStatus(env, status, __FILE__, __LINE__ - 1) != napi_ok) {
@@ -307,7 +309,7 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
             CHECK_RELEASE;
           }
         }
-      } 
+      }
 
       hresult = deckLinkAttributes->GetInt(BMDDeckLinkPersistentID, &value);
       if (hresult == S_OK) {

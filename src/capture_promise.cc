@@ -223,15 +223,18 @@ void captureExecute(napi_env env, void* data) {
   HRESULT hresult;
 
   #ifdef WIN32
-  CoCreateInstance(CLSID_CDeckLinkIterator, NULL, CLSCTX_ALL,
-    IID_IDeckLinkIterator, (void**)&deckLinkIterator);
+  hresult = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+  printf("Status of initialize %i vs S_OK %i.\n", hresult, S_OK);
+  CoCreateInstance(CLSID_CDeckLinkIterator, NULL, CLSCTX_ALL, IID_IDeckLinkIterator, (void**)&deckLinkIterator);
   #else
   deckLinkIterator = CreateDeckLinkIteratorInstance();
   #endif
 
+  printf("DeckLinkIterator is %i.\n", deckLinkIterator);
+
   for ( uint32_t x = 0 ; x <= c->deviceIndex ; x++ ) {
     if (deckLinkIterator->Next(&deckLink) != S_OK) {
-      deckLinkIterator->Release();
+      // deckLinkIterator->Release();
       c->status = MACADAM_OUT_OF_BOUNDS;
       c->errorMsg = "Device index exceeds the number of installed devices.";
       return;
@@ -554,7 +557,7 @@ napi_value capture(napi_env env, napi_callback_info info) {
   if (type != napi_undefined) {
     if (type != napi_number) REJECT_ERROR_RETURN(
       "Display mode must be an enumeration value.", MACADAM_INVALID_ARGS);
-    c->status = napi_get_value_uint32(env, param, &c->requestedDisplayMode);
+    c->status = napi_get_value_uint32(env, param, (uint32_t *) &c->requestedDisplayMode);
     REJECT_RETURN;
   }
 
@@ -565,7 +568,7 @@ napi_value capture(napi_env env, napi_callback_info info) {
   if (type != napi_undefined) {
     if (type != napi_number) REJECT_ERROR_RETURN(
       "Pixel format must be an enumeration value.", MACADAM_INVALID_ARGS);
-    c->status = napi_get_value_uint32(env, param, &c->requestedPixelFormat);
+    c->status = napi_get_value_uint32(env, param, (uint32_t *) &c->requestedPixelFormat);
     REJECT_RETURN;
   }
 
@@ -587,7 +590,7 @@ napi_value capture(napi_env env, napi_callback_info info) {
   if (type != napi_undefined) {
     if (type != napi_number) REJECT_ERROR_RETURN(
       "Audio sample rate must be an enumeration value.", MACADAM_INVALID_ARGS);
-    c->status = napi_get_value_uint32(env, param, &c->requestedSampleRate);
+    c->status = napi_get_value_uint32(env, param, (uint32_t *) &c->requestedSampleRate);
     REJECT_RETURN;
   }
 
@@ -598,7 +601,7 @@ napi_value capture(napi_env env, napi_callback_info info) {
   if (type != napi_undefined) {
     if (type != napi_number) REJECT_ERROR_RETURN(
       "Audio sample type must be an enumeration value.", MACADAM_INVALID_ARGS);
-    c->status = napi_get_value_uint32(env, param, &c->requestedSampleType);
+    c->status = napi_get_value_uint32(env, param, (uint32_t *) &c->requestedSampleType);
     REJECT_RETURN;
   }
 
@@ -781,7 +784,7 @@ void frameResolver(napi_env env, napi_value jsCb, void* context, void* data) {
         BSTR timecodeBSTR = NULL;
         hresult = timecode->GetString(&timecodeBSTR);
         if (hresult == S_OK) {
-          _bstr_t timecodeString(displayModeBSTR, false);
+          _bstr_t timecodeString(timecodeBSTR, false);
           c->status = napi_create_string_utf8(env, (char*) timecodeString, NAPI_AUTO_LENGTH, &param);
           REJECT_BAIL;
         }

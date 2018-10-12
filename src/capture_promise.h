@@ -44,6 +44,14 @@
 #define CAPTURE_PROMISE_H
 
 #include <queue>
+
+#ifdef WIN32
+#include <tchar.h>
+#include <conio.h>
+#include <objbase.h>		// Necessary for COM
+#include <comdef.h>
+#endif
+
 #define NAPI_EXPERIMENTAL
 #include "macadam_util.h"
 #include "node_api.h"
