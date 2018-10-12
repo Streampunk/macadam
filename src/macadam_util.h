@@ -26,6 +26,7 @@
 
 // Handling NAPI errors - use "napi_status status;" where used
 #define CHECK_STATUS if (checkStatus(env, status, __FILE__, __LINE__ - 1) != napi_ok) return nullptr
+#define CHECK_BAIL if (checkStatus(env, status, __FILE__, __LINE__ - 1) != napi_ok) goto bail
 #define PASS_STATUS if (status != napi_ok) return status
 
 napi_status checkStatus(napi_env env, napi_status status,

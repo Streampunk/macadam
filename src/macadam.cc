@@ -102,13 +102,6 @@ napi_value deckLinkVersion(napi_env env, napi_callback_info info) {
   return result;
 }
 
-#define CHECK_RELEASE if (checkStatus(env, status, __FILE__, __LINE__ - 1) != napi_ok) { \
-  deckLink->Release(); \
-  deckLinkIterator->Release(); \
-  if (deckLinkAttributes != nullptr) deckLinkAttributes->Release(); \
-  return nullptr; \
-}
-
 napi_value getFirstDevice(napi_env env, napi_callback_info info) {
   napi_status status;
   napi_value result;
@@ -118,7 +111,7 @@ napi_value getFirstDevice(napi_env env, napi_callback_info info) {
 
   IDeckLinkIterator* deckLinkIterator;
   HRESULT	hresult;
-  IDeckLink* deckLink;
+  IDeckLink* deckLink = nullptr;
   IDeckLinkAttributes* deckLinkAttributes = nullptr;
 
   #ifdef WIN32
@@ -141,7 +134,7 @@ napi_value getFirstDevice(napi_env env, napi_callback_info info) {
     _bstr_t deviceName(deviceNameBSTR, false);
     status = napi_create_string_utf8(env, (char*) deviceName, NAPI_AUTO_LENGTH, &result);
     // delete deviceName;
-    CHECK_RELEASE;
+    CHECK_BAIL;
   }
   #elif __APPLE__
   CFStringRef deviceNameCFString = NULL;
@@ -151,7 +144,7 @@ napi_value getFirstDevice(napi_env env, napi_callback_info info) {
     CFStringGetCString(deviceNameCFString, deviceName, sizeof(deviceName), kCFStringEncodingMacRoman);
     CFRelease(deviceNameCFString);
     status = napi_create_string_utf8(env, deviceName, NAPI_AUTO_LENGTH, &result);
-    CHECK_RELEASE;
+    CHECK_BAIL;
   }
   #else
   char* deviceName;
@@ -159,12 +152,14 @@ napi_value getFirstDevice(napi_env env, napi_callback_info info) {
   if (hresult == S_OK) {
     status = napi_create_string_utf8(env, deviceName, NAPI_AUTO_LENGTH, &result);
     free(deviceName);
-    CHECK_RELEASE;
+    CHECK_BAIL;
   }
   #endif
 
-  deckLink->Release();
+bail:
+  if (deckLink != nullptr) deckLink->Release();
   deckLinkIterator->Release();
+  if (deckLinkAttributes != nullptr) deckLinkAttributes->Release();
 
   return result;
 }
@@ -178,7 +173,7 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
 
   IDeckLinkIterator* deckLinkIterator;
   HRESULT	hresult;
-  IDeckLink* deckLink;
+  IDeckLink* deckLink = nullptr;
   IDeckLinkAttributes* deckLinkAttributes = nullptr;
   #ifdef WIN32
   CoCreateInstance(CLSID_CDeckLinkIterator, NULL, CLSCTX_ALL, IID_IDeckLinkIterator, (void**)&deckLinkIterator);
@@ -190,7 +185,7 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
   while (deckLinkIterator->Next(&deckLink) == S_OK) {
     napi_value item, param = nullptr;
     status = napi_create_object(env, &item);
-    CHECK_RELEASE;
+    CHECK_BAIL;
     #ifdef WIN32
     BSTR deviceNameBSTR = NULL;
     hresult = deckLink->GetModelName(&deviceNameBSTR);
@@ -198,7 +193,7 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
       _bstr_t deviceName(deviceNameBSTR, false);
       status = napi_create_string_utf8(env, (char*) deviceName, NAPI_AUTO_LENGTH, &param);
       // delete deviceName;
-      CHECK_RELEASE;
+      CHECK_BAIL;
     }
     #elif __APPLE__
     CFStringRef deviceNameCFString = NULL;
@@ -208,7 +203,7 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
       CFStringGetCString(deviceNameCFString, deviceName, sizeof(deviceName), kCFStringEncodingMacRoman);
       CFRelease(deviceNameCFString);
       status = napi_create_string_utf8(env, deviceName, NAPI_AUTO_LENGTH, &param);
-      CHECK_RELEASE;
+      CHECK_BAIL;
     }
     #else
     char* deviceName;
@@ -216,12 +211,12 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
     if (hresult == S_OK) {
       status = napi_create_string_utf8(env, deviceName, NAPI_AUTO_LENGTH, &param);
       free(deviceName);
-      CHECK_RELEASE;
+      CHECK_BAIL;
     }
     #endif
     if (param != nullptr) {
       status = napi_set_named_property(env, item, "modelName", param);
-      CHECK_RELEASE;
+      CHECK_BAIL;
     }
     param = nullptr;
 
@@ -232,7 +227,7 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
       _bstr_t displayName(deviceNameBSTR, false);
       status = napi_create_string_utf8(env, (char*) displayName, NAPI_AUTO_LENGTH, &param);
       // delete displayName;
-      CHECK_RELEASE;
+      CHECK_BAIL;
     }
     #elif __APPLE__
     CFStringRef displayNameCFString = NULL;
@@ -242,7 +237,7 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
       CFStringGetCString(displayNameCFString, displayName, sizeof(displayName), kCFStringEncodingMacRoman);
       CFRelease(displayNameCFString);
       status = napi_create_string_utf8(env, displayName, NAPI_AUTO_LENGTH, &param);
-      CHECK_RELEASE;
+      CHECK_BAIL;
     }
     #else
     char* displayName;
@@ -250,12 +245,12 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
     if (hresult == S_OK) {
       status = napi_create_string_utf8(env, displayName, NAPI_AUTO_LENGTH, &param);
       free(displayName);
-      CHECK_RELEASE;
+      CHECK_BAIL;
     }
     #endif
     if (param != nullptr) {
       status = napi_set_named_property(env, item, "displayName", param);
-      CHECK_RELEASE;
+      CHECK_BAIL;
     }
     param = nullptr;
 
@@ -281,9 +276,9 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
       #endif
       if (hresult == S_OK) {
         status = napi_get_boolean(env, supported, &param);
-        CHECK_RELEASE;
+        CHECK_BAIL;
         status = napi_set_named_property(env, item, "hasSerialPort", param);
-        CHECK_RELEASE;
+        CHECK_BAIL;
         if (supported == true) {
           #ifdef WIN32
           hresult = deckLinkAttributes->GetString(BMDDeckLinkSerialPortDeviceName, &name);
@@ -291,7 +286,7 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
             _bstr_t portName(deviceNameBSTR, false);
             status = napi_create_string_utf8(env, (char*) portName, NAPI_AUTO_LENGTH, &param);
             // delete portName;
-            CHECK_RELEASE;
+            CHECK_BAIL;
           #elif __APPLE__
           hresult = deckLinkAttributes->GetString(BMDDeckLinkSerialPortDeviceName, &name);
           if (hresult == S_OK) {
@@ -299,16 +294,16 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
             CFStringGetCString(name, portName, sizeof(portName), kCFStringEncodingMacRoman);
             CFRelease(name);
             status = napi_create_string_utf8(env, portName, NAPI_AUTO_LENGTH, &param);
-            CHECK_RELEASE;
+            CHECK_BAIL;
           #else
           hresult = deckLinkAttributes->GetString(BMDDeckLinkSerialPortDeviceName, (const char **) &name);
           if (hresult == S_OK) {
             status = napi_create_string_utf8(env, name, NAPI_AUTO_LENGTH, &param);
             free(name);
-            CHECK_RELEASE;
+            CHECK_BAIL;
           #endif
             status = napi_set_named_property(env, item, "serialPortDeviceName", param);
-            CHECK_RELEASE;
+            CHECK_BAIL;
           }
         }
       }
@@ -316,44 +311,61 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
       hresult = deckLinkAttributes->GetInt(BMDDeckLinkPersistentID, &value);
       if (hresult == S_OK) {
         status = napi_create_int64(env, value, &param);
-        CHECK_RELEASE;
+        CHECK_BAIL;
         status = napi_set_named_property(env, item, "persistentID", param);
-        CHECK_RELEASE;
+        CHECK_BAIL;
       }
 
       hresult = deckLinkAttributes->GetInt(BMDDeckLinkTopologicalID, &value);
       if (hresult == S_OK) {
         status = napi_create_int64(env, value, &param);
-        CHECK_RELEASE;
+        CHECK_BAIL;
         status = napi_set_named_property(env, item, "topologicalID", param);
-        CHECK_RELEASE;
+        CHECK_BAIL;
       }
 
       hresult = deckLinkAttributes->GetInt(BMDDeckLinkNumberOfSubDevices, &value);
       if (hresult == S_OK) {
         status = napi_create_int64(env, value, &param);
-        CHECK_RELEASE;
+        CHECK_BAIL;
         status = napi_set_named_property(env, item, "numberOfSubDevices", param);
-        CHECK_RELEASE;
+        CHECK_BAIL;
       }
 
       if (value > 0) {
         hresult = deckLinkAttributes->GetInt(BMDDeckLinkSubDeviceIndex, &value);
         if (hresult == S_OK) {
           status = napi_create_int64(env, value, &param);
-          CHECK_RELEASE;
+          CHECK_BAIL;
           status = napi_set_named_property(env, item, "subDeviceIndex", param);
-          CHECK_RELEASE;
+          CHECK_BAIL;
         }
       }
 
       hresult = deckLinkAttributes->GetInt(BMDDeckLinkMaximumAudioChannels, &value);
       if (hresult == S_OK) {
         status = napi_create_int64(env, value, &param);
-        CHECK_RELEASE;
+        CHECK_BAIL;
         status = napi_set_named_property(env, item, "maximumAudioChannels", param);
-        CHECK_RELEASE;
+        CHECK_BAIL;
       }
+
+      hresult = deckLinkAttributes->GetInt(BMDDeckLinkMaximumAnalogAudioInputChannels, &value);
+      if (hresult == S_OK) {
+        status = napi_create_int64(env, value, &param);
+        CHECK_BAIL;
+        status = napi_set_named_property(env, item, "maximumAnalogAudioInputChannels", param);
+        CHECK_BAIL;
+      }
+
+      hresult = deckLinkAttributes->GetInt(BMDDeckLinkMaximumAnalogAudioOutputChannels, &value);
+      if (hresult == S_OK) {
+        status = napi_create_int64(env, value, &param);
+        CHECK_BAIL;
+        status = napi_set_named_property(env, item, "maximumAnalogAudioOutputChannels", param);
+        CHECK_BAIL;
+      }
+
       #ifdef WIN32
       hresult = deckLinkAttributes->GetFlag(BMDDeckLinkSupportsInputFormatDetection, &supportedWin);
       supported = (supportedWin == TRUE);
@@ -362,9 +374,22 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
       #endif
   	  if (hresult == S_OK) {
         status = napi_get_boolean(env, supported, &param);
-        CHECK_RELEASE;
+        CHECK_BAIL;
         status = napi_set_named_property(env, item, "supportsInputFormatDetection", param);
-        CHECK_RELEASE;
+        CHECK_BAIL;
+      }
+
+      #ifdef WIN32
+      hresult = deckLinkAttributes->GetFlag(BMDDeckLinkHasReferenceInput, &supportedWin);
+      supported = (supportedWin == TRUE);
+      #else
+      hresult = deckLinkAttributes->GetFlag(BMDDeckLinkHasReferenceInput, &supported);
+      #endif
+  	  if (hresult == S_OK) {
+        status = napi_get_boolean(env, supported, &param);
+        CHECK_BAIL;
+        status = napi_set_named_property(env, item, "hasReferenceInput", param);
+        CHECK_BAIL;
       }
 
       #ifdef WIN32
@@ -375,9 +400,9 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
       #endif
       if (hresult == S_OK) {
         status = napi_get_boolean(env, supported, &param);
-        CHECK_RELEASE;
+        CHECK_BAIL;
         status = napi_set_named_property(env, item, "supportsFullDuplex", param);
-        CHECK_RELEASE;
+        CHECK_BAIL;
       }
 
       #ifdef WIN32
@@ -388,9 +413,9 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
       #endif
   	  if (hresult == S_OK) {
         status = napi_get_boolean(env, supported, &param);
-        CHECK_RELEASE;
+        CHECK_BAIL;
         status = napi_set_named_property(env, item, "supportsExternalKeying", param);
-        CHECK_RELEASE;
+        CHECK_BAIL;
       }
 
       #ifdef WIN32
@@ -401,9 +426,9 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
       #endif
   	  if (hresult == S_OK) {
         status = napi_get_boolean(env, supported, &param);
-        CHECK_RELEASE;
+        CHECK_BAIL;
         status = napi_set_named_property(env, item, "supportsInernalKeying", param);
-        CHECK_RELEASE;
+        CHECK_BAIL;
       }
 
       #ifdef WIN32
@@ -414,9 +439,61 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
       #endif
   	  if (hresult == S_OK) {
         status = napi_get_boolean(env, supported, &param);
-        CHECK_RELEASE;
+        CHECK_BAIL;
         status = napi_set_named_property(env, item, "supportsHDKeying", param);
-        CHECK_RELEASE;
+        CHECK_BAIL;
+      }
+
+      #ifdef WIN32
+      hresult = deckLinkAttributes->GetFlag(BMDDeckLinkHasAnalogVideoOutputGain, &supportedWin);
+      supported = (supportedWin == TRUE);
+      #else
+      hresult = deckLinkAttributes->GetFlag(BMDDeckLinkHasAnalogVideoOutputGain, &supported);
+      #endif
+  	  if (hresult == S_OK) {
+        status = napi_get_boolean(env, supported, &param);
+        CHECK_BAIL;
+        status = napi_set_named_property(env, item, "hasAnalogVideoOutputGain", param);
+        CHECK_BAIL;
+      }
+
+      #ifdef WIN32
+      hresult = deckLinkAttributes->GetFlag(BMDDeckLinkCanOnlyAdjustOverallVideoOutputGain, &supportedWin);
+      supported = (supportedWin == TRUE);
+      #else
+      hresult = deckLinkAttributes->GetFlag(BMDDeckLinkCanOnlyAdjustOverallVideoOutputGain, &supported);
+      #endif
+  	  if (hresult == S_OK) {
+        status = napi_get_boolean(env, supported, &param);
+        CHECK_BAIL;
+        status = napi_set_named_property(env, item, "canOnlyAdjustOverallVideoOutputGain", param);
+        CHECK_BAIL;
+      }
+
+      #ifdef WIN32
+      hresult = deckLinkAttributes->GetFlag(BMDDeckLinkHasVideoInputAntiAliasingFilter, &supportedWin);
+      supported = (supportedWin == TRUE);
+      #else
+      hresult = deckLinkAttributes->GetFlag(BMDDeckLinkHasVideoInputAntiAliasingFilter, &supported);
+      #endif
+      if (hresult == S_OK) {
+        status = napi_get_boolean(env, supported, &param);
+        CHECK_BAIL;
+        status = napi_set_named_property(env, item, "hasVideoInputAntiAliasingFilter", param);
+        CHECK_BAIL;
+      }
+
+      #ifdef WIN32
+      hresult = deckLinkAttributes->GetFlag(BMDDeckLinkHasBypass, &supportedWin);
+      supported = (supportedWin == TRUE);
+      #else
+      hresult = deckLinkAttributes->GetFlag(BMDDeckLinkHasBypass, &supported);
+      #endif
+      if (hresult == S_OK) {
+        status = napi_get_boolean(env, supported, &param);
+        CHECK_BAIL;
+        status = napi_set_named_property(env, item, "hasLinkBypass", param);
+        CHECK_BAIL;
       }
 
       hresult = deckLinkAttributes->GetInt(BMDDeckLinkDeviceInterface, &value);
@@ -424,20 +501,20 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
         switch (value) {
           case bmdDeviceInterfacePCI:
             status = napi_create_string_utf8(env, "PCI", NAPI_AUTO_LENGTH, &param);
-            CHECK_RELEASE;
+            CHECK_BAIL;
             break;
           case bmdDeviceInterfaceUSB:
             status = napi_create_string_utf8(env, "USB", NAPI_AUTO_LENGTH, &param);
-            CHECK_RELEASE;
+            CHECK_BAIL;
             break;
           case bmdDeviceInterfaceThunderbolt:
             status = napi_create_string_utf8(env, "Thunderbolt", NAPI_AUTO_LENGTH, &param);
-            CHECK_RELEASE;
+            CHECK_BAIL;
             break;
         }
 
         status = napi_set_named_property(env, item, "deviceInterface", param);
-        CHECK_RELEASE;
+        CHECK_BAIL;
       }
 
       hresult = deckLinkAttributes->GetInt(BMDDeckLinkVideoInputConnections, &value);
@@ -445,52 +522,52 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
         napi_value connb, connj;
         uint32_t indexi = 0;
         status = napi_create_array(env, &connb);
-        CHECK_RELEASE;
+        CHECK_BAIL;
 
         if (value & bmdVideoConnectionSDI) {
           status = napi_create_string_utf8(env, "SDI", NAPI_AUTO_LENGTH, &connj);
-          CHECK_RELEASE;
+          CHECK_BAIL;
           status = napi_set_element(env, connb, indexi++, connj);
-          CHECK_RELEASE;
+          CHECK_BAIL;
         }
 
         if (value & bmdVideoConnectionHDMI) {
           status = napi_create_string_utf8(env, "HDMI", NAPI_AUTO_LENGTH, &connj);
-          CHECK_RELEASE;
+          CHECK_BAIL;
           status = napi_set_element(env, connb, indexi++, connj);
-          CHECK_RELEASE;
+          CHECK_BAIL;
         }
 
         if (value & bmdVideoConnectionOpticalSDI) {
           status = napi_create_string_utf8(env, "Optical SDI", NAPI_AUTO_LENGTH, &connj);
-          CHECK_RELEASE;
+          CHECK_BAIL;
           status = napi_set_element(env, connb, indexi++, connj);
-          CHECK_RELEASE;
+          CHECK_BAIL;
         }
 
         if (value & bmdVideoConnectionComponent) {
           status = napi_create_string_utf8(env, "Component", NAPI_AUTO_LENGTH, &connj);
-          CHECK_RELEASE;
+          CHECK_BAIL;
           status = napi_set_element(env, connb, indexi++, connj);
-          CHECK_RELEASE;
+          CHECK_BAIL;
         }
 
         if (value & bmdVideoConnectionComposite){
           status = napi_create_string_utf8(env, "Composite", NAPI_AUTO_LENGTH, &connj);
-          CHECK_RELEASE;
+          CHECK_BAIL;
           status = napi_set_element(env, connb, indexi++, connj);
-          CHECK_RELEASE;
+          CHECK_BAIL;
         }
 
         if (value & bmdVideoConnectionSVideo) {
           status = napi_create_string_utf8(env, "S-Video", NAPI_AUTO_LENGTH, &connj);
-          CHECK_RELEASE;
+          CHECK_BAIL;
           status = napi_set_element(env, connb, indexi++, connj);
-          CHECK_RELEASE;
+          CHECK_BAIL;
         }
 
         status = napi_set_named_property(env, item, "videoInputConnections", connb);
-        CHECK_RELEASE;
+        CHECK_BAIL;
       }
 
       hresult = deckLinkAttributes->GetInt(BMDDeckLinkVideoOutputConnections, &value);
@@ -498,52 +575,52 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
         napi_value conna, conni;
         uint32_t indexo = 0;
         status = napi_create_array(env, &conna);
-        CHECK_RELEASE;
+        CHECK_BAIL;
 
         if (value & bmdVideoConnectionSDI) {
           status = napi_create_string_utf8(env, "SDI", NAPI_AUTO_LENGTH, &conni);
-          CHECK_RELEASE;
+          CHECK_BAIL;
           status = napi_set_element(env, conna, indexo++, conni);
-          CHECK_RELEASE;
+          CHECK_BAIL;
         }
 
         if (value & bmdVideoConnectionHDMI) {
           status = napi_create_string_utf8(env, "HDMI", NAPI_AUTO_LENGTH, &conni);
-          CHECK_RELEASE;
+          CHECK_BAIL;
           status = napi_set_element(env, conna, indexo++, conni);
-          CHECK_RELEASE;
+          CHECK_BAIL;
         }
 
         if (value & bmdVideoConnectionOpticalSDI) {
           status = napi_create_string_utf8(env, "Optical SDI", NAPI_AUTO_LENGTH, &conni);
-          CHECK_RELEASE;
+          CHECK_BAIL;
           status = napi_set_element(env, conna, indexo++, conni);
-          CHECK_RELEASE;
+          CHECK_BAIL;
         }
 
         if (value & bmdVideoConnectionComponent) {
           status = napi_create_string_utf8(env, "Component", NAPI_AUTO_LENGTH, &conni);
-          CHECK_RELEASE;
+          CHECK_BAIL;
           status = napi_set_element(env, conna, indexo++, conni);
-          CHECK_RELEASE;
+          CHECK_BAIL;
         }
 
         if (value & bmdVideoConnectionComposite){
           status = napi_create_string_utf8(env, "Composite", NAPI_AUTO_LENGTH, &conni);
-          CHECK_RELEASE;
+          CHECK_BAIL;
           status = napi_set_element(env, conna, indexo++, conni);
-          CHECK_RELEASE;
+          CHECK_BAIL;
         }
 
         if (value & bmdVideoConnectionSVideo) {
           status = napi_create_string_utf8(env, "S-Video", NAPI_AUTO_LENGTH, &conni);
-          CHECK_RELEASE;
+          CHECK_BAIL;
           status = napi_set_element(env, conna, indexo++, conni);
-          CHECK_RELEASE;
+          CHECK_BAIL;
         }
 
         status = napi_set_named_property(env, item, "videoOutputConnections", conna);
-        CHECK_RELEASE;
+        CHECK_BAIL;
       }
 
       deckLinkAttributes->Release();
@@ -551,28 +628,21 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
     } // Get deckLinkAttributes
 
     status = queryInputDisplayModes(env, deckLink, item);
-    CHECK_RELEASE;
+    CHECK_BAIL;
 
     status = queryOutputDisplayModes(env, deckLink, item);
-    CHECK_RELEASE;
+    CHECK_BAIL;
 
     status = napi_set_element(env, result, index++, item);
-    CHECK_RELEASE;
-
-
-    deckLink->Release();
+    CHECK_BAIL;
   } // end while look
 
+bail:
+  if (deckLink != nullptr) deckLink->Release();
   deckLinkIterator->Release();
+  if (deckLinkAttributes != nullptr) deckLinkAttributes->Release();
 
   return result;
-}
-
-#define DISPLAY_RELEASE if (checkStatus(env, status, __FILE__, __LINE__ - 1) != napi_ok) { \
-  if (deckLinkIO != nullptr) deckLinkIO->Release(); \
-  if (displayModeIterator != nullptr) displayModeIterator->Release(); \
-  if (displayMode != nullptr) displayMode->Release(); \
-  return status; \
 }
 
 napi_status queryOutputDisplayModes(napi_env env, IDeckLink* deckLink, napi_value result) {
@@ -594,9 +664,9 @@ napi_status queryOutputDisplayModes(napi_env env, IDeckLink* deckLink, napi_valu
   BMDDisplayModeSupport	displayModeSupport;
 
   status = napi_create_array(env, &modes);
-  DISPLAY_RELEASE;
+  CHECK_BAIL;
   status = napi_set_named_property(env, result, "outputDisplayModes", modes);
-  DISPLAY_RELEASE;
+  CHECK_BAIL;
 
   // Query the DeckLink for its configuration interface
   hresult = deckLink->QueryInterface(IID_IDeckLinkOutput, (void**)&deckLinkIO);
@@ -610,7 +680,7 @@ napi_status queryOutputDisplayModes(napi_env env, IDeckLink* deckLink, napi_valu
   while (displayModeIterator->Next(&displayMode) == S_OK) {
 
     status = napi_create_object(env, &modeobj);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
 
     #ifdef WIN32
     BSTR			displayModeBSTR = NULL;
@@ -632,39 +702,39 @@ napi_status queryOutputDisplayModes(napi_env env, IDeckLink* deckLink, napi_valu
     #endif
 
     status = napi_create_string_utf8(env, modeName, NAPI_AUTO_LENGTH, &item);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
     status = napi_set_named_property(env, modeobj, "name", item);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
 
 		modeWidth = displayMode->GetWidth();
     status = napi_create_int64(env, modeWidth, &item);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
     status = napi_set_named_property(env, modeobj, "width", item);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
 
 		modeHeight = displayMode->GetHeight();
     status = napi_create_int64(env, modeHeight, &item);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
     status = napi_set_named_property(env, modeobj, "height", item);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
 
 	  displayMode->GetFrameRate(&frameRateDuration, &frameRateScale);
 		// printf(" %-20s \t %d x %d \t %7g FPS\t", displayModeString, modeWidth, modeHeight, (double)frameRateScale / (double)frameRateDuration);
     status = napi_create_array(env, &item);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
     status = napi_create_int64(env, frameRateDuration, &itemPart);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
     status = napi_set_element(env, item, 0, itemPart);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
     status = napi_create_int64(env, frameRateScale, &itemPart);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
     status = napi_set_element(env, item, 1, itemPart);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
     status = napi_set_named_property(env, modeobj, "frameRate", item);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
 
     status = napi_create_array(env, &item);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
 
     partIndex = 0;
     pixelFormatIndex = 0;
@@ -678,28 +748,28 @@ napi_status queryOutputDisplayModes(napi_env env, IDeckLink* deckLink, napi_valu
 
 				status = napi_create_string_utf8(env, gKnownPixelFormatNames[pixelFormatIndex],
           NAPI_AUTO_LENGTH, &itemPart);
-        DISPLAY_RELEASE;
+        CHECK_BAIL;
         status = napi_set_element(env, item, partIndex++, itemPart);
-        DISPLAY_RELEASE;
+        CHECK_BAIL;
 			}
 
 			pixelFormatIndex++;
 		}
     status = napi_set_named_property(env, modeobj, "videoModes", item);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
 
     status = napi_set_element(env, modes, modeIndex++, modeobj);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
 
     displayMode->Release();
   }
 
-  bail:
-    if (deckLinkIO != nullptr) deckLinkIO->Release();
-    if (displayModeIterator != nullptr) displayModeIterator->Release();
-    if (displayMode != nullptr) displayMode->Release();
+bail:
+  if (deckLinkIO != nullptr) deckLinkIO->Release();
+  if (displayModeIterator != nullptr) displayModeIterator->Release();
+  if (displayMode != nullptr) displayMode->Release();
 
-    return napi_ok;
+  return status;
 }
 
 napi_status queryInputDisplayModes(napi_env env, IDeckLink* deckLink, napi_value result) {
@@ -721,9 +791,9 @@ napi_status queryInputDisplayModes(napi_env env, IDeckLink* deckLink, napi_value
   BMDDisplayModeSupport	displayModeSupport;
 
   status = napi_create_array(env, &modes);
-  DISPLAY_RELEASE;
+  CHECK_BAIL;
   status = napi_set_named_property(env, result, "inputDisplayModes", modes);
-  DISPLAY_RELEASE;
+  CHECK_BAIL;
 
   // Query the DeckLink for its configuration interface
   hresult = deckLink->QueryInterface(IID_IDeckLinkInput, (void**)&deckLinkIO);
@@ -737,7 +807,7 @@ napi_status queryInputDisplayModes(napi_env env, IDeckLink* deckLink, napi_value
   while (displayModeIterator->Next(&displayMode) == S_OK) {
 
     status = napi_create_object(env, &modeobj);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
 
     #ifdef WIN32
     BSTR			displayModeBSTR = NULL;
@@ -759,39 +829,39 @@ napi_status queryInputDisplayModes(napi_env env, IDeckLink* deckLink, napi_value
     #endif
 
     status = napi_create_string_utf8(env, modeName, NAPI_AUTO_LENGTH, &item);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
     status = napi_set_named_property(env, modeobj, "name", item);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
 
 		modeWidth = displayMode->GetWidth();
     status = napi_create_int64(env, modeWidth, &item);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
     status = napi_set_named_property(env, modeobj, "width", item);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
 
 		modeHeight = displayMode->GetHeight();
     status = napi_create_int64(env, modeHeight, &item);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
     status = napi_set_named_property(env, modeobj, "height", item);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
 
 	  displayMode->GetFrameRate(&frameRateDuration, &frameRateScale);
 		// printf(" %-20s \t %d x %d \t %7g FPS\t", displayModeString, modeWidth, modeHeight, (double)frameRateScale / (double)frameRateDuration);
     status = napi_create_array(env, &item);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
     status = napi_create_int64(env, frameRateDuration, &itemPart);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
     status = napi_set_element(env, item, 0, itemPart);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
     status = napi_create_int64(env, frameRateScale, &itemPart);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
     status = napi_set_element(env, item, 1, itemPart);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
     status = napi_set_named_property(env, modeobj, "frameRate", item);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
 
     status = napi_create_array(env, &item);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
 
     partIndex = 0;
     pixelFormatIndex = 0;
@@ -805,28 +875,28 @@ napi_status queryInputDisplayModes(napi_env env, IDeckLink* deckLink, napi_value
 
 				status = napi_create_string_utf8(env, gKnownPixelFormatNames[pixelFormatIndex],
           NAPI_AUTO_LENGTH, &itemPart);
-        DISPLAY_RELEASE;
+        CHECK_BAIL;
         status = napi_set_element(env, item, partIndex++, itemPart);
-        DISPLAY_RELEASE;
+        CHECK_BAIL;
 			}
 
 			pixelFormatIndex++;
 		}
     status = napi_set_named_property(env, modeobj, "videoModes", item);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
 
     status = napi_set_element(env, modes, modeIndex++, modeobj);
-    DISPLAY_RELEASE;
+    CHECK_BAIL;
 
     displayMode->Release();
   }
 
-  bail:
-    if (deckLinkIO != nullptr) deckLinkIO->Release();
-    if (displayModeIterator != nullptr) displayModeIterator->Release();
-    if (displayMode != nullptr) displayMode->Release();
+bail:
+  if (deckLinkIO != nullptr) deckLinkIO->Release();
+  if (displayModeIterator != nullptr) displayModeIterator->Release();
+  if (displayMode != nullptr) displayMode->Release();
 
-    return napi_ok;
+  return status;
 }
 
 napi_value Init(napi_env env, napi_value exports) {
