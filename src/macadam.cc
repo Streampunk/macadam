@@ -1099,7 +1099,7 @@ napi_status queryOutputDisplayModes(napi_env env, IDeckLink* deckLink, napi_valu
   napi_value modes, modeobj, item, itemPart;
   uint32_t modeIndex = 0, partIndex = 0;
 
-  #ifdef WIN32 | __APPLE__
+  #if defined(WIN32) || defined(__APPLE__)
   char modeName[64];
   #else
   char * modeName;
@@ -1231,7 +1231,7 @@ napi_status queryInputDisplayModes(napi_env env, IDeckLink* deckLink, napi_value
   napi_value modes, modeobj, item, itemPart;
   uint32_t modeIndex = 0, partIndex = 0;
 
-  #ifdef WIN32 | __APPLE__
+  #if defined(WIN32) || defined(__APPLE__)
   char modeName[64];
   #else
   char * modeName;
