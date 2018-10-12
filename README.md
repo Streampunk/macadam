@@ -2,7 +2,7 @@
 
 Prototype bindings to link [Node.js](http://nodejs.org/) and the Blackmagic Desktop Video SDK, enabling asynchronous capture and playback to and from [Blackmagic Design](https://www.blackmagicdesign.com/) devices via a simple Javascript API.
 
-This is prototype software and is not yet suitable for production use. Currently supported platforms are Mac and Windows. Linux support is now available but is experimental and the `getFirstDevice()` call does not work as expected.
+This is prototype software and is not yet suitable for production use. Linux is now a fully supported platform. However, please note that Blackmagic USB3 devices are not supported under Linux.
 
 Why _macadam_? _Tarmacadam_ is the black stuff that magically makes roads, so it seemed appropriate as a name for a steampunk-style BlackMagic binding.
 
@@ -10,8 +10,8 @@ Why _macadam_? _Tarmacadam_ is the black stuff that magically makes roads, so it
 
 Macadam has a number of prerequisites:
 
-1. Install [Node.js](http://nodejs.org/) for your platform. This software has been developed against the long term stable (LTS) release.
-2. Install the latest version of the Blackmagic Desktop Video SDKs for your platform, available from https://www.blackmagicdesign.com/support.
+1. Install [Node.js](http://nodejs.org/) for your platform. This software has been developed against version 10.11.0 which is the current version and will soon be LTS.
+2. Install the latest version of the Blackmagic Desktop Video SDKs for your platform, available from https://www.blackmagicdesign.com/support. At least version 10.12.0 is required.
 3. Install [node-gyp](https://github.com/nodejs/node-gyp) and make sure that you have the prerequisites for compiling Javascript addons for your platform. This requires a C/C++ development kit and python v2.7.
 
 Macadam is designed to be used as a module included into another project. To include macadam into your project:
@@ -22,12 +22,135 @@ Macadam is designed to be used as a module included into another project. To inc
 
 To use macadam, `require` the module. Capture and playback operations are illustrated below.
 
+### Device information
+
+To get the name of the first device connected to the system, use `getFirstDevice()`. If the result is _undefined_ then no Blackmagic devices are connected to the system. Use tools like the _Blackmagic Desktop Video Setup_ utility to track down any issues.
+
+In depth information about the BlackMagic devices currently connected to the system can be found by calling `getDeviceInfo()`.
+
+```javascript
+const macadam = require('macadam');
+let deviceInfo = macadam.getDeviceInfo();
+```
+
+The `deviceInfo` result is an array of objects, with each object representing the capabilities of a device. For example ...
+
+```JSON
+{
+  "modelName": "Intensity Extreme",
+  "displayName": "Intensity Extreme",
+  "vendorName": "Blackmagic",
+  "deviceHandle": "54:00000000:00360600",
+  "hasSerialPort": false,
+  "topologicalID": 3540480,
+  "numberOfSubDevices": 1,
+  "subDeviceIndex": 0,
+  "maximumAudioChannels": 2,
+  "maximumAnalogAudioInputChannels": 2,
+  "maximumAnalogAudioOutputChannels": 2,
+  "supportsInputFormatDetection": false,
+  "hasReferenceInput": false,
+  "supportsFullDuplex": false,
+  "supportsExternalKeying": false,
+  "supportsInternalKeying": false,
+  "supportsHDKeying": false,
+  "hasAnalogVideoOutputGain": true,
+  "canOnlyAdjustOverallVideoOutputGain": true,
+  "videoInputGainMinimum": -1.8,
+  "videoInputGainMaximum": 1.8,
+  "videoOutputGainMinimum": -1.8,
+  "videoOutputGainMaximum": 1.8,
+  "hasVideoInputAntiAliasingFilter": false,
+  "hasLinkBypass": false,
+  "supportsClockTimingAdjustment": false,
+  "supportsFullFrameReferenceInputTimingOffset": false,
+  "supportsSMPTELevelAOutput": false,
+  "supportsDualLinkSDI": false,
+  "supportsQuadLinkSDI": false,
+  "supportsIdleOutput": true,
+  "hasLTCTimecodeInput": false,
+  "supportsDuplexModeConfiguration": false,
+  "supportsHDRMetadata": false,
+  "supportsColorspaceMetadata": false,
+  "deviceInterface": "Thunderbolt",
+  "deviceSupports": [ "Capture", "Playback" ],
+  "controlConnections": [],
+  "videoInputConnections": [ "HDMI", "Component", "Composite", "S-Video" ],
+  "audioInputConnections": [ "Embedded", "Analog", "AnalogRCA" ],
+  "audioInputRCAChannelCount": 2,
+  "audioInputXLRChannelCount": 0,
+  "videoOutputConnections": [ "HDMI", "Component", "Composite", "S-Video" ],
+  "audioOutputConnections": [ "Embedded", "AESEBU", "Analog", "AnalogRCA" ],
+  "audioOutputRCAChannelCount": 2,
+  "audioOutputXLRChannelCount": 0,
+  "inputDisplayModes": [ {
+      "name": "NTSC",
+      "width": 720,
+      "height": 486,
+      "frameRate": [ 1001, 30000 ],
+      "videoModes": [ "8-bit YUV", "10-bit YUV" ]
+    }, { "..." }, {
+      "name": "1080p29.97",
+      "width": 1920,
+      "height": 1080,
+      "frameRate": [ 1001, 30000 ],
+      "videoModes": [ "8-bit YUV" ]
+    },
+    {
+      "name": "1080p30",
+      "width": 1920,
+      "height": 1080,
+      "frameRate": [
+        1000,
+        30000
+      ],
+      "videoModes": [
+        "8-bit YUV"
+      ]
+    },
+    {
+      "name": "1080i50",
+      "width": 1920,
+      "height": 1080,
+      "frameRate": [
+        1000,
+        25000
+      ],
+      "videoModes": [
+        "8-bit YUV"
+      ]
+    }, {
+      "name": "720p60",
+      "width": 1280,
+      "height": 720,
+      "frameRate": [
+        1000,
+        60000
+      ],
+      "videoModes": [
+        "8-bit YUV"
+      ]
+    }
+  ]
+}
+```
+
+The index of a device in this array is used as the `deviceIndex` in calls to capture, playback and keying.
+
+### Device configuration
+
+Other than setting dispplay mode Support for device configuration is not yet available via this addon. In the meantime, use the _Blackmagic Desktop Video Setup_ utility before using macadam
+
 ### Capture
+
+Description of new native promises-backed API for capture to follow.
+
+### Capture - deprecated
 
 The macadam capture class is an event emitter that produces buffers containing video frames. Make sure you release the reference quickly (within ten frames or so) so that the frame data is garbage collected.
 
 ```javascript
-var macadam = require('macadam');
+const macadam = require('macadam');
 
 // First argument is the DeckLink device number.
 // Set appropriate values from display mode and pixel format from those macadam provides.
@@ -57,6 +180,10 @@ capture.stop(); // Stop capture.
 The ancillary data inputs of the card are not yet supported.
 
 ### Playback
+
+Description of the N-API based playback API to follow.
+
+### Playback - deprecated
 
 The playback event emitter works by sending a sequence of frame buffers and frame-sized chunks of interleaved audio data as node.js `Buffer` objects to a playback object. For smooth playback, build a few frames first and then keep adding frames as they are played. A `played` event is emitted each time playback of a frame is complete.
 
@@ -96,6 +223,10 @@ playback.stop();
 Ancillary data outputs of the card are not yet supported.
 
 Note that experience shows that the `played` event is not a good way to clock the sending of frames to the video card. It provides an indication that the frame has played. It is best to send frames to the card regularly based on a clock, such as deriving a `setTimeout` interval from `process.hrtime()`.
+
+### Keying
+
+Develop in progress. To follow shortly.
 
 ### Check the DeckLink API version
 

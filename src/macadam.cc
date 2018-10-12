@@ -480,7 +480,7 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
   	  if (hresult == S_OK) {
         status = napi_get_boolean(env, supported, &param);
         CHECK_BAIL;
-        status = napi_set_named_property(env, item, "supportsInernalKeying", param);
+        status = napi_set_named_property(env, item, "supportsInternalKeying", param);
         CHECK_BAIL;
       }
 
