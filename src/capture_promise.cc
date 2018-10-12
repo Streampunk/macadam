@@ -230,8 +230,6 @@ void captureExecute(napi_env env, void* data) {
   deckLinkIterator = CreateDeckLinkIteratorInstance();
   #endif
 
-  printf("DeckLinkIterator is %i.\n", deckLinkIterator);
-
   for ( uint32_t x = 0 ; x <= c->deviceIndex ; x++ ) {
     if (deckLinkIterator->Next(&deckLink) != S_OK) {
       // deckLinkIterator->Release();

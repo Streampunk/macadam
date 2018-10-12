@@ -93,7 +93,7 @@ napi_status checkArgs(napi_env env, napi_callback_info info, char* methodName,
     if (status != napi_ok) return status;
     if (t != types[x]) {
       char errorMsg[100];
-      sprintf(errorMsg, "For method %s argument %lu, expected type %s and got %s.",
+      sprintf(errorMsg, "For method %s argument %zu, expected type %s and got %s.",
         methodName, x + 1, getNapiTypeName(types[x]), getNapiTypeName(t));
       napi_throw_error(env, nullptr, errorMsg);
       return napi_pending_exception;

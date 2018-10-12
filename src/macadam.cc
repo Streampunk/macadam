@@ -126,8 +126,6 @@ napi_value getFirstDevice(napi_env env, napi_callback_info info) {
   #else
   deckLinkIterator = CreateDeckLinkIteratorInstance();
   #endif
-  printf("DeckLinkIterator is %i.\n", deckLinkIterator);
-
   if (deckLinkIterator->Next(&deckLink) != S_OK) {
     status = napi_get_undefined(env, &result);
     if (checkStatus(env, status, __FILE__, __LINE__ - 1) != napi_ok) {
@@ -264,19 +262,23 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
     // Query the DeckLink for its attributes interface
     hresult = deckLink->QueryInterface(IID_IDeckLinkAttributes, (void**)&deckLinkAttributes);
     if (hresult == S_OK) {
+      bool supported;
       #ifdef WIN32
-      BOOL supported;
+      BOOL supportedWin;
       BSTR name;
       #elif __APPLE__
-      bool supported;
       CFStringRef name;
       #else
-      bool supported;
       char* name;
       #endif
       int64_t value;
 
+      #ifdef WIN32
+      hresult = deckLinkAttributes->GetFlag(BMDDeckLinkHasSerialPort, &supportedWin);
+      supported = (supportedWin == TRUE);
+      #else
       hresult = deckLinkAttributes->GetFlag(BMDDeckLinkHasSerialPort, &supported);
+      #endif
       if (hresult == S_OK) {
         status = napi_get_boolean(env, supported, &param);
         CHECK_RELEASE;
@@ -352,8 +354,12 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
         status = napi_set_named_property(env, item, "maximumAudioChannels", param);
         CHECK_RELEASE;
       }
-
+      #ifdef WIN32
+      hresult = deckLinkAttributes->GetFlag(BMDDeckLinkSupportsInputFormatDetection, &supportedWin);
+      supported = (supportedWin == TRUE);
+      #else
       hresult = deckLinkAttributes->GetFlag(BMDDeckLinkSupportsInputFormatDetection, &supported);
+      #endif
   	  if (hresult == S_OK) {
         status = napi_get_boolean(env, supported, &param);
         CHECK_RELEASE;
@@ -361,7 +367,12 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
         CHECK_RELEASE;
       }
 
+      #ifdef WIN32
+      hresult = deckLinkAttributes->GetFlag(BMDDeckLinkSupportsFullDuplex, &supportedWin);
+      supported = (supportedWin == TRUE);
+      #else
       hresult = deckLinkAttributes->GetFlag(BMDDeckLinkSupportsFullDuplex, &supported);
+      #endif
       if (hresult == S_OK) {
         status = napi_get_boolean(env, supported, &param);
         CHECK_RELEASE;
@@ -369,7 +380,12 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
         CHECK_RELEASE;
       }
 
+      #ifdef WIN32
+      hresult = deckLinkAttributes->GetFlag(BMDDeckLinkSupportsExternalKeying, &supportedWin);
+      supported = (supportedWin == TRUE);
+      #else
       hresult = deckLinkAttributes->GetFlag(BMDDeckLinkSupportsExternalKeying, &supported);
+      #endif
   	  if (hresult == S_OK) {
         status = napi_get_boolean(env, supported, &param);
         CHECK_RELEASE;
@@ -377,7 +393,12 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
         CHECK_RELEASE;
       }
 
+      #ifdef WIN32
+      hresult = deckLinkAttributes->GetFlag(BMDDeckLinkSupportsInternalKeying, &supportedWin);
+      supported = (supportedWin == TRUE);
+      #else
       hresult = deckLinkAttributes->GetFlag(BMDDeckLinkSupportsInternalKeying, &supported);
+      #endif
   	  if (hresult == S_OK) {
         status = napi_get_boolean(env, supported, &param);
         CHECK_RELEASE;
@@ -385,7 +406,12 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
         CHECK_RELEASE;
       }
 
+      #ifdef WIN32
+      hresult = deckLinkAttributes->GetFlag(BMDDeckLinkSupportsHDKeying, &supportedWin);
+      supported = (supportedWin == TRUE);
+      #else
       hresult = deckLinkAttributes->GetFlag(BMDDeckLinkSupportsHDKeying, &supported);
+      #endif
   	  if (hresult == S_OK) {
         status = napi_get_boolean(env, supported, &param);
         CHECK_RELEASE;
@@ -817,7 +843,7 @@ napi_value Init(napi_env env, napi_value exports) {
 
   #ifdef WIN32
   HRESULT result;
-  result = CoInitialize(NULL);
+  result = CoInitializeEx(NULL, COINIT_MULTITHREADED);
 	if (FAILED(result))
 	{
 		fprintf(stderr, "Initialization of COM failed - result = %08x.\n", result);
