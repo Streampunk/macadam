@@ -1143,6 +1143,7 @@ napi_status queryOutputDisplayModes(napi_env env, IDeckLink* deckLink, napi_valu
     }
     #else
     hresult = displayMode->GetName((const char **) &modeName);
+    printf("Mode name status = %i with name %s.\n", hresult, modeName);
     #endif
 
     status = napi_create_string_utf8(env, modeName, NAPI_AUTO_LENGTH, &item);
