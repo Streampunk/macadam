@@ -660,8 +660,9 @@ var macadam = {
   DirectCapture : macadamNative.Capture,
   Capture : Capture,
   Playback : Playback,
-  asyncTest: macadamNative.asyncTest,
-  capture: macadamNative.capture
+  asyncTest : macadamNative.asyncTest,
+  capture : macadamNative.capture,
+  playback : macadamNative.playback
 };
 
 module.exports = macadam;

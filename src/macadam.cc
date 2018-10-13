@@ -56,6 +56,7 @@
 #include "macadam_util.h"
 #include "async_test.h"
 #include "capture_promise.h"
+#include "playback_promise.h"
 #include "node_api.h"
 
 // List of known pixel formats and their matching display names
@@ -1358,9 +1359,10 @@ napi_value Init(napi_env env, napi_value exports) {
     DECLARE_NAPI_METHOD("getFirstDevice", getFirstDevice),
     DECLARE_NAPI_METHOD("getDeviceInfo", getDeviceInfo),
     DECLARE_NAPI_METHOD("asyncTest", asyncTest),
-    DECLARE_NAPI_METHOD("capture", capture)
+    DECLARE_NAPI_METHOD("capture", capture),
+    DECLARE_NAPI_METHOD("playback", playback)
    };
-  status = napi_define_properties(env, exports, 5, desc);
+  status = napi_define_properties(env, exports, 6, desc);
   CHECK_STATUS;
 
   #ifdef WIN32
