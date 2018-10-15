@@ -52,6 +52,7 @@ napi_status checkArgs(napi_env env, napi_callback_info info, char* methodName,
 #define MACADAM_ACCESS_DENIED 4007
 #define MACADAM_OUT_OF_MEMORY 4008
 #define MACADAM_ALREADY_STOPPED 4009
+#define MACADAM_NO_OUTPUT 4010
 #define MACADAM_SUCCESS 0
 
 struct carrier {

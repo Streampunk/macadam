@@ -224,7 +224,6 @@ void captureExecute(napi_env env, void* data) {
 
   #ifdef WIN32
   hresult = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
-  printf("Status of initialize %i vs S_OK %i.\n", hresult, S_OK);
   CoCreateInstance(CLSID_CDeckLinkIterator, NULL, CLSCTX_ALL, IID_IDeckLinkIterator, (void**)&deckLinkIterator);
   #else
   deckLinkIterator = CreateDeckLinkIteratorInstance();
@@ -232,7 +231,7 @@ void captureExecute(napi_env env, void* data) {
 
   for ( uint32_t x = 0 ; x <= c->deviceIndex ; x++ ) {
     if (deckLinkIterator->Next(&deckLink) != S_OK) {
-      // deckLinkIterator->Release();
+      deckLinkIterator->Release();
       c->status = MACADAM_OUT_OF_BOUNDS;
       c->errorMsg = "Device index exceeds the number of installed devices.";
       return;

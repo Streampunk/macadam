@@ -42,7 +42,69 @@
 
 #include "playback_promise.h"
 
-napi_value playback(napi_env env, napi_callback_info info) {
+void playbackExecute(napi_env env, void* data) {
+  playbackCarrier* c = (playbackCarrier*) data;
 
-  return nullptr;
+  IDeckLinkIterator* deckLinkIterator;
+  IDeckLink* deckLink;
+  IDeckLinkOutput* deckLinkOutput;
+  HRESULT hresult;
+
+  #ifdef WIN32
+  hresult = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+  CoCreateInstance(CLSID_CDeckLinkIterator, NULL, CLSCTX_ALL, IID_IDeckLinkIterator, (void**)&deckLinkIterator);
+  #else
+  deckLinkIterator = CreateDeckLinkIteratorInstance();
+  #endif
+
+  for ( uint32_t x = 0 ; x <= c->deviceIndex ; x++ ) {
+    if (deckLinkIterator->Next(&deckLink) != S_OK) {
+      deckLinkIterator->Release();
+      c->status = MACADAM_OUT_OF_BOUNDS;
+      c->errorMsg = "Device index exceeds the number of installed devices.";
+      return;
+    }
+  }
+
+  deckLinkIterator->Release();
+
+  if (deckLink->QueryInterface(IID_IDeckLinkOutput, (void **)&deckLinkOutput) != S_OK) {
+    deckLink->Release();
+    c->status = MACADAM_NO_OUTPUT;
+    c->errorMsg = "Could not obtain the DeckLink Output interface. Does the device have an output?";
+    return;
+  }
+
+  deckLink->Release();
+  c->deckLinkOutput = deckLinkOutput;
+
+}
+
+void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
+  playbackCarrier* c = (playbackCarrier*) data;
+
+  if (asyncStatus != napi_ok) {
+    c->status = asyncStatus;
+    c->errorMsg = "Async capture creator failed to complete.";
+  }
+  REJECT_STATUS;
+
+}
+
+napi_value playback(napi_env env, napi_callback_info info) {
+  napi_value promise, resourceName;
+  playbackCarrier* c = new playbackCarrier;
+
+  c->status = napi_create_promise(env, &c->_deferred, &promise);
+  REJECT_RETURN;
+
+  c->status = napi_create_string_utf8(env, "CreatePlayback", NAPI_AUTO_LENGTH, &resourceName);
+  REJECT_RETURN;
+  c->status = napi_create_async_work(env, NULL, resourceName, playbackExecute,
+    playbackComplete, c, &c->_request);
+  REJECT_RETURN;
+  c->status = napi_queue_async_work(env, c->_request);
+  REJECT_RETURN;
+
+  return promise;
 }

@@ -58,7 +58,11 @@
 napi_value playback(napi_env env, napi_callback_info info);
 
 struct playbackCarrier : carrier {
-  ~playbackCarrier() { }
+  IDeckLinkOutput* deckLinkOutput = nullptr;
+  uint32_t deviceIndex = 0;
+  ~playbackCarrier() {
+    if (deckLinkOutput != nullptr) { deckLinkOutput->Release(); }
+  }
 };
 
 #endif // PLAYBACK_PROMISE_H
