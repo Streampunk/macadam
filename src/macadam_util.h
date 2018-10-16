@@ -99,4 +99,6 @@ int32_t rejectStatus(napi_env env, carrier* c, char* file, int32_t line);
 extern const BMDPixelFormat gKnownPixelFormats[]; // = {bmdFormat8BitYUV, bmdFormat10BitYUV, bmdFormat8BitARGB, bmdFormat8BitBGRA, bmdFormat10BitRGB, bmdFormat12BitRGB, bmdFormat12BitRGBLE, bmdFormat10BitRGBXLE, bmdFormat10BitRGBX, (BMDPixelFormat) 0};
 extern const char* gKnownPixelFormatNames[]; //= {"8-bit YUV", "10-bit YUV", "8-bit ARGB", "8-bit BGRA", "10-bit RGB", "12-bit RGB", "12-bit RGBLE", "10-bit RGBXLE", "10-bit RGBX", NULL};
 
+napi_value nop(napi_env env, napi_callback_info info);
+
 #endif // MACADAM_UTIL_H

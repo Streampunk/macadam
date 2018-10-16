@@ -58,7 +58,6 @@
 #include "DeckLinkAPI.h"
 
 napi_value capture(napi_env env, napi_callback_info info);
-napi_value nop(napi_env env, napi_callback_info info);
 napi_value framePromise(napi_env env, napi_callback_info info);
 napi_value stopStreams(napi_env env, napi_callback_info info);
 void frameResolver(napi_env env, napi_value jsCb, void* context, void* data);
@@ -107,7 +106,7 @@ struct captureThreadsafe : IDeckLinkInputCallback {
   ~captureThreadsafe() {
     if (deckLinkInput != nullptr) { deckLinkInput->Release(); }
     if (displayMode != nullptr) { displayMode->Release(); }
-  };
+  }
 };
 
 struct frameData {

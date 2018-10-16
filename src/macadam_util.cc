@@ -147,3 +147,12 @@ int32_t rejectStatus(napi_env env, carrier* c, char* file, int32_t line) {
   }
   return c->status;
 }
+
+// Should never get called
+napi_value nop(napi_env env, napi_callback_info info) {
+  napi_value value;
+  napi_status status;
+  status = napi_get_undefined(env, &value);
+  if (status != napi_ok) NAPI_THROW_ERROR("Failed to retrieve undefined in nop.");
+  return value;
+}

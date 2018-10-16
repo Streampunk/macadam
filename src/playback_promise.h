@@ -56,12 +56,42 @@
 #include "DeckLinkAPI.h"
 
 napi_value playback(napi_env env, napi_callback_info info);
+void playedFrame(napi_env env, napi_value jsCb, void* context, void* data);
+void playbackTsFnFinalize(napi_env env, void* data, void* hint);
 
 struct playbackCarrier : carrier {
   IDeckLinkOutput* deckLinkOutput = nullptr;
   uint32_t deviceIndex = 0;
+  BMDDisplayMode requestedDisplayMode;
+  BMDPixelFormat requestedPixelFormat;
+  BMDAudioSampleRate requestedSampleRate = bmdAudioSampleRate48kHz;
+  BMDAudioSampleType requestedSampleType = bmdAudioSampleType16bitInteger;
+  uint32_t channels = 0; // Set to zero for no channels
+  IDeckLinkDisplayMode* selectedDisplayMode = NULL;
   ~playbackCarrier() {
     if (deckLinkOutput != nullptr) { deckLinkOutput->Release(); }
+    if (selectedDisplayMode != nullptr) { selectedDisplayMode->Release(); }
+  }
+};
+
+struct playbackThreadsafe : IDeckLinkVideoOutputCallback {
+  playbackThreadsafe() { };
+  HRESULT ScheduledFrameCompleted(IDeckLinkVideoFrame* completedFrame, BMDOutputFrameCompletionResult result);
+  HRESULT ScheduledPlaybackHasStopped();
+  HRESULT	QueryInterface (REFIID iid, LPVOID *ppv) { return E_NOINTERFACE; }
+  ULONG AddRef() { return 1; }
+  ULONG Release() { return 1; }
+  napi_threadsafe_function tsFn;
+  IDeckLinkOutput* deckLinkOutput = nullptr;
+  IDeckLinkDisplayMode* displayMode = nullptr;
+  BMDPixelFormat pixelFormat;
+  BMDAudioSampleRate sampleRate;
+  BMDAudioSampleType sampleType;
+  uint32_t channels = 0; // Set to zero for no channels
+  BMDTimeScale timeScale;
+  ~playbackThreadsafe() {
+    if (deckLinkOutput != nullptr) { deckLinkOutput->Release(); }
+    if (displayMode != nullptr) { displayMode->Release(); }
   }
 };
 

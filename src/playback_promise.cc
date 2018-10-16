@@ -42,6 +42,23 @@
 
 #include "playback_promise.h"
 
+HRESULT playbackThreadsafe::ScheduledFrameCompleted(
+  IDeckLinkVideoFrame* completedFrame, BMDOutputFrameCompletionResult result) {
+
+  return S_OK;
+}
+
+HRESULT playbackThreadsafe::ScheduledPlaybackHasStopped() {
+
+  return S_OK;
+}
+
+void finalizePlaybackCarrier(napi_env env, void* finalize_data, void* finalize_hint) {
+  printf("Finalizing playback threadsafe.\n");
+  playbackThreadsafe* c = (playbackThreadsafe*) finalize_data;
+  delete c;
+}
+
 void playbackExecute(napi_env env, void* data) {
   playbackCarrier* c = (playbackCarrier*) data;
 
@@ -59,6 +76,7 @@ void playbackExecute(napi_env env, void* data) {
 
   for ( uint32_t x = 0 ; x <= c->deviceIndex ; x++ ) {
     if (deckLinkIterator->Next(&deckLink) != S_OK) {
+      printf("Falling out of device index iterator.\n");
       deckLinkIterator->Release();
       c->status = MACADAM_OUT_OF_BOUNDS;
       c->errorMsg = "Device index exceeds the number of installed devices.";
@@ -78,9 +96,84 @@ void playbackExecute(napi_env env, void* data) {
   deckLink->Release();
   c->deckLinkOutput = deckLinkOutput;
 
+  BMDDisplayModeSupport supported;
+
+  hresult = deckLinkOutput->DoesSupportVideoMode(c->requestedDisplayMode,
+    c->requestedPixelFormat, bmdVideoOutputFlagDefault,
+    &supported, &c->selectedDisplayMode);
+  if (hresult != S_OK) {
+    c->status = MACADAM_CALL_FAILURE;
+    c->errorMsg = "Unable to determine if video mode is supported by output device.";
+    return;
+  }
+  switch (supported) {
+    case bmdDisplayModeSupported:
+      break;
+    case bmdDisplayModeSupportedWithConversion:
+      c->status = MACADAM_NO_CONVERESION; // TODO consider adding conversion support
+      c->errorMsg = "Display mode is supported via conversion and not by macadam.";
+      return;
+    default:
+      c->status = MACADAM_MODE_NOT_SUPPORTED;
+      c->errorMsg = "Requested display mode is not supported.";
+      return;
+  }
+
+  hresult = deckLinkOutput->EnableVideoOutput(
+    c->requestedDisplayMode, bmdVideoOutputFlagDefault);
+  switch (hresult) {
+    case E_INVALIDARG: // Should have been picked up by DoesSupportVideoMode
+      c->status = MACADAM_INVALID_ARGS;
+      c->errorMsg = "Invalid arguments used to enable video output.";
+      return;
+    case E_ACCESSDENIED:
+      c->status = MACADAM_ACCESS_DENIED;
+      c->errorMsg = "Unable to access the hardware or input stream is currently active.";
+      return;
+    case E_OUTOFMEMORY:
+      c->status = MACADAM_OUT_OF_MEMORY;
+      c->errorMsg = "Unable to create an output video frame - out of memory.";
+      return;
+    case E_FAIL:
+      c->status = MACADAM_CALL_FAILURE;
+      c->errorMsg = "Failed to enable video input.";
+      return;
+    case S_OK:
+      break;
+  }
+
+  if (c->channels > 0) {
+    hresult = deckLinkOutput->EnableAudioOutput(c->requestedSampleRate,
+      c->requestedSampleType, c->channels, bmdAudioOutputStreamTimestamped);
+    switch (hresult)  {
+      case E_INVALIDARG:
+        c->status = MACADAM_INVALID_ARGS;
+        c->errorMsg = "Invalid arguments used to enable audio output. BMD supports 48kHz, 16- or 32-bit integer only.";
+        return;
+      case E_FAIL:
+        c->status = MACADAM_CALL_FAILURE;
+        c->errorMsg = "Failed to enable audio input.";
+        return;
+      case E_ACCESSDENIED:
+        c->status = MACADAM_ACCESS_DENIED;
+        c->errorMsg = "Unable to access the hardware or audio output is not enabled.";
+        return;
+      case E_OUTOFMEMORY:
+        c->status = MACADAM_OUT_OF_MEMORY;
+        c->errorMsg = "Unable to create a new internal audio frame - out of memory.";
+        return;
+      case S_OK:
+        break;
+    }
+  }
 }
 
 void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
+  napi_value param, paramPart, result, asyncName;
+  BMDTimeValue frameRateDuration;
+  BMDTimeScale frameRateScale;
+  HRESULT hresult;
+
   playbackCarrier* c = (playbackCarrier*) data;
 
   if (asyncStatus != napi_ok) {
@@ -89,14 +182,262 @@ void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
   }
   REJECT_STATUS;
 
+  c->status = napi_create_object(env, &result);
+  REJECT_STATUS;
+  c->status = napi_create_string_utf8(env, "playback", NAPI_AUTO_LENGTH, &param);
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "type", param);
+  REJECT_STATUS;
+
+
+  #ifdef WIN32
+  BSTR displayModeBSTR = NULL;
+  hresult = c->selectedDisplayMode->GetName(&displayModeBSTR);
+  if (hresult == S_OK) {
+    _bstr_t deviceName(displayModeBSTR, false);
+    c->status = napi_create_string_utf8(env, (char*) deviceName, NAPI_AUTO_LENGTH, &param);
+    REJECT_STATUS;
+  }
+  #elif __APPLE__
+  CFStringRef displayModeCFString = NULL;
+  hresult = c->selectedDisplayMode->GetName(&displayModeCFString);
+  if (hresult == S_OK) {
+    char displayModeName[64];
+    CFStringGetCString(displayModeCFString, displayModeName, sizeof(displayModeName), kCFStringEncodingMacRoman);
+    CFRelease(displayModeCFString);
+    c->status = napi_create_string_utf8(env, displayModeName, NAPI_AUTO_LENGTH, &param);
+    REJECT_STATUS;
+  }
+  #else
+  char* displayModeName;
+  hresult = c->selectedDisplayMode->GetName((const char **) &displayModeName);
+  if (hresult == S_OK) {
+    c->status = napi_create_string_utf8(env, displayModeName, NAPI_AUTO_LENGTH, &param);
+    free(displayModeName);
+    REJECT_STATUS;
+  }
+  #endif
+
+  c->status = napi_set_named_property(env, result, "displayModeName", param);
+  REJECT_STATUS;
+
+  c->status = napi_create_int32(env, c->selectedDisplayMode->GetWidth(), &param);
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "width", param);
+  REJECT_STATUS;
+
+  c->status = napi_create_int32(env, c->selectedDisplayMode->GetHeight(), &param);
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "height", param);
+  REJECT_STATUS;
+
+  switch (c->selectedDisplayMode->GetFieldDominance()) {
+    case bmdLowerFieldFirst:
+      c->status = napi_create_string_utf8(env, "lowerFieldFirst", NAPI_AUTO_LENGTH, &param);
+      break;
+    case bmdUpperFieldFirst:
+      c->status = napi_create_string_utf8(env, "upperFieldFirst", NAPI_AUTO_LENGTH, &param);
+      break;
+    case bmdProgressiveFrame:
+      c->status = napi_create_string_utf8(env, "progressiveFrame", NAPI_AUTO_LENGTH, &param);
+      break;
+    default:
+      c->status = napi_create_string_utf8(env, "unknown", NAPI_AUTO_LENGTH, &param);
+      break;
+  }
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "fieldDominance", param);
+  REJECT_STATUS;
+
+  hresult = c->selectedDisplayMode->GetFrameRate(&frameRateDuration, &frameRateScale);
+  if (hresult == S_OK) {
+    c->status = napi_create_array(env, &param);
+    REJECT_STATUS;
+    c->status = napi_create_int64(env, frameRateDuration, &paramPart);
+    REJECT_STATUS;
+    c->status = napi_set_element(env, param, 0, paramPart);
+    REJECT_STATUS;
+    c->status = napi_create_int64(env, frameRateScale, &paramPart);
+    REJECT_STATUS;
+    c->status = napi_set_element(env, param, 1, paramPart);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "frameRate", param);
+    REJECT_STATUS;
+  }
+
+  uint32_t pixelFormatIndex = 0;
+
+  while ((gKnownPixelFormats[pixelFormatIndex] != 0) &&
+      (gKnownPixelFormatNames[pixelFormatIndex] != NULL)) {
+    if (c->requestedPixelFormat == gKnownPixelFormats[pixelFormatIndex]) {
+      c->status = napi_create_string_utf8(env, gKnownPixelFormatNames[pixelFormatIndex],
+        NAPI_AUTO_LENGTH, &param);
+      REJECT_STATUS;
+      c->status = napi_set_named_property(env, result, "pixelFormat", param);
+      REJECT_STATUS;
+      break;
+    }
+    pixelFormatIndex++;
+  }
+
+  c->status = napi_get_boolean(env, (c->channels > 0), &param);
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "audioEnabled", param);
+  REJECT_STATUS;
+
+  if (c->channels > 0) {
+    c->status = napi_create_int32(env, c->requestedSampleRate, &param);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "sampleRate", param);
+    REJECT_STATUS;
+
+    c->status = napi_create_int32(env, c->requestedSampleType, &param);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "sampleType", param);
+    REJECT_STATUS;
+
+    c->status = napi_create_int32(env, c->channels, &param);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "channels", param);
+    REJECT_STATUS;
+  };
+
+  playbackThreadsafe* pbts = new playbackThreadsafe;
+  pbts->deckLinkOutput = c->deckLinkOutput;
+  c->deckLinkOutput = nullptr;
+  pbts->displayMode = c->selectedDisplayMode;
+  c->selectedDisplayMode = nullptr;
+  pbts->timeScale = frameRateScale;
+  pbts->pixelFormat = c->requestedPixelFormat;
+  pbts->channels = c->channels;
+  if (c->channels > 0) {
+    pbts->sampleRate = c->requestedSampleRate;
+    pbts->sampleType = c->requestedSampleType;
+  }
+
+  hresult = pbts->deckLinkOutput->SetScheduledFrameCompletionCallback(pbts);
+  if (hresult != S_OK) {
+    c->status = MACADAM_CALL_FAILURE;
+    c->errorMsg = "Unable to set callback for deck link output.";
+    REJECT_STATUS;
+  }
+
+  c->status = napi_create_string_utf8(env, "playback", NAPI_AUTO_LENGTH, &asyncName);
+  REJECT_STATUS;
+  c->status = napi_create_function(env, "nop", NAPI_AUTO_LENGTH, nop, nullptr, &param);
+  REJECT_STATUS;
+  c->status = napi_create_threadsafe_function(env, param, nullptr, asyncName,
+    20, 1, nullptr, playbackTsFnFinalize, pbts, playedFrame, &pbts->tsFn);
+  REJECT_STATUS;
+
+  c->status = napi_create_external(env, pbts, finalizePlaybackCarrier, nullptr, &param);
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "deckLinkOutput", param);
+  REJECT_STATUS;
+
+  napi_status status;
+  status = napi_resolve_deferred(env, c->_deferred, result);
+  FLOATING_STATUS;
+
+  tidyCarrier(env, c);
 }
 
 napi_value playback(napi_env env, napi_callback_info info) {
-  napi_value promise, resourceName;
+  napi_value promise, resourceName, options, param;
+  napi_valuetype type;
+  bool isArray;
   playbackCarrier* c = new playbackCarrier;
 
   c->status = napi_create_promise(env, &c->_deferred, &promise);
   REJECT_RETURN;
+
+  c->requestedDisplayMode = bmdModeHD1080i50;
+  c->requestedPixelFormat = bmdFormat10BitYUV;
+  size_t argc = 1;
+  napi_value args[1];
+  c->status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+  REJECT_RETURN;
+
+  if (argc >= 1) {
+    c->status = napi_typeof(env, args[0], &type);
+    REJECT_RETURN;
+    c->status = napi_is_array(env, args[0], &isArray);
+    REJECT_RETURN;
+    if ((type != napi_object) || (isArray == true)) REJECT_ERROR_RETURN(
+        "Options provided to capture create must be an object and not an array.",
+        MACADAM_INVALID_ARGS);
+    options = args[0];
+  }
+  else {
+    c->status = napi_create_object(env, &options);
+    REJECT_RETURN;
+  }
+
+  c->status = napi_get_named_property(env, options, "deviceIndex", &param);
+  REJECT_RETURN;
+  c->status = napi_typeof(env, param, &type);
+  REJECT_RETURN;
+  if (type != napi_undefined) {
+    if (type != napi_number) REJECT_ERROR_RETURN(
+      "Device index must be a number.", MACADAM_INVALID_ARGS);
+    c->status = napi_get_value_uint32(env, param, &c->deviceIndex);
+    REJECT_RETURN;
+  }
+
+  c->status = napi_get_named_property(env, options, "displayMode", &param);
+  REJECT_RETURN;
+  c->status = napi_typeof(env, param, &type);
+  REJECT_RETURN;
+  if (type != napi_undefined) {
+    if (type != napi_number) REJECT_ERROR_RETURN(
+      "Display mode must be an enumeration value.", MACADAM_INVALID_ARGS);
+    c->status = napi_get_value_uint32(env, param, (uint32_t *) &c->requestedDisplayMode);
+    REJECT_RETURN;
+  }
+
+  c->status = napi_get_named_property(env, options, "pixelFormat", &param);
+  REJECT_RETURN;
+  c->status = napi_typeof(env, param, &type);
+  REJECT_RETURN;
+  if (type != napi_undefined) {
+    if (type != napi_number) REJECT_ERROR_RETURN(
+      "Pixel format must be an enumeration value.", MACADAM_INVALID_ARGS);
+    c->status = napi_get_value_uint32(env, param, (uint32_t *) &c->requestedPixelFormat);
+    REJECT_RETURN;
+  }
+
+  c->status = napi_get_named_property(env, options, "channels", &param);
+  REJECT_RETURN;
+  c->status = napi_typeof(env, param, &type);
+  REJECT_RETURN;
+  if (type != napi_undefined) {
+    if (type != napi_number) REJECT_ERROR_RETURN(
+      "Audio channel count must be a number.", MACADAM_INVALID_ARGS);
+    c->status = napi_get_value_uint32(env, param, &c->channels);
+    REJECT_RETURN;
+  }
+
+  c->status = napi_get_named_property(env, options, "sampleRate", &param);
+  REJECT_RETURN;
+  c->status = napi_typeof(env, param, &type);
+  REJECT_RETURN;
+  if (type != napi_undefined) {
+    if (type != napi_number) REJECT_ERROR_RETURN(
+      "Audio sample rate must be an enumeration value.", MACADAM_INVALID_ARGS);
+    c->status = napi_get_value_uint32(env, param, (uint32_t *) &c->requestedSampleRate);
+    REJECT_RETURN;
+  }
+
+  c->status = napi_get_named_property(env, options, "sampleType", &param);
+  REJECT_RETURN;
+  c->status = napi_typeof(env, param, &type);
+  REJECT_RETURN;
+  if (type != napi_undefined) {
+    if (type != napi_number) REJECT_ERROR_RETURN(
+      "Audio sample type must be an enumeration value.", MACADAM_INVALID_ARGS);
+    c->status = napi_get_value_uint32(env, param, (uint32_t *) &c->requestedSampleType);
+    REJECT_RETURN;
+  }
 
   c->status = napi_create_string_utf8(env, "CreatePlayback", NAPI_AUTO_LENGTH, &resourceName);
   REJECT_RETURN;
@@ -107,4 +448,14 @@ napi_value playback(napi_env env, napi_callback_info info) {
   REJECT_RETURN;
 
   return promise;
+}
+
+void playedFrame(napi_env env, napi_value jsCb, void* context, void* data) {
+
+  return;
+}
+
+void playbackTsFnFinalize(napi_env env, void* data, void* hint) {
+  printf("Threadsafe playback finalizer called.\n");
+  // FIXME: Implement this
 }

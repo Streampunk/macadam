@@ -120,16 +120,7 @@ HRESULT captureThreadsafe::VideoInputFormatChanged(
   return E_FAIL;
 }
 
-// Should never get called
-napi_value nop(napi_env env, napi_callback_info info) {
-  napi_value value;
-  napi_status status;
-  status = napi_get_undefined(env, &value);
-  if (status != napi_ok) NAPI_THROW_ERROR("Failed to retrieve undefined in nop.");
-  return value;
-}
-
-void finalizeCarrier(napi_env env, void* finalize_data, void* finalize_hint) {
+void finalizeCaptureCarrier(napi_env env, void* finalize_data, void* finalize_hint) {
   printf("Finalizing capture threadsafe.\n");
   captureThreadsafe* c = (captureThreadsafe*) finalize_data;
   delete c;
@@ -257,7 +248,7 @@ void captureExecute(napi_env env, void* data) {
     &supported, &c->selectedDisplayMode);
   if (hresult != S_OK) {
     c->status = MACADAM_CALL_FAILURE;
-    c->errorMsg = "Unable to determine is video mode is supported by input device.";
+    c->errorMsg = "Unable to determine if video mode is supported by input device.";
     return;
   }
   switch (supported) {
@@ -493,7 +484,7 @@ void captureComplete(napi_env env, napi_status asyncStatus, void* data) {
     20, 1, nullptr, captureTsFnFinalize, crts, frameResolver, &crts->tsFn);
   REJECT_STATUS;
 
-  c->status = napi_create_external(env, crts, finalizeCarrier, nullptr, &param);
+  c->status = napi_create_external(env, crts, finalizeCaptureCarrier, nullptr, &param);
   REJECT_STATUS;
   c->status = napi_set_named_property(env, result, "deckLinkInput", param);
   REJECT_STATUS;
@@ -876,4 +867,5 @@ bail:
 
 void captureTsFnFinalize(napi_env env, void* data, void* hint) {
   printf("Threadsafe capture finalizer called.\n");
+  // FIXME: Implement this
 }
