@@ -40,6 +40,34 @@
  ** -LICENSE-END-
  */
 
+/* API sketch
+
+let p = await mac.playback({
+
+});
+
+// Scheduled playback
+
+p.scheduleVideo(data, time[o+0]);
+p.scheduleAudio(data, time[o+0]);
+p.scheduleVideo(data, time[0+1]);
+p.scheduleAudio(data, time[o+1]);
+p.scheduleVideo(data, time[o+2]);
+p.scheduleAudio(data, time[o+2]);
+
+lwt c = 0;
+while (more) {
+  let status = await p.played(time[c]);
+  p.scheduleVideo(data, time[3+c]);
+  p.scheduleAudio(data, time[3+c++]);
+}
+
+// Sync playback API
+
+let f = await p.play(data);
+
+*/
+
 #include "playback_promise.h"
 
 HRESULT playbackThreadsafe::ScheduledFrameCompleted(
