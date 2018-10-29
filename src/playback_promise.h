@@ -58,6 +58,7 @@
 napi_value playback(napi_env env, napi_callback_info info);
 void playedFrame(napi_env env, napi_value jsCb, void* context, void* data);
 void playbackTsFnFinalize(napi_env env, void* data, void* hint);
+napi_value displayFrame(napi_env env, napi_callback_info info);
 
 struct playbackCarrier : carrier {
   IDeckLinkOutput* deckLinkOutput = nullptr;
@@ -76,13 +77,15 @@ struct playbackCarrier : carrier {
 
 struct displayFrameCarrier : carrier, IDeckLinkVideoFrame {
   IDeckLinkOutput* deckLinkOutput = nullptr;
-  uint32_t width, length, rowBytes;
+  int32_t width;
+  int32_t height;
+  int32_t rowBytes;
   BMDPixelFormat pixelFormat;
   BMDFrameFlags frameFlags = bmdFrameFlagDefault;
-  char* data;
-  uint32_t dataSize;
+  void* data;
+  size_t dataSize;
   long GetWidth (void) { return width; };
-  long GetHeight (void) { return length; };
+  long GetHeight (void) { return height; };
   long GetRowBytes (void) { return rowBytes; };
   BMDPixelFormat GetPixelFormat (void) { return pixelFormat; };
   BMDFrameFlags GetFlags (void) { return frameFlags; };
@@ -117,6 +120,10 @@ struct playbackThreadsafe : IDeckLinkVideoOutputCallback {
   BMDAudioSampleType sampleType;
   uint32_t channels = 0; // Set to zero for no channels
   BMDTimeScale timeScale;
+  int32_t width;
+  int32_t height;
+  int32_t rowBytes;
+  bool started = false;
   ~playbackThreadsafe() {
     if (deckLinkOutput != nullptr) { deckLinkOutput->Release(); }
     if (displayMode != nullptr) { displayMode->Release(); }

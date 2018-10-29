@@ -369,6 +369,9 @@ void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
   pbts->displayMode = c->selectedDisplayMode;
   c->selectedDisplayMode = nullptr;
   pbts->timeScale = frameRateScale;
+  pbts->width = width;
+  pbts->height = height;
+  pbts->rowBytes = rowBytes;
   pbts->pixelFormat = c->requestedPixelFormat;
   pbts->channels = c->channels;
   if (c->channels > 0) {
@@ -382,6 +385,12 @@ void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
     c->errorMsg = "Unable to set callback for deck link output.";
     REJECT_STATUS;
   }
+
+  c->status = napi_create_function(env, "displayFrame", NAPI_AUTO_LENGTH, displayFrame,
+    nullptr, &param);
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "pause", param);
+  REJECT_STATUS;
 
   c->status = napi_create_string_utf8(env, "playback", NAPI_AUTO_LENGTH, &asyncName);
   REJECT_STATUS;
@@ -520,7 +529,6 @@ void displayFrameExecute(napi_env env, void* data) {
   displayFrameCarrier* c = (displayFrameCarrier*) data;
   HRESULT hresult;
 
-
   // This call will block - make sure thread pool is large enough
   hresult = c->deckLinkOutput->DisplayVideoFrameSync(c);
   switch (hresult) {
@@ -541,11 +549,11 @@ void displayFrameExecute(napi_env env, void* data) {
     default:
       break;
   }
-
 }
 
 void displayFrameComplete(napi_env env, napi_status asyncStatus, void* data) {
   displayFrameCarrier* c = (displayFrameCarrier*) data;
+  napi_value result;
 
   if (asyncStatus != napi_ok) {
     c->status = asyncStatus;
@@ -553,15 +561,62 @@ void displayFrameComplete(napi_env env, napi_status asyncStatus, void* data) {
   }
   REJECT_STATUS;
 
+  c->status = napi_create_object(env, &result);
+  REJECT_STATUS;
+
+  napi_status status;
+  status = napi_resolve_deferred(env, c->_deferred, result);
+  FLOATING_STATUS;
+
   tidyCarrier(env, c);
 }
 
 napi_value displayFrame(napi_env env, napi_callback_info info) {
-  napi_status status;
-  napi_value promise, resourceName;
+  napi_value promise, resourceName, playback, param;
+  playbackThreadsafe* pbts;
   displayFrameCarrier* c = new displayFrameCarrier;
+  bool isBuffer;
 
   c->status = napi_create_promise(env, &c->_deferred, &promise);
+  REJECT_RETURN;
+
+  size_t argc = 1;
+  napi_value argv[1];
+  c->status = napi_get_cb_info(env, info, &argc, argv, &playback, nullptr);
+  REJECT_RETURN;
+
+  if (argc != 1) REJECT_ERROR_RETURN(
+    "Frame can only be displayed from a buffer of data.", MACADAM_INVALID_ARGS);
+
+  c->status = napi_is_buffer(env, argv[0], &isBuffer);
+  REJECT_RETURN;
+
+  if (!isBuffer) REJECT_ERROR_RETURN(
+    "Frame data must be provided as a node buffer.", MACADAM_INVALID_ARGS);
+
+  c->status = napi_get_buffer_info(env, argv[0], &c->data, &c->dataSize);
+  REJECT_RETURN;
+
+  if (((int32_t) c->dataSize) < c->rowBytes * c->height) REJECT_ERROR_RETURN(
+    "Insufficient number of bytes in buffer for frame playback.",
+    MACADAM_INSUFFICIENT_BYTES);
+
+  c->status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
+  REJECT_RETURN;
+  c->status = napi_get_value_external(env, param, (void**) &pbts);
+  REJECT_RETURN;
+
+  if (pbts->started) REJECT_ERROR_RETURN(
+    "Display frame cannot be used in conjuction with scheduled playback.",
+    MACADAM_ERROR_START);
+
+  c->width = pbts->width;
+  c->height = pbts->height;
+  c->rowBytes = pbts->rowBytes;
+  c->pixelFormat = pbts->pixelFormat;
+  c->deckLinkOutput = pbts->deckLinkOutput;
+
+  c->status = napi_create_reference(env, argv[0], 1, &c->passthru);
   REJECT_RETURN;
 
   c->status = napi_create_string_utf8(env, "DisplayFrame", NAPI_AUTO_LENGTH, &resourceName);
@@ -574,8 +629,6 @@ napi_value displayFrame(napi_env env, napi_callback_info info) {
 
   return promise;
 }
-
-
 
 void playbackTsFnFinalize(napi_env env, void* data, void* hint) {
   printf("Threadsafe playback finalizer called.\n");
