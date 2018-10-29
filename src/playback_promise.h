@@ -74,6 +74,34 @@ struct playbackCarrier : carrier {
   }
 };
 
+struct displayFrameCarrier : carrier, IDeckLinkVideoFrame {
+  IDeckLinkOutput* deckLinkOutput = nullptr;
+  uint32_t width, length, rowBytes;
+  BMDPixelFormat pixelFormat;
+  BMDFrameFlags frameFlags = bmdFrameFlagDefault;
+  char* data;
+  uint32_t dataSize;
+  long GetWidth (void) { return width; };
+  long GetHeight (void) { return length; };
+  long GetRowBytes (void) { return rowBytes; };
+  BMDPixelFormat GetPixelFormat (void) { return pixelFormat; };
+  BMDFrameFlags GetFlags (void) { return frameFlags; };
+  HRESULT GetTimecode (/* in */BMDTimecodeFormat format, /* out */ IDeckLinkTimecode **timecode) {
+    // FIXME make this work
+    return S_OK;
+  };
+  HRESULT GetAncillaryData (/* out */ IDeckLinkVideoFrameAncillary **ancillary) {
+    // TODO Consider implementing this
+    return E_FAIL;
+  }
+  HRESULT GetBytes (void **buffer) { buffer = (void**) &data; return S_OK; };
+  HRESULT	QueryInterface (REFIID iid, LPVOID *ppv) { return E_NOINTERFACE; }
+  ULONG AddRef() { return 1; };
+  ULONG Release() { return 1; };
+
+  ~displayFrameCarrier() {}
+};
+
 struct playbackThreadsafe : IDeckLinkVideoOutputCallback {
   playbackThreadsafe() { };
   HRESULT ScheduledFrameCompleted(IDeckLinkVideoFrame* completedFrame, BMDOutputFrameCompletionResult result);

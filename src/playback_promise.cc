@@ -249,14 +249,47 @@ void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
   c->status = napi_set_named_property(env, result, "displayModeName", param);
   REJECT_STATUS;
 
-  c->status = napi_create_int32(env, c->selectedDisplayMode->GetWidth(), &param);
+  int32_t width, height, rowBytes;
+  width = c->selectedDisplayMode->GetWidth();
+  height = c->selectedDisplayMode->GetHeight();
+  switch (c->requestedPixelFormat) {
+    case bmdFormat8BitYUV:
+      rowBytes = width * 2;
+      break;
+    case bmdFormat10BitYUV:
+      rowBytes = ((int32_t) ((width + 47) / 48)) * 128;
+      break;
+    case bmdFormat8BitARGB:
+    case bmdFormat8BitBGRA:
+      rowBytes = width * 4;
+      break;
+    case bmdFormat10BitRGB:
+    case bmdFormat10BitRGBXLE:
+    case bmdFormat10BitRGBX:
+      rowBytes = ((int32_t) ((width + 63) / 64)) * 256;
+      break;
+    case bmdFormat12BitRGB:
+    case bmdFormat12BitRGBLE:
+      rowBytes = (int32_t) ((width * 36) / 8);
+      break;
+    default:
+      rowBytes = -1;
+      break;
+  }
+
+  c->status = napi_create_int32(env, width, &param);
   REJECT_STATUS;
   c->status = napi_set_named_property(env, result, "width", param);
   REJECT_STATUS;
 
-  c->status = napi_create_int32(env, c->selectedDisplayMode->GetHeight(), &param);
+  c->status = napi_create_int32(env, height, &param);
   REJECT_STATUS;
   c->status = napi_set_named_property(env, result, "height", param);
+  REJECT_STATUS;
+
+  c->status = napi_create_int32(env, rowBytes, &param);
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "rowBytes", param);
   REJECT_STATUS;
 
   switch (c->selectedDisplayMode->GetFieldDominance()) {
@@ -482,6 +515,67 @@ void playedFrame(napi_env env, napi_value jsCb, void* context, void* data) {
 
   return;
 }
+
+void displayFrameExecute(napi_env env, void* data) {
+  displayFrameCarrier* c = (displayFrameCarrier*) data;
+  HRESULT hresult;
+
+
+  // This call will block - make sure thread pool is large enough
+  hresult = c->deckLinkOutput->DisplayVideoFrameSync(c);
+  switch (hresult) {
+    case E_FAIL:
+      c->status = MACADAM_CALL_FAILURE;
+      c->errorMsg = "Failed to display a video frame.";
+      break;
+    case E_ACCESSDENIED:
+      c->status = MACADAM_ACCESS_DENIED;
+      c->errorMsg = "On request to display a frame, the video output is not enabled.";
+      break;
+    case E_INVALIDARG:
+      c->status = MACADAM_INVALID_ARGS;
+      c->errorMsg = "On request to display a frame, the frame attributes are not valid.";
+      break;
+    case S_OK:
+      break;
+    default:
+      break;
+  }
+
+}
+
+void displayFrameComplete(napi_env env, napi_status asyncStatus, void* data) {
+  displayFrameCarrier* c = (displayFrameCarrier*) data;
+
+  if (asyncStatus != napi_ok) {
+    c->status = asyncStatus;
+    c->errorMsg = "Display frame failed to complete.";
+  }
+  REJECT_STATUS;
+
+  tidyCarrier(env, c);
+}
+
+napi_value displayFrame(napi_env env, napi_callback_info info) {
+  napi_status status;
+  napi_value promise, resourceName;
+  displayFrameCarrier* c = new displayFrameCarrier;
+
+  c->status = napi_create_promise(env, &c->_deferred, &promise);
+  REJECT_RETURN;
+
+  c->status = napi_create_string_utf8(env, "DisplayFrame", NAPI_AUTO_LENGTH, &resourceName);
+  REJECT_RETURN;
+  c->status = napi_create_async_work(env, NULL, resourceName, displayFrameExecute,
+    displayFrameComplete, c, &c->_request);
+  REJECT_RETURN;
+  c->status = napi_queue_async_work(env, c->_request);
+  REJECT_RETURN;
+
+  return promise;
+}
+
+
 
 void playbackTsFnFinalize(napi_env env, void* data, void* hint) {
   printf("Threadsafe playback finalizer called.\n");
