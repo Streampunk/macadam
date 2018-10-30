@@ -775,6 +775,116 @@ napi_value played(napi_env env, napi_callback_info info) {
   // returns a promise that is completed when a given frame is done
 }
 
+napi_value scheduledStreamTime(napi_env env, napi_callback_info info) {
+
+}
+
+napi_value referenceStatus(napi_env env, napi_callback_info info) {
+  napi_status status;
+  napi_value playback, param, value;
+  playbackThreadsafe* pbts;
+  HRESULT hresult;
+
+  size_t argc = 0;
+  status = napi_get_cb_info(env, info, &argc, nullptr, &playback, nullptr);
+  CHECK_STATUS;
+
+  status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
+  CHECK_STATUS;
+  status = napi_get_value_external(env, param, (void**) &pbts);
+  CHECK_STATUS;
+
+  if (pbts->stopped) NAPI_THROW_ERROR("Already stopped.");
+
+  BMDReferenceStatus refStatus;
+  hresult = pbts->deckLinkOutput->GetReferenceStatus(&refStatus);
+  if (hresult != S_OK)
+    NAPI_THROW_ERROR("Failed to get reference status.");
+
+  switch (refStatus) {
+    case bmdReferenceNotSupportedByHardware:
+      status = napi_create_string_utf8(env, "ReferenceNotSupportedByHardware",
+        NAPI_AUTO_LENGTH, &value);
+      break;
+    case bmdReferenceLocked:
+      status = napi_create_string_utf8(env, "ReferenceLocked",
+        NAPI_AUTO_LENGTH, &value);
+      break;
+    default:
+      status = napi_create_string_utf8(env, "ReferenceNotLocked",
+        NAPI_AUTO_LENGTH, &value);
+      break;
+  }
+  CHECK_STATUS;
+  return value;
+}
+
+napi_value hardwareReferenceClock(napi_env env, napi_callback_info info) {
+
+}
+
+napi_value frameCompletionReferenceTimestamp(napi_env env, napi_callback_info info) {
+
+}
+
+napi_value bufferedVideoFrameCount(napi_env env, napi_callback_info info) {
+  napi_status status;
+  napi_value playback, param, value;
+  playbackThreadsafe* pbts;
+  HRESULT hresult;
+
+  size_t argc = 0;
+  status = napi_get_cb_info(env, info, &argc, nullptr, &playback, nullptr);
+  CHECK_STATUS;
+
+  status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
+  CHECK_STATUS;
+  status = napi_get_value_external(env, param, (void**) &pbts);
+  CHECK_STATUS;
+
+  if (pbts->stopped) NAPI_THROW_ERROR("Already stopped.");
+
+  uint32_t sampleFrameCount;
+  hresult = pbts->deckLinkOutput->GetBufferedVideoFrameCount(&sampleFrameCount);
+  if (hresult != S_OK)
+    NAPI_THROW_ERROR("Failed to get buffered video sample frame count.");
+
+  status = napi_create_int32(env, sampleFrameCount, &value);
+  CHECK_STATUS;
+  return value;
+}
+
+napi_value bufferedAudioSampleFrameCount(napi_env env, napi_callback_info info) {
+  napi_status status;
+  napi_value playback, param, value;
+  playbackThreadsafe* pbts;
+  HRESULT hresult;
+
+  size_t argc = 0;
+  status = napi_get_cb_info(env, info, &argc, nullptr, &playback, nullptr);
+  CHECK_STATUS;
+
+  status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
+  CHECK_STATUS;
+  status = napi_get_value_external(env, param, (void**) &pbts);
+  CHECK_STATUS;
+
+  if (pbts->stopped) NAPI_THROW_ERROR("Already stopped.");
+
+  uint32_t sampleFrameCount;
+  hresult = pbts->deckLinkOutput->GetBufferedAudioSampleFrameCount(&sampleFrameCount);
+  if (hresult != S_OK)
+    NAPI_THROW_ERROR("Failed to get buffered audio sample frame count.");
+
+  status = napi_create_int32(env, sampleFrameCount, &value);
+  CHECK_STATUS;
+  return value;
+}
+
+napi_value writeAudioSamples(napi_env env, napi_callback_info info) {
+
+}
+
 napi_value stopPlayback(napi_env env, napi_callback_info info) {
   napi_status status;
   napi_value playback, param, value;
