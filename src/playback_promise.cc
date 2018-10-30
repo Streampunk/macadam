@@ -543,10 +543,21 @@ void displayFrameExecute(napi_env env, void* data) {
   void* testBytes;
   c->GetBytes(&testBytes);
   printf("Test bytes %p and pixel format %i=%i.\n", testBytes, c->GetPixelFormat(), bmdFormat10BitYUV);
-  printf("Some data %02x %02x %02x %02x\n", ((uint8_t*) testBytes)[0],(
-    (uint8_t*) testBytes)[1], ((uint8_t*) testBytes)[2], ((uint8_t*) testBytes)[3]);
 
-  // This call will block - make sure thread pool is large enough
+  /* IDeckLinkMutableVideoFrame* frame;
+  hresult = c->deckLinkOutput->CreateVideoFrame(c->width, c->height, c->rowBytes,
+    c->pixelFormat, bmdFrameFlagDefault, &frame);
+  if (hresult != S_OK) {
+    printf("Problem creating frame.\n");
+  }
+  void* frameBytes;
+  frame->GetBytes(&frameBytes);
+  memcpy(frameBytes, c->data, c->dataSize); */
+
+  printf("Some data %02x %02x %02x %02x\n", ((uint8_t*) testBytes)[0],
+    ((uint8_t*) testBytes)[1], ((uint8_t*) testBytes)[2], ((uint8_t*) testBytes)[3]);
+
+  // This call may block - make sure thread pool is large enough
   hresult = c->deckLinkOutput->DisplayVideoFrameSync(c);
   switch (hresult) {
     case E_FAIL:
@@ -566,6 +577,7 @@ void displayFrameExecute(napi_env env, void* data) {
     default:
       break;
   }
+  // frame->Release();
 }
 
 void displayFrameComplete(napi_env env, napi_status asyncStatus, void* data) {
@@ -619,9 +631,13 @@ napi_value displayFrame(napi_env env, napi_callback_info info) {
   c->status = napi_get_value_external(env, param, (void**) &pbts);
   REJECT_RETURN;
 
-  if (pbts->started) REJECT_ERROR_RETURN(
+  /* if (pbts->started) REJECT_ERROR_RETURN(
     "Display frame cannot be used in conjuction with scheduled playback.",
-    MACADAM_ERROR_START);
+    MACADAM_ERROR_START); */
+  /* if (!pbts->started) {
+    c->deckLinkOutput->StartScheduledPlayback(0, 1000, 1.0);
+    pbts->started = true;
+  } */
 
   if (pbts->stopped) REJECT_ERROR_RETURN(
     "Display frame cannot be used once an output is stopped.",
