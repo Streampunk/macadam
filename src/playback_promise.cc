@@ -73,6 +73,9 @@ let f = await p.play(data);
 HRESULT playbackThreadsafe::ScheduledFrameCompleted(
   IDeckLinkVideoFrame* completedFrame, BMDOutputFrameCompletionResult result) {
 
+  macadamFrame* frame = (macadamFrame*) completedFrame;
+  printf("Scheduled frame %i playback completed with result %i.\n", frame->tempTime, result);
+
   return S_OK;
 }
 
@@ -374,6 +377,7 @@ void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
   pbts->displayMode = c->selectedDisplayMode;
   c->selectedDisplayMode = nullptr;
   pbts->timeScale = frameRateScale;
+  pbts->frameDuration = frameRateDuration;
   pbts->width = width;
   pbts->height = height;
   pbts->rowBytes = rowBytes;
@@ -397,10 +401,22 @@ void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
   c->status = napi_set_named_property(env, result, "displayFrame", param);
   REJECT_STATUS;
 
+  c->status = napi_create_function(env, "start", NAPI_AUTO_LENGTH, startPlayback,
+    nullptr, &param);
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "start", param);
+  REJECT_STATUS;
+
   c->status = napi_create_function(env, "stop", NAPI_AUTO_LENGTH, stopPlayback,
     nullptr, &param);
   REJECT_STATUS;
   c->status = napi_set_named_property(env, result, "stop", param);
+  REJECT_STATUS;
+
+  c->status = napi_create_function(env, "schedule", NAPI_AUTO_LENGTH, schedule,
+    nullptr, &param);
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "schedule", param);
   REJECT_STATUS;
 
   c->status = napi_create_string_utf8(env, "playback", NAPI_AUTO_LENGTH, &asyncName);
@@ -631,13 +647,9 @@ napi_value displayFrame(napi_env env, napi_callback_info info) {
   c->status = napi_get_value_external(env, param, (void**) &pbts);
   REJECT_RETURN;
 
-  /* if (pbts->started) REJECT_ERROR_RETURN(
+  if (pbts->started) REJECT_ERROR_RETURN(
     "Display frame cannot be used in conjuction with scheduled playback.",
-    MACADAM_ERROR_START); */
-  /* if (!pbts->started) {
-    c->deckLinkOutput->StartScheduledPlayback(0, 1000, 1.0);
-    pbts->started = true;
-  } */
+    MACADAM_ERROR_START);
 
   if (pbts->stopped) REJECT_ERROR_RETURN(
     "Display frame cannot be used once an output is stopped.",
@@ -665,6 +677,102 @@ napi_value displayFrame(napi_env env, napi_callback_info info) {
   REJECT_RETURN;
 
   return promise;
+}
+
+napi_value schedule(napi_env env, napi_callback_info info) {
+  napi_status status;
+  napi_value playback, param, value;
+  playbackThreadsafe* pbts;
+  HRESULT hresult;
+  macadamFrame* frame = new macadamFrame;
+  bool isBuffer;
+
+  size_t argc = 1;
+  napi_value argv[1];
+  status = napi_get_cb_info(env, info, &argc, argv, &playback, nullptr);
+  CHECK_STATUS;
+
+  if (argc != 1) NAPI_THROW_ERROR(
+    "Frame can only be scheduled from a buffer of data.");
+
+  status = napi_is_buffer(env, argv[0], &isBuffer);
+  CHECK_STATUS;
+
+  if (!isBuffer) NAPI_THROW_ERROR(
+    "Frame data must be provided as a node buffer.");
+
+  status = napi_get_buffer_info(env, argv[0], &frame->data, &frame->dataSize);
+  CHECK_STATUS;
+
+  status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
+  CHECK_STATUS;
+  status = napi_get_value_external(env, param, (void**) &pbts);
+  CHECK_STATUS;
+
+  if (pbts->stopped)
+    NAPI_THROW_ERROR("Cannot schedule frames after playout has stopped.");
+
+  frame->width = pbts->width;
+  frame->height = pbts->height;
+  frame->rowBytes = pbts->rowBytes;
+  frame->pixelFormat = pbts->pixelFormat;
+  frame->tempTime = pbts->tempTime;
+
+  hresult = pbts->deckLinkOutput->ScheduleVideoFrame(frame, pbts->tempTime,
+    pbts->frameDuration, pbts->timeScale);
+
+  switch (hresult) {
+    case S_OK:
+      break;
+    case E_ACCESSDENIED:
+      NAPI_THROW_ERROR("Failed to schedule frame as the video output is not enabled.");
+    case E_INVALIDARG:
+      NAPI_THROW_ERROR("Failed to schedule frame as the attributes are invalid.");
+    case E_OUTOFMEMORY:
+      NAPI_THROW_ERROR("Fauled to schedule frame as too many frames are already scheduled.");
+    case E_FAIL:
+    default:
+      NAPI_THROW_ERROR("Failed to schedule frame - general failure.");
+  }
+
+  pbts->tempTime += pbts->frameDuration;
+
+  status = napi_get_undefined(env, &value);
+  CHECK_STATUS;
+  return value;
+}
+
+napi_value startPlayback(napi_env env, napi_callback_info info) {
+  napi_status status;
+  napi_value playback, param, value;
+  playbackThreadsafe* pbts;
+  HRESULT hresult;
+
+  size_t argc = 0;
+  status = napi_get_cb_info(env, info, &argc, nullptr, &playback, nullptr);
+  CHECK_STATUS;
+
+  status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
+  CHECK_STATUS;
+  status = napi_get_value_external(env, param, (void**) &pbts);
+  CHECK_STATUS;
+
+  if (pbts->stopped) NAPI_THROW_ERROR("Already started and then stopped.");
+
+  if (pbts->started) NAPI_THROW_ERROR("Already started.");
+
+  hresult = pbts->deckLinkOutput->StartScheduledPlayback(0, pbts->timeScale, 1.0);
+
+  pbts->started = true;
+
+  status = napi_get_undefined(env, &value);
+  CHECK_STATUS;
+  return value;
+}
+
+napi_value played(napi_env env, napi_callback_info info) {
+
+  // returns a promise that is completed when a given frame is done
 }
 
 napi_value stopPlayback(napi_env env, napi_callback_info info) {

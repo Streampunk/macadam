@@ -28,6 +28,7 @@ function timer(t) {
 async function run() {
   let frame = await readFile(__dirname + '/EBU_3325_1080_7.v210');
   console.log(frame.length, frame);
+  let frame2 = Buffer.alloc(frame.length, 0xf7);
   let playback = await macadam.playback({
     displayMode: macadam.bmdModeHD1080i50,
     pixelFormat: macadam.bmdFormat10BitYUV
@@ -43,7 +44,9 @@ async function run() {
     let fp = playback.displayFrame(frame).catch(console.error);
     await fp;
     let end = process.hrtime(start)[1];
-    await timer((40000000 - end) / 1000000 | 0);
+    await timer(500);
+    await playback.displayFrame(frame2).catch(console.error);
+    await timer(500);
   }
   playback.stop();
 }

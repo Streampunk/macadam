@@ -59,7 +59,9 @@ napi_value playback(napi_env env, napi_callback_info info);
 void playedFrame(napi_env env, napi_value jsCb, void* context, void* data);
 void playbackTsFnFinalize(napi_env env, void* data, void* hint);
 napi_value displayFrame(napi_env env, napi_callback_info info);
+napi_value startPlayback(napi_env env, napi_callback_info info);
 napi_value stopPlayback(napi_env env, napi_callback_info info);
+napi_value schedule(napi_env env, napi_callback_info info);
 
 struct playbackCarrier : carrier {
   IDeckLinkOutput* deckLinkOutput = nullptr;
@@ -76,8 +78,7 @@ struct playbackCarrier : carrier {
   }
 };
 
-struct displayFrameCarrier : carrier, IDeckLinkVideoFrame {
-  IDeckLinkOutput* deckLinkOutput = nullptr;
+struct macadamFrame : IDeckLinkVideoFrame {
   int32_t width;
   int32_t height;
   int32_t rowBytes;
@@ -85,6 +86,7 @@ struct displayFrameCarrier : carrier, IDeckLinkVideoFrame {
   BMDFrameFlags frameFlags = bmdFrameFlagDefault;
   void* data;
   size_t dataSize;
+  BMDTimeValue tempTime;
   long GetWidth (void) { return width; };
   long GetHeight (void) { return height; };
   long GetRowBytes (void) { return rowBytes; };
@@ -102,7 +104,10 @@ struct displayFrameCarrier : carrier, IDeckLinkVideoFrame {
   HRESULT	QueryInterface (REFIID iid, LPVOID *ppv) { return E_NOINTERFACE; }
   ULONG AddRef() { return 1; };
   ULONG Release() { return 1; };
+};
 
+struct displayFrameCarrier : carrier, macadamFrame {
+  IDeckLinkOutput* deckLinkOutput = nullptr;
   ~displayFrameCarrier() {}
 };
 
@@ -121,11 +126,13 @@ struct playbackThreadsafe : IDeckLinkVideoOutputCallback {
   BMDAudioSampleType sampleType;
   uint32_t channels = 0; // Set to zero for no channels
   BMDTimeScale timeScale;
+  BMDTimeValue frameDuration;
   int32_t width;
   int32_t height;
   int32_t rowBytes;
   bool started = false;
   bool stopped = false;
+  BMDTimeValue tempTime = 0;
   ~playbackThreadsafe() {
     if (deckLinkOutput != nullptr) { deckLinkOutput->Release(); }
     if (displayMode != nullptr) { displayMode->Release(); }
