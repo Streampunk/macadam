@@ -59,6 +59,7 @@ napi_value playback(napi_env env, napi_callback_info info);
 void playedFrame(napi_env env, napi_value jsCb, void* context, void* data);
 void playbackTsFnFinalize(napi_env env, void* data, void* hint);
 napi_value displayFrame(napi_env env, napi_callback_info info);
+napi_value stopPlayback(napi_env env, napi_callback_info info);
 
 struct playbackCarrier : carrier {
   IDeckLinkOutput* deckLinkOutput = nullptr;
@@ -97,7 +98,7 @@ struct displayFrameCarrier : carrier, IDeckLinkVideoFrame {
     // TODO Consider implementing this
     return E_FAIL;
   }
-  HRESULT GetBytes (void **buffer) { buffer = (void**) &data; return S_OK; };
+  HRESULT GetBytes (void **buffer) { *buffer = data; return S_OK; };
   HRESULT	QueryInterface (REFIID iid, LPVOID *ppv) { return E_NOINTERFACE; }
   ULONG AddRef() { return 1; };
   ULONG Release() { return 1; };
@@ -124,6 +125,7 @@ struct playbackThreadsafe : IDeckLinkVideoOutputCallback {
   int32_t height;
   int32_t rowBytes;
   bool started = false;
+  bool stopped = false;
   ~playbackThreadsafe() {
     if (deckLinkOutput != nullptr) { deckLinkOutput->Release(); }
     if (displayMode != nullptr) { displayMode->Release(); }

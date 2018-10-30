@@ -292,6 +292,11 @@ void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
   c->status = napi_set_named_property(env, result, "rowBytes", param);
   REJECT_STATUS;
 
+  c->status = napi_create_int32(env, rowBytes * height, &param);
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "bufferSize", param);
+  REJECT_STATUS;
+
   switch (c->selectedDisplayMode->GetFieldDominance()) {
     case bmdLowerFieldFirst:
       c->status = napi_create_string_utf8(env, "lowerFieldFirst", NAPI_AUTO_LENGTH, &param);
@@ -389,7 +394,13 @@ void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
   c->status = napi_create_function(env, "displayFrame", NAPI_AUTO_LENGTH, displayFrame,
     nullptr, &param);
   REJECT_STATUS;
-  c->status = napi_set_named_property(env, result, "pause", param);
+  c->status = napi_set_named_property(env, result, "displayFrame", param);
+  REJECT_STATUS;
+
+  c->status = napi_create_function(env, "stop", NAPI_AUTO_LENGTH, stopPlayback,
+    nullptr, &param);
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "stop", param);
   REJECT_STATUS;
 
   c->status = napi_create_string_utf8(env, "playback", NAPI_AUTO_LENGTH, &asyncName);
@@ -529,6 +540,12 @@ void displayFrameExecute(napi_env env, void* data) {
   displayFrameCarrier* c = (displayFrameCarrier*) data;
   HRESULT hresult;
 
+  void* testBytes;
+  c->GetBytes(&testBytes);
+  printf("Test bytes %p and pixel format %i=%i.\n", testBytes, c->GetPixelFormat(), bmdFormat10BitYUV);
+  printf("Some data %02x %02x %02x %02x\n", ((uint8_t*) testBytes)[0],(
+    (uint8_t*) testBytes)[1], ((uint8_t*) testBytes)[2], ((uint8_t*) testBytes)[3]);
+
   // This call will block - make sure thread pool is large enough
   hresult = c->deckLinkOutput->DisplayVideoFrameSync(c);
   switch (hresult) {
@@ -597,10 +614,6 @@ napi_value displayFrame(napi_env env, napi_callback_info info) {
   c->status = napi_get_buffer_info(env, argv[0], &c->data, &c->dataSize);
   REJECT_RETURN;
 
-  if (((int32_t) c->dataSize) < c->rowBytes * c->height) REJECT_ERROR_RETURN(
-    "Insufficient number of bytes in buffer for frame playback.",
-    MACADAM_INSUFFICIENT_BYTES);
-
   c->status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
   REJECT_RETURN;
   c->status = napi_get_value_external(env, param, (void**) &pbts);
@@ -610,24 +623,76 @@ napi_value displayFrame(napi_env env, napi_callback_info info) {
     "Display frame cannot be used in conjuction with scheduled playback.",
     MACADAM_ERROR_START);
 
+  if (pbts->stopped) REJECT_ERROR_RETURN(
+    "Display frame cannot be used once an output is stopped.",
+    MACADAM_ERROR_START);
+
   c->width = pbts->width;
   c->height = pbts->height;
   c->rowBytes = pbts->rowBytes;
   c->pixelFormat = pbts->pixelFormat;
   c->deckLinkOutput = pbts->deckLinkOutput;
 
+  if (((int32_t) c->dataSize) < c->rowBytes * c->height) REJECT_ERROR_RETURN(
+    "Insufficient number of bytes in buffer for frame playback.",
+    MACADAM_INSUFFICIENT_BYTES);
+
   c->status = napi_create_reference(env, argv[0], 1, &c->passthru);
   REJECT_RETURN;
 
   c->status = napi_create_string_utf8(env, "DisplayFrame", NAPI_AUTO_LENGTH, &resourceName);
   REJECT_RETURN;
-  c->status = napi_create_async_work(env, NULL, resourceName, displayFrameExecute,
+  c->status = napi_create_async_work(env, nullptr, resourceName, displayFrameExecute,
     displayFrameComplete, c, &c->_request);
   REJECT_RETURN;
   c->status = napi_queue_async_work(env, c->_request);
   REJECT_RETURN;
 
   return promise;
+}
+
+napi_value stopPlayback(napi_env env, napi_callback_info info) {
+  napi_status status;
+  napi_value playback, param, value;
+  playbackThreadsafe* pbts;
+  HRESULT hresult;
+
+  size_t argc = 0;
+  status = napi_get_cb_info(env, info, &argc, nullptr, &playback, nullptr);
+  CHECK_STATUS;
+
+  status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
+  CHECK_STATUS;
+  status = napi_get_value_external(env, param, (void**) &pbts);
+  CHECK_STATUS;
+
+  if (pbts->stopped) NAPI_THROW_ERROR("Already stopped.");
+
+  if (pbts->started) {
+    hresult = pbts->deckLinkOutput->StopScheduledPlayback(0, nullptr, 0);
+    if (hresult != S_OK) NAPI_THROW_ERROR("Failed to stop scheduled playback.");
+  }
+
+  hresult = pbts->deckLinkOutput->DisableVideoOutput();
+  if (hresult != S_OK) NAPI_THROW_ERROR("Failed to disable video output.");
+
+  hresult = pbts->deckLinkOutput->SetScheduledFrameCompletionCallback(nullptr);
+  if (hresult != S_OK) NAPI_THROW_ERROR("Failed to clear the frame completion callback.");
+
+  if (pbts->channels > 0) {
+    hresult = pbts->deckLinkOutput->DisableAudioOutput();
+    if (hresult != S_OK) NAPI_THROW_ERROR("Failed to disable audio output.");
+  }
+
+  // TODO consider clearing audio callback as a matter of course
+
+  status = napi_release_threadsafe_function(pbts->tsFn, napi_tsfn_release);
+  CHECK_STATUS;
+  pbts->stopped = true;
+
+  status = napi_get_undefined(env, &value);
+  CHECK_STATUS;
+  return value;
 }
 
 void playbackTsFnFinalize(napi_env env, void* data, void* hint) {
