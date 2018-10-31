@@ -25,6 +25,10 @@ function timer(t) {
   });
 }
 
+function shift(b, rowBytes) {
+  return Buffer.concat([b.slice(-rowBytes), b.slice(0, -rowBytes)], b.length);
+}
+
 async function run() {
   let frame = await readFile(__dirname + '/EBU_3325_1080_7.v210');
   console.log(frame.length, frame);
@@ -40,14 +44,19 @@ async function run() {
     process.exit();
   });
   console.log(playback.referenceStatus(), playback.scheduledTime());
-  for ( let x = 0 ; x < 5 ; x++ ) {
+  for ( let x = 0 ; x < 2000 ; x++ ) {
+    //console.log('Scheduling', x * 1000);
     let start = process.hrtime();
-    playback.schedule({ video: frame, time: x * 2000 });
-    console.log(x*1000, process.hrtime(start)[1]);
-    playback.schedule({ video: frame2, time: x * 2000 + 1000});
+    playback.schedule({ video: frame, time: x * 1000 });
+    // console.log(process.hrtime(start)[1]);
+    // playback.schedule({ video: frame2, time: x * 2000 + 1000 });
+    if (x === 2) playback.start({ startTime: 0 });
+    if (x > 1) {
+      await playback.played(x * 1000 - 2000);
+      // await timer(20);
+    }
+    frame = shift(frame, 5120 * 10);
   }
-  playback.start({ startTime: 5000  });
-  await timer(1000);
   console.log(playback.referenceStatus(), playback.scheduledTime());
   playback.stop();
 }

@@ -100,12 +100,12 @@ HRESULT captureThreadsafe::VideoInputFrameArrived(
   data->audioPacket = audioPacket;
   hangover = napi_call_threadsafe_function(tsFn, data, napi_tsfn_nonblocking);
   if (hangover != napi_ok) {
-    printf("DEBUG: Failed to call NAPI failsafe function on capture.");
+    printf("DEBUG: Failed to call NAPI threadsafe function on capture.");
   }
 
   status = napi_release_threadsafe_function(tsFn, napi_tsfn_release);
   if (status != napi_ok) {
-    printf("DEBUG: Failed to acquire NAPI failsafe function on capture.");
+    printf("DEBUG: Failed to acquire NAPI threadsafe function on capture.");
     return E_FAIL;
   }
 

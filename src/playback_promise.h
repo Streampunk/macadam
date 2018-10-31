@@ -43,6 +43,8 @@
 #ifndef PLAYBACK_PROMISE_H
 #define PLAYBACK_PROMISE_H
 
+#include <map>
+
 #ifdef WIN32
 #include <tchar.h>
 #include <conio.h>
@@ -62,6 +64,7 @@ napi_value displayFrame(napi_env env, napi_callback_info info);
 napi_value startPlayback(napi_env env, napi_callback_info info);
 napi_value stopPlayback(napi_env env, napi_callback_info info);
 napi_value schedule(napi_env env, napi_callback_info info);
+napi_value played(napi_env env, napi_callback_info info);
 napi_value referenceStatus(napi_env env, napi_callback_info info);
 napi_value scheduledStreamTime(napi_env env, napi_callback_info info);
 
@@ -85,12 +88,15 @@ struct macadamFrame : IDeckLinkVideoFrame {
   int32_t height;
   int32_t rowBytes;
   BMDPixelFormat pixelFormat;
+  BMDTimeScale timeScale;
   BMDFrameFlags frameFlags = bmdFrameFlagDefault;
   void* data;
   size_t dataSize;
   BMDTimeValue scheduledTime;
   BMDTimeValue completionTimestamp;
   IDeckLinkOutput* deckLinkOutput = nullptr;
+  napi_ref sourceBufferRef = nullptr;
+  BMDOutputFrameCompletionResult result;
   long GetWidth (void) { return width; };
   long GetHeight (void) { return height; };
   long GetRowBytes (void) { return rowBytes; };
@@ -115,6 +121,11 @@ struct displayFrameCarrier : carrier, macadamFrame {
   ~displayFrameCarrier() {}
 };
 
+struct scheduleCarrier : carrier {
+  BMDTimeValue scheduledTime;
+  ~scheduleCarrier () { };
+};
+
 struct playbackThreadsafe : IDeckLinkVideoOutputCallback {
   playbackThreadsafe() { };
   HRESULT ScheduledFrameCompleted(IDeckLinkVideoFrame* completedFrame, BMDOutputFrameCompletionResult result);
@@ -136,6 +147,7 @@ struct playbackThreadsafe : IDeckLinkVideoOutputCallback {
   int32_t rowBytes;
   bool started = false;
   bool stopped = false;
+  std::map<BMDTimeValue, scheduleCarrier*> pendingPlays;
   ~playbackThreadsafe() {
     if (deckLinkOutput != nullptr) { deckLinkOutput->Release(); }
     if (displayMode != nullptr) { displayMode->Release(); }

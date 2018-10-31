@@ -73,25 +73,27 @@ let f = await p.play(data);
 HRESULT playbackThreadsafe::ScheduledFrameCompleted(
   IDeckLinkVideoFrame* completedFrame, BMDOutputFrameCompletionResult result) {
 
-  BMDTimeValue frameCompletionTimestamp = -1;
   macadamFrame* frame = (macadamFrame*) completedFrame;
-
   napi_status status, hangover;
+
   status = napi_acquire_threadsafe_function(tsFn);
   if (status != napi_ok) {
     printf("DEBUG: Failed to acquire NAPI threadsafe function on scheduled frame completion.");
     return E_FAIL;
   }
 
-  frame->deckLinkOutput->GetFrameCompletionReferenceTimestamp(frame, 1000,
+  frame->deckLinkOutput->GetFrameCompletionReferenceTimestamp(frame, frame->timeScale,
     &frame->completionTimestamp);
-  printf("Scheduled frame %lld playback completed with timestamp %lld and result %i.\n",
-    frame->scheduledTime, frame->completionTimestamp, result);
+  frame->result = result;
 
+  hangover = napi_call_threadsafe_function(tsFn, frame, napi_tsfn_nonblocking);
+  if (hangover != napi_ok) {
+    printf("DEBUG: Failed to call NAPI threadsafe function on scheduled frame completion.");
+  }
 
   status = napi_release_threadsafe_function(tsFn, napi_tsfn_release);
   if (status != napi_ok) {
-    printf("DEBUG: Failed to acquire NAPI failsafe function on capture.");
+    printf("DEBUG: Failed to acquire NAPI threadsafe function on scheduled frame completion.");
     return E_FAIL;
   }
 
@@ -439,6 +441,12 @@ void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
   c->status = napi_set_named_property(env, result, "schedule", param);
   REJECT_STATUS;
 
+  c->status = napi_create_function(env, "played", NAPI_AUTO_LENGTH, played,
+    nullptr, &param);
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "played", param);
+  REJECT_STATUS;
+
   c->status = napi_create_function(env, "referenceStatus", NAPI_AUTO_LENGTH,
     referenceStatus, nullptr, &param);
   REJECT_STATUS;
@@ -580,7 +588,88 @@ napi_value playback(napi_env env, napi_callback_info info) {
 }
 
 void playedFrame(napi_env env, napi_value jsCb, void* context, void* data) {
+  napi_status status;
+  napi_value resres, param;
+  macadamFrame* frame = (macadamFrame*) data;
+  playbackThreadsafe* pbts = (playbackThreadsafe*) context;
+  scheduleCarrier* c = nullptr;
 
+  //printf("Scheduled frame %lld playback completed with timestamp %lld and result %i.\n",
+  //  frame->scheduledTime, frame->completionTimestamp, frame->result);
+
+  // TODO Check for any entries older than defined gap and reject
+
+  // See if any pending play promises exist in map and fulfil
+  auto played = pbts->pendingPlays.find(frame->scheduledTime);
+  if (played != pbts->pendingPlays.end()) {
+    c = played->second;
+    c->status = napi_create_object(env, &resres);
+    REJECT_BAIL;
+
+    c->status = napi_create_string_utf8(env, "played", NAPI_AUTO_LENGTH, &param);
+    REJECT_BAIL;
+    c->status = napi_set_named_property(env, resres, "type", param);
+    REJECT_BAIL;
+
+    c->status = napi_create_int64(env, frame->scheduledTime, &param);
+    REJECT_BAIL;
+    c->status = napi_set_named_property(env, resres, "scheduledTime", param);
+    REJECT_BAIL;
+
+    c->status = napi_create_int64(env, pbts->timeScale, &param);
+    REJECT_BAIL;
+    c->status = napi_set_named_property(env, resres, "timeScale", param);
+    REJECT_BAIL;
+
+    c->status = napi_create_int32(env, frame->result, &param);
+    REJECT_BAIL;
+    c->status = napi_set_named_property(env, resres, "result", param);
+    REJECT_BAIL;
+
+    switch (frame->result) {
+      case bmdOutputFrameCompleted:
+        c->status = napi_create_string_utf8(env, "completed", NAPI_AUTO_LENGTH, &param);
+        break;
+      case bmdOutputFrameDisplayedLate:
+        c->status = napi_create_string_utf8(env, "late", NAPI_AUTO_LENGTH, &param);
+        break;
+      case bmdOutputFrameDropped:
+        c->status = napi_create_string_utf8(env, "dropped", NAPI_AUTO_LENGTH, &param);
+        break;
+      case bmdOutputFrameFlushed:
+        c->status = napi_create_string_utf8(env, "flushed", NAPI_AUTO_LENGTH, &param);
+        break;
+      default:
+        c->status = napi_create_string_utf8(env, "unknown", NAPI_AUTO_LENGTH, &param);
+        break;
+    }
+    REJECT_BAIL;
+    c->status = napi_set_named_property(env, resres, "summary", param);
+    REJECT_BAIL;
+
+    c->status = napi_create_int64(env, frame->completionTimestamp, &param);
+    REJECT_BAIL;
+    c->status = napi_set_named_property(env, resres, "completionTimestamp", param);
+    REJECT_BAIL;
+
+    c->status = napi_resolve_deferred(env, c->_deferred, resres);
+    REJECT_BAIL;
+
+    pbts->pendingPlays.erase(frame->scheduledTime);
+    tidyCarrier(env, c);
+  }
+  else {
+    printf("No promise to resolve for played frame with scheduled time %lld.\n",
+      frame->scheduledTime);
+  }
+
+bail:
+  status = napi_delete_reference(env, frame->sourceBufferRef);
+  if (status != napi_ok) {
+    printf("DEBUG: Failed to delete video buffer reference for scheduled frame %lld.\n",
+      frame->scheduledTime);
+  }
+  delete frame;
   return;
 }
 
@@ -714,7 +803,7 @@ napi_value displayFrame(napi_env env, napi_callback_info info) {
 // TODO add audio scheduling
 napi_value schedule(napi_env env, napi_callback_info info) {
   napi_status status;
-  napi_value playback, param, value;
+  napi_value playback, param, videoBuffer, value;
   napi_valuetype type;
   playbackThreadsafe* pbts;
   HRESULT hresult;
@@ -742,15 +831,15 @@ napi_value schedule(napi_env env, napi_callback_info info) {
   CHECK_STATUS;
   if (!hasProp) NAPI_THROW_ERROR("To schedule a frame, a time value must be provided.");
 
-  status = napi_get_named_property(env, argv[0], "video", &param);
+  status = napi_get_named_property(env, argv[0], "video", &videoBuffer);
   CHECK_STATUS;
 
-  status = napi_is_buffer(env, param, &isBuffer);
+  status = napi_is_buffer(env, videoBuffer, &isBuffer);
   CHECK_STATUS;
 
   if (!isBuffer) NAPI_THROW_ERROR("Video data must be provided as a node buffer.");
 
-  status = napi_get_buffer_info(env, param, &frame->data, &frame->dataSize);
+  status = napi_get_buffer_info(env, videoBuffer, &frame->data, &frame->dataSize);
   CHECK_STATUS;
 
   status = napi_get_named_property(env, argv[0], "time", &param);
@@ -776,6 +865,7 @@ napi_value schedule(napi_env env, napi_callback_info info) {
   frame->height = pbts->height;
   frame->rowBytes = pbts->rowBytes;
   frame->pixelFormat = pbts->pixelFormat;
+  frame->timeScale = pbts->timeScale;
   frame->deckLinkOutput = pbts->deckLinkOutput;
 
   hresult = pbts->deckLinkOutput->ScheduleVideoFrame(frame, frame->scheduledTime,
@@ -794,6 +884,10 @@ napi_value schedule(napi_env env, napi_callback_info info) {
     default:
       NAPI_THROW_ERROR("Failed to schedule frame - general failure.");
   }
+
+  // Ensure that buffer is not garbage collected during playback
+  status = napi_create_reference(env, param, 0, &frame->sourceBufferRef);
+  CHECK_STATUS;
 
   status = napi_get_undefined(env, &value);
   CHECK_STATUS;
@@ -859,8 +953,48 @@ napi_value startPlayback(napi_env env, napi_callback_info info) {
 }
 
 napi_value played(napi_env env, napi_callback_info info) {
+  napi_value promise, playback, param;
+  napi_valuetype type;
+  scheduleCarrier* c = new scheduleCarrier;
+  playbackThreadsafe* pbts;
 
-  // returns a promise that is completed when a given frame is done
+  c->status = napi_create_promise(env, &c->_deferred, &promise);
+  REJECT_RETURN;
+
+  size_t argc = 1;
+  napi_value argv[1];
+  c->status = napi_get_cb_info(env, info, &argc, argv, &playback, nullptr);
+  REJECT_RETURN;
+
+  if (argc != 1) REJECT_ERROR_RETURN(
+    "Scheduled play time for played frame must be provided.", MACADAM_INVALID_ARGS);
+
+  c->status = napi_typeof(env, argv[0], &type);
+  REJECT_RETURN;
+  if (type != napi_number) REJECT_ERROR_RETURN(
+    "Played frame promise requires the scheduled time.",
+    MACADAM_INVALID_ARGS);
+
+  c->status = napi_get_value_int64(env, argv[0], &c->scheduledTime);
+  REJECT_RETURN;
+
+  c->status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
+  REJECT_RETURN;
+  c->status = napi_get_value_external(env, param, (void**) &pbts);
+  REJECT_RETURN;
+
+  auto existing = pbts->pendingPlays.find(c->scheduledTime);
+  if (existing != pbts->pendingPlays.end()) { // Should always go in here
+    c->status = napi_get_reference_value(env, existing->second->passthru, &promise);
+    REJECT_RETURN;
+    return promise;
+  }
+
+  c->status = napi_create_reference(env, promise, 1, &c->passthru);
+  REJECT_RETURN;
+
+  pbts->pendingPlays.insert(std::make_pair(c->scheduledTime, c));
+  return promise;
 }
 
 napi_value scheduledStreamTime(napi_env env, napi_callback_info info) {
