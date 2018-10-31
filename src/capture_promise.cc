@@ -87,7 +87,7 @@ HRESULT captureThreadsafe::VideoInputFrameArrived(
   napi_status status, hangover;
   status = napi_acquire_threadsafe_function(tsFn);
   if (status != napi_ok) {
-    printf("DEBUG: Failed to acquire NAPI failsafe function on capture.");
+    printf("DEBUG: Failed to acquire NAPI threadsafe function on capture.");
     return E_FAIL;
   }
 

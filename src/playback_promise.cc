@@ -73,9 +73,29 @@ let f = await p.play(data);
 HRESULT playbackThreadsafe::ScheduledFrameCompleted(
   IDeckLinkVideoFrame* completedFrame, BMDOutputFrameCompletionResult result) {
 
+  BMDTimeValue frameCompletionTimestamp = -1;
   macadamFrame* frame = (macadamFrame*) completedFrame;
-  printf("Scheduled frame %i playback completed with result %i.\n", frame->tempTime, result);
 
+  napi_status status, hangover;
+  status = napi_acquire_threadsafe_function(tsFn);
+  if (status != napi_ok) {
+    printf("DEBUG: Failed to acquire NAPI threadsafe function on scheduled frame completion.");
+    return E_FAIL;
+  }
+
+  frame->deckLinkOutput->GetFrameCompletionReferenceTimestamp(frame, 1000,
+    &frame->completionTimestamp);
+  printf("Scheduled frame %lld playback completed with timestamp %lld and result %i.\n",
+    frame->scheduledTime, frame->completionTimestamp, result);
+
+
+  status = napi_release_threadsafe_function(tsFn, napi_tsfn_release);
+  if (status != napi_ok) {
+    printf("DEBUG: Failed to acquire NAPI failsafe function on capture.");
+    return E_FAIL;
+  }
+
+  // delete frame;
   return S_OK;
 }
 
@@ -419,6 +439,18 @@ void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
   c->status = napi_set_named_property(env, result, "schedule", param);
   REJECT_STATUS;
 
+  c->status = napi_create_function(env, "referenceStatus", NAPI_AUTO_LENGTH,
+    referenceStatus, nullptr, &param);
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "referenceStatus", param);
+  REJECT_STATUS;
+
+  c->status = napi_create_function(env, "scheduledTime", NAPI_AUTO_LENGTH,
+    scheduledStreamTime, nullptr, &param);
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "scheduledTime", param);
+  REJECT_STATUS;
+
   c->status = napi_create_string_utf8(env, "playback", NAPI_AUTO_LENGTH, &asyncName);
   REJECT_STATUS;
   c->status = napi_create_function(env, "nop", NAPI_AUTO_LENGTH, nop, nullptr, &param);
@@ -679,13 +711,15 @@ napi_value displayFrame(napi_env env, napi_callback_info info) {
   return promise;
 }
 
+// TODO add audio scheduling
 napi_value schedule(napi_env env, napi_callback_info info) {
   napi_status status;
   napi_value playback, param, value;
+  napi_valuetype type;
   playbackThreadsafe* pbts;
   HRESULT hresult;
   macadamFrame* frame = new macadamFrame;
-  bool isBuffer;
+  bool hasProp, isBuffer;
 
   size_t argc = 1;
   napi_value argv[1];
@@ -693,15 +727,38 @@ napi_value schedule(napi_env env, napi_callback_info info) {
   CHECK_STATUS;
 
   if (argc != 1) NAPI_THROW_ERROR(
-    "Frame can only be scheduled from a buffer of data.");
+    "Frame can only be scheduled with an object containing payload and time.");
 
-  status = napi_is_buffer(env, argv[0], &isBuffer);
+  status = napi_typeof(env, argv[0], &type);
+  CHECK_STATUS;
+  if (type != napi_object) NAPI_THROW_ERROR(
+    "Type of value passed to schedule must be an object.");
+
+  status = napi_has_named_property(env, argv[0], "video", &hasProp);
+  CHECK_STATUS;
+  if (!hasProp) NAPI_THROW_ERROR("To schedule a frame, a video buffer must be provided.");
+
+  status = napi_has_named_property(env, argv[0], "time", &hasProp);
+  CHECK_STATUS;
+  if (!hasProp) NAPI_THROW_ERROR("To schedule a frame, a time value must be provided.");
+
+  status = napi_get_named_property(env, argv[0], "video", &param);
   CHECK_STATUS;
 
-  if (!isBuffer) NAPI_THROW_ERROR(
-    "Frame data must be provided as a node buffer.");
+  status = napi_is_buffer(env, param, &isBuffer);
+  CHECK_STATUS;
 
-  status = napi_get_buffer_info(env, argv[0], &frame->data, &frame->dataSize);
+  if (!isBuffer) NAPI_THROW_ERROR("Video data must be provided as a node buffer.");
+
+  status = napi_get_buffer_info(env, param, &frame->data, &frame->dataSize);
+  CHECK_STATUS;
+
+  status = napi_get_named_property(env, argv[0], "time", &param);
+  CHECK_STATUS;
+  status = napi_typeof(env, param, &type);
+  CHECK_STATUS;
+  if (type != napi_number) NAPI_THROW_ERROR("Scheduled time must be a number.");
+  status = napi_get_value_int64(env, param, &frame->scheduledTime);
   CHECK_STATUS;
 
   status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
@@ -712,13 +769,16 @@ napi_value schedule(napi_env env, napi_callback_info info) {
   if (pbts->stopped)
     NAPI_THROW_ERROR("Cannot schedule frames after playout has stopped.");
 
+  if (((int32_t) frame->dataSize) < (pbts->rowBytes * pbts->height))
+    NAPI_THROW_ERROR("Insufficient bytes provided to schedule video frame.");
+
   frame->width = pbts->width;
   frame->height = pbts->height;
   frame->rowBytes = pbts->rowBytes;
   frame->pixelFormat = pbts->pixelFormat;
-  frame->tempTime = pbts->tempTime;
+  frame->deckLinkOutput = pbts->deckLinkOutput;
 
-  hresult = pbts->deckLinkOutput->ScheduleVideoFrame(frame, pbts->tempTime,
+  hresult = pbts->deckLinkOutput->ScheduleVideoFrame(frame, frame->scheduledTime,
     pbts->frameDuration, pbts->timeScale);
 
   switch (hresult) {
@@ -735,8 +795,6 @@ napi_value schedule(napi_env env, napi_callback_info info) {
       NAPI_THROW_ERROR("Failed to schedule frame - general failure.");
   }
 
-  pbts->tempTime += pbts->frameDuration;
-
   status = napi_get_undefined(env, &value);
   CHECK_STATUS;
   return value;
@@ -745,11 +803,15 @@ napi_value schedule(napi_env env, napi_callback_info info) {
 napi_value startPlayback(napi_env env, napi_callback_info info) {
   napi_status status;
   napi_value playback, param, value;
+  napi_valuetype type;
   playbackThreadsafe* pbts;
   HRESULT hresult;
+  BMDTimeValue startTime = 0;
+  double playbackSpeed = 1.0;
 
-  size_t argc = 0;
-  status = napi_get_cb_info(env, info, &argc, nullptr, &playback, nullptr);
+  size_t argc = 1;
+  napi_value argv[1];
+  status = napi_get_cb_info(env, info, &argc, argv, &playback, nullptr);
   CHECK_STATUS;
 
   status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
@@ -761,7 +823,33 @@ napi_value startPlayback(napi_env env, napi_callback_info info) {
 
   if (pbts->started) NAPI_THROW_ERROR("Already started.");
 
-  hresult = pbts->deckLinkOutput->StartScheduledPlayback(0, pbts->timeScale, 1.0);
+  if (argc == 1) {
+    status = napi_typeof(env, argv[0], &type);
+    CHECK_STATUS;
+    if (type != napi_object) NAPI_THROW_ERROR("Parameters must be provided in an object.");
+
+    status = napi_get_named_property(env, argv[0], "startTime", &param);
+    CHECK_STATUS;
+    status = napi_typeof(env, param, &type);
+    CHECK_STATUS;
+    if (type == napi_number) {
+      status = napi_get_value_int64(env, param, &startTime);
+      CHECK_STATUS;
+    } else if (type != napi_undefined) NAPI_THROW_ERROR("Playback start time must be a number.");
+
+    status = napi_get_named_property(env, argv[0], "playbackSpeed", &param);
+    CHECK_STATUS;
+    status = napi_typeof(env, param, &type);
+    CHECK_STATUS;
+    if (type == napi_number) {
+      status = napi_get_value_double(env, param, &playbackSpeed);
+      CHECK_STATUS;
+    } else if (type != napi_undefined) NAPI_THROW_ERROR("Playback speed must be a number.");
+  }
+
+  hresult = pbts->deckLinkOutput->StartScheduledPlayback(
+    startTime, pbts->timeScale, playbackSpeed);
+  if (hresult != S_OK) NAPI_THROW_ERROR("Failed to start scheduled playback.");
 
   pbts->started = true;
 
@@ -776,7 +864,42 @@ napi_value played(napi_env env, napi_callback_info info) {
 }
 
 napi_value scheduledStreamTime(napi_env env, napi_callback_info info) {
+  napi_status status;
+  napi_value playback, param, value;
+  playbackThreadsafe* pbts;
+  HRESULT hresult;
 
+  size_t argc = 0;
+  status = napi_get_cb_info(env, info, &argc, nullptr, &playback, nullptr);
+  CHECK_STATUS;
+
+  status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
+  CHECK_STATUS;
+  status = napi_get_value_external(env, param, (void**) &pbts);
+  CHECK_STATUS;
+
+  if (pbts->stopped) NAPI_THROW_ERROR("Already stopped.");
+
+  BMDTimeValue streamTime;
+  double playbackSpeed;
+  hresult = pbts->deckLinkOutput->GetScheduledStreamTime(pbts->timeScale,
+    &streamTime, &playbackSpeed);
+  if (hresult != S_OK) NAPI_THROW_ERROR("Failed to retrieve scheduled stream time.");
+
+  status = napi_create_object(env, &value);
+  CHECK_STATUS;
+
+  status = napi_create_int32(env, (int32_t) streamTime, &param);
+  CHECK_STATUS;
+  status = napi_set_named_property(env, value, "streamTime", param);
+  CHECK_STATUS;
+
+  status = napi_create_double(env, playbackSpeed, &param);
+  CHECK_STATUS;
+  status = napi_set_named_property(env, value, "playbackSpeed", param);
+  CHECK_STATUS;
+
+  return value;
 }
 
 napi_value referenceStatus(napi_env env, napi_callback_info info) {

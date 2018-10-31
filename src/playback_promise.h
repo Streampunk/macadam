@@ -62,6 +62,8 @@ napi_value displayFrame(napi_env env, napi_callback_info info);
 napi_value startPlayback(napi_env env, napi_callback_info info);
 napi_value stopPlayback(napi_env env, napi_callback_info info);
 napi_value schedule(napi_env env, napi_callback_info info);
+napi_value referenceStatus(napi_env env, napi_callback_info info);
+napi_value scheduledStreamTime(napi_env env, napi_callback_info info);
 
 struct playbackCarrier : carrier {
   IDeckLinkOutput* deckLinkOutput = nullptr;
@@ -86,7 +88,9 @@ struct macadamFrame : IDeckLinkVideoFrame {
   BMDFrameFlags frameFlags = bmdFrameFlagDefault;
   void* data;
   size_t dataSize;
-  BMDTimeValue tempTime;
+  BMDTimeValue scheduledTime;
+  BMDTimeValue completionTimestamp;
+  IDeckLinkOutput* deckLinkOutput = nullptr;
   long GetWidth (void) { return width; };
   long GetHeight (void) { return height; };
   long GetRowBytes (void) { return rowBytes; };
@@ -107,7 +111,7 @@ struct macadamFrame : IDeckLinkVideoFrame {
 };
 
 struct displayFrameCarrier : carrier, macadamFrame {
-  IDeckLinkOutput* deckLinkOutput = nullptr;
+  //IDeckLinkOutput* deckLinkOutput = nullptr;
   ~displayFrameCarrier() {}
 };
 
@@ -132,7 +136,6 @@ struct playbackThreadsafe : IDeckLinkVideoOutputCallback {
   int32_t rowBytes;
   bool started = false;
   bool stopped = false;
-  BMDTimeValue tempTime = 0;
   ~playbackThreadsafe() {
     if (deckLinkOutput != nullptr) { deckLinkOutput->Release(); }
     if (displayMode != nullptr) { displayMode->Release(); }
