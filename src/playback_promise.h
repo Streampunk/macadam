@@ -67,6 +67,7 @@ napi_value schedule(napi_env env, napi_callback_info info);
 napi_value played(napi_env env, napi_callback_info info);
 napi_value referenceStatus(napi_env env, napi_callback_info info);
 napi_value scheduledStreamTime(napi_env env, napi_callback_info info);
+napi_value hardwareReferenceClock(napi_env env, napi_callback_info info);
 
 struct playbackCarrier : carrier {
   IDeckLinkOutput* deckLinkOutput = nullptr;

@@ -45,19 +45,21 @@ async function run() {
   });
   console.log(playback.referenceStatus(), playback.scheduledTime());
   for ( let x = 0 ; x < 40 ; x++ ) {
-    console.log('Scheduling', x * 1000);
+    // console.log('Scheduling', x * 1000);
     let start = process.hrtime();
     playback.schedule({ video: frame, time: x * 1000 });
     // console.log(process.hrtime(start)[1]);
     // playback.schedule({ video: frame2, time: x * 2000 + 1000 });
     if (x === 2) playback.start({ startTime: 0 });
     if (x > 1) {
-      await playback.played(x * 1000 - 2000);
+      console.log(x, await playback.played(x * 1000 - 2000));
+      console.log(playback.hardwareTime());
+      console.log();
       // await timer(20);
     }
-    if (x === 39) {
+    /* if (x === 39) {
       playback.played(x * 1000 - 30000).catch(console.error);
-    }
+    } */
     frame = shift(frame, 5120 * 10);
   }
   console.log(playback.referenceStatus(), playback.scheduledTime());

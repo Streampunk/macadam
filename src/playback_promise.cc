@@ -464,6 +464,12 @@ void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
   c->status = napi_set_named_property(env, result, "scheduledTime", param);
   REJECT_STATUS;
 
+  c->status = napi_create_function(env, "hardwareTime", NAPI_AUTO_LENGTH,
+    hardwareReferenceClock, nullptr, &param);
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "hardwareTime", param);
+  REJECT_STATUS;
+
   c->status = napi_create_string_utf8(env, "playback", NAPI_AUTO_LENGTH, &asyncName);
   REJECT_STATUS;
   c->status = napi_create_function(env, "nop", NAPI_AUTO_LENGTH, nop, nullptr, &param);
@@ -1061,6 +1067,11 @@ napi_value scheduledStreamTime(napi_env env, napi_callback_info info) {
   status = napi_create_object(env, &value);
   CHECK_STATUS;
 
+  status = napi_create_string_utf8(env, "scheduledStreamTime", NAPI_AUTO_LENGTH, &param);
+  CHECK_STATUS;
+  status = napi_set_named_property(env, value, "type", param);
+  CHECK_STATUS;
+
   status = napi_create_int32(env, (int32_t) streamTime, &param);
   CHECK_STATUS;
   status = napi_set_named_property(env, value, "streamTime", param);
@@ -1115,7 +1126,56 @@ napi_value referenceStatus(napi_env env, napi_callback_info info) {
 }
 
 napi_value hardwareReferenceClock(napi_env env, napi_callback_info info) {
+  napi_status status;
+  napi_value playback, param, value;
+  playbackThreadsafe* pbts;
+  HRESULT hresult;
+  BMDTimeValue hardwareTime, timeInFrame, ticksPerFrame;
 
+  size_t argc = 0;
+  status = napi_get_cb_info(env, info, &argc, nullptr, &playback, nullptr);
+  CHECK_STATUS;
+
+  status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
+  CHECK_STATUS;
+  status = napi_get_value_external(env, param, (void**) &pbts);
+  CHECK_STATUS;
+
+  if (pbts->stopped) NAPI_THROW_ERROR("Already stopped.");
+
+  hresult = pbts->deckLinkOutput->GetHardwareReferenceClock(pbts->timeScale,
+    &hardwareTime, &timeInFrame, &ticksPerFrame);
+  if (hresult != S_OK) NAPI_THROW_ERROR("Failed to get hardware reference clock.");
+
+  status = napi_create_object(env, &value);
+  CHECK_STATUS;
+
+  status = napi_create_string_utf8(env, "hardwareRefClock", NAPI_AUTO_LENGTH, &param);
+  CHECK_STATUS;
+  status = napi_set_named_property(env, value, "type", param);
+  CHECK_STATUS;
+
+  status = napi_create_int64(env, pbts->timeScale, &param);
+  CHECK_STATUS;
+  status = napi_set_named_property(env, value, "timeScale", param);
+  CHECK_STATUS;
+
+  status = napi_create_int64(env, hardwareTime, &param);
+  CHECK_STATUS;
+  status = napi_set_named_property(env, value, "hardwareTime", param);
+  CHECK_STATUS;
+
+  status = napi_create_int64(env, timeInFrame, &param);
+  CHECK_STATUS;
+  status = napi_set_named_property(env, value, "timeInFrame", param);
+  CHECK_STATUS;
+
+  status = napi_create_int64(env, ticksPerFrame, &param);
+  CHECK_STATUS;
+  status = napi_set_named_property(env, value, "ticksPerFrame", param);
+  CHECK_STATUS;
+
+  return value;
 }
 
 napi_value bufferedVideoFrameCount(napi_env env, napi_callback_info info) {

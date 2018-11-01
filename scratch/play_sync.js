@@ -43,6 +43,7 @@ async function run() {
     let start = process.hrtime();
     let fp = playback.displayFrame(frame).catch(console.error);
     await fp;
+    console.log(playback.hardwareTime());
     let end = process.hrtime(start)[1];
     await timer(500);
     await playback.displayFrame(frame2).catch(console.error);
