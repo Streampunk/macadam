@@ -55,6 +55,7 @@ napi_status checkArgs(napi_env env, napi_callback_info info, char* methodName,
 #define MACADAM_NO_OUTPUT 4010
 #define MACADAM_FRAME_CREATE_FAIL 4011
 #define MACADAM_INSUFFICIENT_BYTES 4012
+#define MACADAM_FRAME_TIMEOUT 4013
 #define MACADAM_SUCCESS 0
 
 struct carrier {

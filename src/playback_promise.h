@@ -77,6 +77,7 @@ struct playbackCarrier : carrier {
   BMDAudioSampleType requestedSampleType = bmdAudioSampleType16bitInteger;
   uint32_t channels = 0; // Set to zero for no channels
   IDeckLinkDisplayMode* selectedDisplayMode = NULL;
+  int32_t rejectTimeoutMs = 1000;
   ~playbackCarrier() {
     if (deckLinkOutput != nullptr) { deckLinkOutput->Release(); }
     if (selectedDisplayMode != nullptr) { selectedDisplayMode->Release(); }
@@ -123,7 +124,9 @@ struct displayFrameCarrier : carrier, macadamFrame {
 
 struct scheduleCarrier : carrier {
   BMDTimeValue scheduledTime;
-  ~scheduleCarrier () { };
+  ~scheduleCarrier () {
+    // printf("Bye bye schedule carrier.\n");
+  };
 };
 
 struct playbackThreadsafe : IDeckLinkVideoOutputCallback {
@@ -148,6 +151,7 @@ struct playbackThreadsafe : IDeckLinkVideoOutputCallback {
   bool started = false;
   bool stopped = false;
   std::map<BMDTimeValue, scheduleCarrier*> pendingPlays;
+  BMDTimeValue pendingTimeoutTicks = 1000;
   ~playbackThreadsafe() {
     if (deckLinkOutput != nullptr) { deckLinkOutput->Release(); }
     if (displayMode != nullptr) { displayMode->Release(); }

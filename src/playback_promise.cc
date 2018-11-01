@@ -242,7 +242,6 @@ void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
   c->status = napi_set_named_property(env, result, "type", param);
   REJECT_STATUS;
 
-
   #ifdef WIN32
   BSTR displayModeBSTR = NULL;
   hresult = c->selectedDisplayMode->GetName(&displayModeBSTR);
@@ -393,6 +392,11 @@ void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
     REJECT_STATUS;
   };
 
+  c->status = napi_create_int32(env, c->rejectTimeoutMs, &param);
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "rejectTimeout", param);
+  REJECT_STATUS;
+
   playbackThreadsafe* pbts = new playbackThreadsafe;
   pbts->deckLinkOutput = c->deckLinkOutput;
   c->deckLinkOutput = nullptr;
@@ -405,6 +409,7 @@ void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
   pbts->rowBytes = rowBytes;
   pbts->pixelFormat = c->requestedPixelFormat;
   pbts->channels = c->channels;
+  pbts->pendingTimeoutTicks = (c->rejectTimeoutMs / 1000) * frameRateScale;
   if (c->channels > 0) {
     pbts->sampleRate = c->requestedSampleRate;
     pbts->sampleType = c->requestedSampleType;
@@ -576,6 +581,17 @@ napi_value playback(napi_env env, napi_callback_info info) {
     REJECT_RETURN;
   }
 
+  c->status = napi_get_named_property(env, options, "rejectTimeout", &param);
+  REJECT_RETURN;
+  c->status = napi_typeof(env, param, &type);
+  REJECT_RETURN;
+  if (type != napi_undefined) {
+    if (type != napi_number) REJECT_ERROR_RETURN(
+      "Promise rejection timeout must be a number.", MACADAM_INVALID_ARGS);
+    c->status = napi_get_value_int32(env, param, &c->rejectTimeoutMs);
+    REJECT_RETURN;
+  }
+
   c->status = napi_create_string_utf8(env, "CreatePlayback", NAPI_AUTO_LENGTH, &resourceName);
   REJECT_RETURN;
   c->status = napi_create_async_work(env, NULL, resourceName, playbackExecute,
@@ -589,7 +605,8 @@ napi_value playback(napi_env env, napi_callback_info info) {
 
 void playedFrame(napi_env env, napi_value jsCb, void* context, void* data) {
   napi_status status;
-  napi_value resres, param;
+  napi_value resres, param, errorValue, errorCode, errorMsg;
+;
   macadamFrame* frame = (macadamFrame*) data;
   playbackThreadsafe* pbts = (playbackThreadsafe*) context;
   scheduleCarrier* c = nullptr;
@@ -597,7 +614,28 @@ void playedFrame(napi_env env, napi_value jsCb, void* context, void* data) {
   //printf("Scheduled frame %lld playback completed with timestamp %lld and result %i.\n",
   //  frame->scheduledTime, frame->completionTimestamp, frame->result);
 
-  // TODO Check for any entries older than defined gap and reject
+  for (std::map<BMDTimeValue, scheduleCarrier*>::iterator it = pbts->pendingPlays.begin() ;
+    it != pbts->pendingPlays.end() ; ++it) {
+
+    if (it->first > frame->scheduledTime - pbts->pendingTimeoutTicks) break;
+    char* extMsg = (char *) malloc(sizeof(char) * 200);
+    sprintf(extMsg, "Pending frame promise timed out for scheduled time %lld as just played %lld.",
+      it->second->scheduledTime, frame->scheduledTime);
+    char errorCodeChars[20];
+    sprintf(errorCodeChars, "%d", MACADAM_FRAME_TIMEOUT);
+    status = napi_create_string_utf8(env, errorCodeChars,
+      NAPI_AUTO_LENGTH, &errorCode);
+    FLOATING_STATUS;
+    status = napi_create_string_utf8(env, extMsg, NAPI_AUTO_LENGTH, &errorMsg);
+    FLOATING_STATUS;
+    status = napi_create_error(env, errorCode, errorMsg, &errorValue);
+    FLOATING_STATUS;
+    status = napi_reject_deferred(env, it->second->_deferred, errorValue);
+    FLOATING_STATUS;
+
+    tidyCarrier(env, it->second);
+    pbts->pendingPlays.erase(it->first);
+  }
 
   // See if any pending play promises exist in map and fulfil
   auto played = pbts->pendingPlays.find(frame->scheduledTime);

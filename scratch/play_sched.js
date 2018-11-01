@@ -44,8 +44,8 @@ async function run() {
     process.exit();
   });
   console.log(playback.referenceStatus(), playback.scheduledTime());
-  for ( let x = 0 ; x < 2000 ; x++ ) {
-    //console.log('Scheduling', x * 1000);
+  for ( let x = 0 ; x < 40 ; x++ ) {
+    console.log('Scheduling', x * 1000);
     let start = process.hrtime();
     playback.schedule({ video: frame, time: x * 1000 });
     // console.log(process.hrtime(start)[1]);
@@ -54,6 +54,9 @@ async function run() {
     if (x > 1) {
       await playback.played(x * 1000 - 2000);
       // await timer(20);
+    }
+    if (x > 30) {
+      playback.played(x * 1000 - 30000).catch(console.error);
     }
     frame = shift(frame, 5120 * 10);
   }
