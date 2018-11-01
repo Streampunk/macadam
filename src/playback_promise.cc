@@ -616,7 +616,6 @@ void playedFrame(napi_env env, napi_value jsCb, void* context, void* data) {
   for (std::map<BMDTimeValue, scheduleCarrier*>::iterator it = pbts->pendingPlays.begin() ;
     it != pbts->pendingPlays.end() ; ++it) {
 
-    printf("It's hello from him %lld %i.\n", it->first, pbts->pendingPlays.empty());
     if (it->first > frame->scheduledTime - pbts->pendingTimeoutTicks) break;
     char* extMsg = (char *) malloc(sizeof(char) * 200);
     sprintf(extMsg, "Pending frame promise timed out for scheduled time %lld as just played %lld.",
@@ -634,17 +633,12 @@ void playedFrame(napi_env env, napi_value jsCb, void* context, void* data) {
     FLOATING_STATUS;
 
     tidyCarrier(env, it->second);
-    printf("Carrier tidied OK.\n");
     pbts->pendingPlays.erase(it->first);
-    printf("Erase OK %i.\n", pbts->pendingPlays.empty());
     if (pbts->pendingPlays.empty()) break;
   }
 
-  printf("Then got out of loop.\n");
-
   // See if any pending play promises exist in map and fulfil
   auto played = pbts->pendingPlays.find(frame->scheduledTime);
-  printf("Then got to played.\n");
   if (played != pbts->pendingPlays.end()) {
     c = played->second;
     c->status = napi_create_object(env, &resres);
