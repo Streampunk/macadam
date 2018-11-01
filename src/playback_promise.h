@@ -68,6 +68,8 @@ napi_value played(napi_env env, napi_callback_info info);
 napi_value referenceStatus(napi_env env, napi_callback_info info);
 napi_value scheduledStreamTime(napi_env env, napi_callback_info info);
 napi_value hardwareReferenceClock(napi_env env, napi_callback_info info);
+napi_value bufferedVideoFrameCount(napi_env env, napi_callback_info info);
+napi_value bufferedAudioSampleFrameCount(napi_env env, napi_callback_info info);
 
 struct playbackCarrier : carrier {
   IDeckLinkOutput* deckLinkOutput = nullptr;
@@ -143,6 +145,7 @@ struct playbackThreadsafe : IDeckLinkVideoOutputCallback {
   BMDPixelFormat pixelFormat;
   BMDAudioSampleRate sampleRate;
   BMDAudioSampleType sampleType;
+  uint32_t sampleByteFactor;
   uint32_t channels = 0; // Set to zero for no channels
   BMDTimeScale timeScale;
   BMDTimeValue frameDuration;

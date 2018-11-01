@@ -198,6 +198,7 @@ void playbackExecute(napi_env env, void* data) {
   if (c->channels > 0) {
     hresult = deckLinkOutput->EnableAudioOutput(c->requestedSampleRate,
       c->requestedSampleType, c->channels, bmdAudioOutputStreamTimestamped);
+    printf("Enabling audio %i.\n", hresult);
     switch (hresult)  {
       case E_INVALIDARG:
         c->status = MACADAM_INVALID_ARGS;
@@ -218,6 +219,9 @@ void playbackExecute(napi_env env, void* data) {
       case S_OK:
         break;
     }
+    hresult = deckLinkOutput->BeginAudioPreroll();
+    printf("Begin audio preroll %i.\n", hresult);
+
   }
 }
 
@@ -413,6 +417,7 @@ void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
   if (c->channels > 0) {
     pbts->sampleRate = c->requestedSampleRate;
     pbts->sampleType = c->requestedSampleType;
+    pbts->sampleByteFactor = c->channels * (pbts->sampleType / 8);
   }
 
   hresult = pbts->deckLinkOutput->SetScheduledFrameCompletionCallback(pbts);
@@ -468,6 +473,18 @@ void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
     hardwareReferenceClock, nullptr, &param);
   REJECT_STATUS;
   c->status = napi_set_named_property(env, result, "hardwareTime", param);
+  REJECT_STATUS;
+
+  c->status = napi_create_function(env, "bufferedFrames", NAPI_AUTO_LENGTH,
+    bufferedVideoFrameCount, nullptr, &param);
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "bufferedFrames", param);
+  REJECT_STATUS;
+
+  c->status = napi_create_function(env, "bufferedAudioFrames", NAPI_AUTO_LENGTH,
+    bufferedAudioSampleFrameCount, nullptr, &param);
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "bufferedAudioFrames", param);
   REJECT_STATUS;
 
   c->status = napi_create_string_utf8(env, "playback", NAPI_AUTO_LENGTH, &asyncName);
@@ -847,12 +864,15 @@ napi_value displayFrame(napi_env env, napi_callback_info info) {
 // TODO add audio scheduling
 napi_value schedule(napi_env env, napi_callback_info info) {
   napi_status status;
-  napi_value playback, param, videoBuffer, value;
+  napi_value playback, param, videoBuffer, audioBuffer, value;
   napi_valuetype type;
   playbackThreadsafe* pbts;
   HRESULT hresult;
   macadamFrame* frame = new macadamFrame;
   bool hasProp, isBuffer;
+  void* audioData;
+  size_t audioDataSize;
+  uint32_t sampleFrameCount, sampleFramesWritten;
 
   size_t argc = 1;
   napi_value argv[1];
@@ -899,6 +919,32 @@ napi_value schedule(napi_env env, napi_callback_info info) {
   status = napi_get_value_external(env, param, (void**) &pbts);
   CHECK_STATUS;
 
+  if (pbts->channels > 0) {
+    status = napi_has_named_property(env, argv[0], "audio", &hasProp);
+    CHECK_STATUS;
+    if (!hasProp) NAPI_THROW_ERROR("To schedule a frame, an audio buffer must be provided.");
+
+    status = napi_get_named_property(env, argv[0], "audio", &audioBuffer);
+    CHECK_STATUS;
+
+    status = napi_is_buffer(env, videoBuffer, &isBuffer);
+    CHECK_STATUS;
+
+    if (!isBuffer) NAPI_THROW_ERROR("Audio data must be provided as a node buffer.");
+
+    status = napi_get_named_property(env, argv[0], "sampleFrameCount", &param);
+    CHECK_STATUS;
+    status = napi_typeof(env, param, &type);
+    CHECK_STATUS;
+    if (type == napi_number) {
+      status = napi_get_value_uint32(env, param, &sampleFrameCount);
+      CHECK_STATUS;
+    }
+    else {
+      sampleFrameCount = 0;
+    }
+  }
+
   if (pbts->stopped)
     NAPI_THROW_ERROR("Cannot schedule frames after playout has stopped.");
 
@@ -929,8 +975,31 @@ napi_value schedule(napi_env env, napi_callback_info info) {
       NAPI_THROW_ERROR("Failed to schedule frame - general failure.");
   }
 
+  if (pbts->channels > 0) {
+    status = napi_get_buffer_info(env, audioBuffer, &audioData, &audioDataSize);
+    CHECK_STATUS;
+    if (sampleFrameCount == 0) { // Not provided
+      sampleFrameCount = audioDataSize / pbts->sampleByteFactor;
+    }
+    // TODO Assuming audio data is copied
+    hresult = pbts->deckLinkOutput->ScheduleAudioSamples(audioData, sampleFrameCount,
+      frame->scheduledTime, pbts->timeScale, &sampleFramesWritten);
+    switch (hresult) {
+      case S_OK:
+        break;
+      case E_ACCESSDENIED:
+        NAPI_THROW_ERROR("Audio output has not been enabled or audio sample write in progress.");
+      case E_INVALIDARG:
+        NAPI_THROW_ERROR("No timescale was provided when scheduling audio samples.");
+      case E_FAIL:
+        NAPI_THROW_ERROR("Failed to schedule audio for frame - general failure.");
+    }
+    // TODO check sample frames provided and written are the same
+    // printf("Sample frame count %u frames written %u.\n", sampleFrameCount, sampleFramesWritten);
+  }
+
   // Ensure that buffer is not garbage collected during playback
-  status = napi_create_reference(env, param, 0, &frame->sourceBufferRef);
+  status = napi_create_reference(env, videoBuffer, 1, &frame->sourceBufferRef);
   CHECK_STATUS;
 
   status = napi_get_undefined(env, &value);
@@ -983,6 +1052,11 @@ napi_value startPlayback(napi_env env, napi_callback_info info) {
       status = napi_get_value_double(env, param, &playbackSpeed);
       CHECK_STATUS;
     } else if (type != napi_undefined) NAPI_THROW_ERROR("Playback speed must be a number.");
+  }
+
+  if (pbts->channels > 0) {
+    hresult = pbts->deckLinkOutput->EndAudioPreroll();
+    if (hresult != S_OK) NAPI_THROW_ERROR("Failed to end audio preroll.\n");
   }
 
   hresult = pbts->deckLinkOutput->StartScheduledPlayback(
