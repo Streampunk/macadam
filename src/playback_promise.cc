@@ -221,7 +221,6 @@ void playbackExecute(napi_env env, void* data) {
     }
     hresult = deckLinkOutput->BeginAudioPreroll();
     printf("Begin audio preroll %i.\n", hresult);
-
   }
 }
 
@@ -736,11 +735,12 @@ bail:
 
 void displayFrameExecute(napi_env env, void* data) {
   displayFrameCarrier* c = (displayFrameCarrier*) data;
+  uint32_t sampleFramesWritten;
   HRESULT hresult;
 
-  void* testBytes;
-  c->GetBytes(&testBytes);
-  printf("Test bytes %p and pixel format %i=%i.\n", testBytes, c->GetPixelFormat(), bmdFormat10BitYUV);
+  //void* testBytes;
+  //c->GetBytes(&testBytes);
+  //printf("Test bytes %p and pixel format %i=%i.\n", testBytes, c->GetPixelFormat(), bmdFormat10BitYUV);
 
   /* IDeckLinkMutableVideoFrame* frame;
   hresult = c->deckLinkOutput->CreateVideoFrame(c->width, c->height, c->rowBytes,
@@ -752,8 +752,8 @@ void displayFrameExecute(napi_env env, void* data) {
   frame->GetBytes(&frameBytes);
   memcpy(frameBytes, c->data, c->dataSize); */
 
-  printf("Some data %02x %02x %02x %02x\n", ((uint8_t*) testBytes)[0],
-    ((uint8_t*) testBytes)[1], ((uint8_t*) testBytes)[2], ((uint8_t*) testBytes)[3]);
+  //printf("Some data %02x %02x %02x %02x\n", ((uint8_t*) testBytes)[0],
+    // ((uint8_t*) testBytes)[1], ((uint8_t*) testBytes)[2], ((uint8_t*) testBytes)[3]);
 
   // This call may block - make sure thread pool is large enough
   hresult = c->deckLinkOutput->DisplayVideoFrameSync(c);
@@ -776,6 +776,16 @@ void displayFrameExecute(napi_env env, void* data) {
       break;
   }
   // frame->Release();
+  if ((c->audioRef != nullptr) && (c->status == napi_ok)) {
+    hresult = c->deckLinkOutput->WriteAudioSamplesSync(c->audioData,
+      c->sampleFrameCount, &sampleFramesWritten);
+    printf("Sample frame count %i and samples written %i.\n", c->sampleFrameCount,
+      sampleFramesWritten);
+    if (hresult != S_OK) {
+      c->status = MACADAM_CALL_FAILURE;
+      c->errorMsg = "Failed to write audio samples synchronously.";
+    }
+  }
 }
 
 void displayFrameComplete(napi_env env, napi_status asyncStatus, void* data) {
@@ -790,6 +800,11 @@ void displayFrameComplete(napi_env env, napi_status asyncStatus, void* data) {
 
   c->status = napi_create_object(env, &result);
   REJECT_STATUS;
+
+  if (c->audioRef != nullptr) {
+    c->status = napi_delete_reference(env, c->audioRef);
+    REJECT_STATUS;
+  }
 
   napi_status status;
   status = napi_resolve_deferred(env, c->_deferred, result);
@@ -807,12 +822,12 @@ napi_value displayFrame(napi_env env, napi_callback_info info) {
   c->status = napi_create_promise(env, &c->_deferred, &promise);
   REJECT_RETURN;
 
-  size_t argc = 1;
-  napi_value argv[1];
+  size_t argc = 2;
+  napi_value argv[2];
   c->status = napi_get_cb_info(env, info, &argc, argv, &playback, nullptr);
   REJECT_RETURN;
 
-  if (argc != 1) REJECT_ERROR_RETURN(
+  if (argc < 1) REJECT_ERROR_RETURN(
     "Frame can only be displayed from a buffer of data.", MACADAM_INVALID_ARGS);
 
   c->status = napi_is_buffer(env, argv[0], &isBuffer);
@@ -837,6 +852,19 @@ napi_value displayFrame(napi_env env, napi_callback_info info) {
     "Display frame cannot be used once an output is stopped.",
     MACADAM_ERROR_START);
 
+  if (argc == 2) { // Audio data provided
+    c->status = napi_is_buffer(env, argv[1], &isBuffer);
+    REJECT_RETURN;
+
+    if (!isBuffer) REJECT_ERROR_RETURN(
+      "Audio data must be provided as a node buffer.", MACADAM_INVALID_ARGS);
+
+    c->status = napi_get_buffer_info(env, argv[1], &c->audioData, &c->audioDataSize);
+    REJECT_RETURN;
+
+    c->sampleFrameCount = c->audioDataSize / pbts->sampleByteFactor;
+  }
+
   c->width = pbts->width;
   c->height = pbts->height;
   c->rowBytes = pbts->rowBytes;
@@ -850,6 +878,13 @@ napi_value displayFrame(napi_env env, napi_callback_info info) {
   c->status = napi_create_reference(env, argv[0], 1, &c->passthru);
   REJECT_RETURN;
 
+  if (argc == 2) {
+    c->status = napi_create_reference(env, argv[1], 1, &c->audioRef);
+    REJECT_RETURN;
+    pbts->deckLinkOutput->EndAudioPreroll();
+  }
+
+
   c->status = napi_create_string_utf8(env, "DisplayFrame", NAPI_AUTO_LENGTH, &resourceName);
   REJECT_RETURN;
   c->status = napi_create_async_work(env, nullptr, resourceName, displayFrameExecute,
@@ -861,7 +896,6 @@ napi_value displayFrame(napi_env env, napi_callback_info info) {
   return promise;
 }
 
-// TODO add audio scheduling
 napi_value schedule(napi_env env, napi_callback_info info) {
   napi_status status;
   napi_value playback, param, videoBuffer, audioBuffer, value;
@@ -1304,10 +1338,6 @@ napi_value bufferedAudioSampleFrameCount(napi_env env, napi_callback_info info) 
   status = napi_create_int32(env, sampleFrameCount, &value);
   CHECK_STATUS;
   return value;
-}
-
-napi_value writeAudioSamples(napi_env env, napi_callback_info info) {
-
 }
 
 napi_value stopPlayback(napi_env env, napi_callback_info info) {

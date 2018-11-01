@@ -121,7 +121,10 @@ struct macadamFrame : IDeckLinkVideoFrame {
 };
 
 struct displayFrameCarrier : carrier, macadamFrame {
-  //IDeckLinkOutput* deckLinkOutput = nullptr;
+  void* audioData = nullptr;
+  size_t audioDataSize;
+  uint32_t sampleFrameCount;
+  napi_ref audioRef = nullptr;
   ~displayFrameCarrier() {}
 };
 
