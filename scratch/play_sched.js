@@ -55,7 +55,7 @@ async function run() {
       await playback.played(x * 1000 - 2000);
       // await timer(20);
     }
-    if (x > 30) {
+    if (x === 39) {
       playback.played(x * 1000 - 30000).catch(console.error);
     }
     frame = shift(frame, 5120 * 10);
