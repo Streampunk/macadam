@@ -13,6 +13,8 @@
   limitations under the License.
 */
 
+// This example uses the deprecated event-based playback mode
+
 var H = require('highland');
 var fs = require('fs');
 var mac = require('../index.js');
@@ -74,8 +76,3 @@ H((push, next) => { push(null, baseFolder); next(); })
   .doto(() => { if (count++ == 4) { playback.start(); } })
   .errors(H.log)
   .done(() => { playback.stop(); });
-
-process.on('SIGINT', () => {
-  playback.stop();
-  process.exit();
-});

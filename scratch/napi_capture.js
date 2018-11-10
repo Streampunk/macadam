@@ -5,6 +5,7 @@ async function run() {
     pixelFormat: macadam.bmdFormat8BitYUV,
     channels: 2
   });
+  console.log(capture);
   for ( let x = 0 ; x < 1000 ; x++ ) {
     let frame = await capture.frame();
     /* let frame = await Promise.all([

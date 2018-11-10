@@ -53,19 +53,39 @@ const EventEmitter = require('events');
 var SegfaultHandler = require('segfault-handler');
 SegfaultHandler.registerHandler("crash.log");
 
+// Capture class is deprecated
 function Capture (deviceIndex, displayMode, pixelFormat) {
+  this.deviceIndex = deviceIndex;
+  this.displayMode = displayMode;
+  this.pixelFormat = pixelFormat;
+  this.emergencyBrake = null;
   if (arguments.length !== 3 || typeof deviceIndex !== 'number' ||
       typeof displayMode !== 'number' || typeof pixelFormat !== 'number' ) {
     this.emit('error', new Error('Capture requires three number arguments: ' +
-      'index, display mode and pixel format'));
+      'device index, display mode and pixel format'));
   } else {
     this.capture = macadamNative.capture({
       deviceIndex: deviceIndex,
       displayMode: displayMode,
       pixelFormat: pixelFormat
-  }).catch(err => { this.emit('error', err); });
-  this.running = true;
-  EventEmitter.call(this);
+    });//.catch(err => { this.emit('error', err); });
+    this.capture.then(x => { this.emergencyBrake = x; });
+    this.running = true;
+    /* process.on('exit', function () {
+      console.log('Exiting node.');
+      if (this.emergencyBrake) this.emergencyBrake.stop();
+      this.emergencyBrake = null;
+      process.exit(0);
+    }); */
+    process.on('SIGINT', () => {
+      console.log('Received SIGINT.');
+      if (this.emergencyBrake) this.emergencyBrake.stop();
+      this.emergencyBrake = null;
+      this.running = false;
+      process.exit();
+    });
+    EventEmitter.call(this);
+  }
 }
 
 util.inherits(Capture, EventEmitter);
@@ -88,6 +108,7 @@ Capture.prototype.stop = function () {
   this.capture.then(x => {
     x.stop();
     this.emit('done');
+    this.emergencyBrake = null;
   }).catch(err => { this.emit('error', err); });
 }
 
@@ -102,15 +123,17 @@ Capture.prototype.enableAudio = function (sampleRate, sampleType, channelCount) 
       sampleRate: sampleRate,
       sampleTyoe: sampleType
     }).catch(err => { this.emit('error', err); });
-  }.catch(err => { this.emit('error', err); } );
+  }).catch(err => { this.emit('error', err); } );
 }
 
-// Playback cass is deprecated
+// Playback class is deprecated
 function Playback (deviceIndex, displayMode, pixelFormat) {
   this.index = 0;
   this.deviceIndex = deviceIndex;
   this.displayMode = displayMode;
   this.pixelFormat = pixelFormat;
+  this.running = true;
+  this.emergencyBrake = null;
   if (arguments.length !== 3 || typeof deviceIndex !== 'number' ||
       typeof displayMode !== 'number' || typeof pixelFormat !== 'number' ) {
     this.emit('error', new Error('Playback requires three number arguments: ' +
@@ -121,6 +144,19 @@ function Playback (deviceIndex, displayMode, pixelFormat) {
       displayMode: displayMode,
       pixelFormat: pixelFormat
     }).catch(err => { this.emit('error', err); });
+    /* process.on('exit', function () {
+      console.log('Exiting node.');
+      if (this.emergencyBrake) this.emergencyBrake.stop();
+      this.running = false;
+      process.exit(0);
+    }); */
+    process.on('SIGINT', () => {
+      console.log('Received SIGINT.');
+      if (this.emergencyBrake) this.emergencyBrake.stop();
+      this.running = false;
+      process.exit();
+    });
+  }
 
   EventEmitter.call(this);
 }
@@ -130,29 +166,32 @@ util.inherits(Playback, EventEmitter);
 Playback.prototype.start = function () {
   let index = this.index;
   this.playback.then(x => {
-    x.start(index * x.frameRate[0]);
+    x.start({ startTime: index * x.frameRate[0] });
   }).catch(err => { this.emit('error', err); });
 }
 
 Playback.prototype.frame = function (f, a) {
   let index = this.index++;
   this.playback.then(x => {
-    x.frame({
-      videoFrame: f,
-      audioFrame: a,
+    if (!this.running) return;
+    x.schedule({
+      video: f,
+      audio: a,
       time: index * x.frameRate[0]
     });
     x.played(index * x.frameRate[0]).then(r => {
       this.emit('played', r.result);
     });
-  }.catch(err => { this.emit('error', err); });
+  }).catch(err => { this.emit('error', err); });
 }
 
 Playback.prototype.stop = function () {
   this.playback.then(x => {
     x.stop();
     this.emit('done');
-  }, err => { this.emit('error', err); });
+    this.emergencyBrake = null;
+    this.running = false;
+  }).catch(err => { this.emit('error', err); });
 }
 
 Playback.prototype.enableAudio = function (sampleRate, sampleType, channelCount) {
@@ -166,7 +205,7 @@ Playback.prototype.enableAudio = function (sampleRate, sampleType, channelCount)
       sampleRate: sampleRate,
       sampleTyoe: sampleType
     }).catch(err => { this.emit('error', err); });
-  }.catch(err => { this.emit('error', err); } );
+  }).catch(err => { this.emit('error', err); } );
 }
 
 function bmCodeToInt (s) {

@@ -1,6 +1,7 @@
 var macadam = require('../');
 var fs = require('fs');
 
+// This example uses the deprecated event-based playback mode
 var frame = fs.readFileSync('EBU_3325_1080_7.v210');
 var audio = fs.readFileSync('steam_48000.wav');
 audio = audio.slice(0x28);
@@ -34,15 +35,4 @@ playback.on('played', function() {
   //   frame.slice(0, frame.length - oneRow)], frame.length);
   playback.frame(frame, audio.slice(7680*count++, 7680*count));
   lastFrame = process.hrtime();
-});
-
-// process.on('exit', function () {
-//   console.log('Exiting node.');
-//   playback.stop();
-//   process.exit(0);
-// });
-process.on('SIGINT', function () {
-  console.log('Received SIGINT.');
-  playback.stop();
-  process.exit();
 });

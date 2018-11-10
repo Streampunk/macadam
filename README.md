@@ -4,23 +4,23 @@ Prototype bindings to link [Node.js](http://nodejs.org/) and the Blackmagic Desk
 
 This is prototype software and is not yet suitable for production use. Linux is now a fully supported platform. However, please note that Blackmagic USB3 devices are not supported under Linux.
 
-Why _macadam_? _Tarmacadam_ is the black stuff that magically makes roads, so it seemed appropriate as a name for a steampunk-style BlackMagic binding.
+Why _macadam_? _Tarmacadam_ is the black stuff that magically makes roads, so it seemed appropriate as a name for a steampunk-style Blackmagic binding.
 
 ## Installation
 
 Macadam has a number of prerequisites:
 
-1. Install [Node.js](http://nodejs.org/) for your platform. This software has been developed against version 10.11.0 which is the current version and will soon be LTS.
+1. Install [Node.js](http://nodejs.org/) for your platform. This software has been developed against version 10.11.0 and will track the Node LTS version.
 2. Install the latest version of the Blackmagic Desktop Video SDKs for your platform, available from https://www.blackmagicdesign.com/support. At least version 10.12.0 is required.
-3. Install [node-gyp](https://github.com/nodejs/node-gyp) and make sure that you have the prerequisites for compiling Javascript addons for your platform. This requires a C/C++ development kit and python v2.7.
+3. Install [node-gyp](https://github.com/nodejs/node-gyp) and make sure that you have the prerequisites for compiling Javascript addons for your platform as described. This requires a C/C++ development kit and python v2.7.
 
-Macadam is designed to be used as a module included into another project. To include macadam into your project:
+Macadam is designed to be used as a module included into another project. To include macadam into your project (`--save` is now assumed so could be omitted):
 
     npm install --save macadam
 
 ## Using macadam
 
-To use macadam, `require` the module. Capture and playback operations are illustrated below.
+To use macadam, `require` the module. Capture and playback operations are illustrated in sections below.
 
 ### Device information
 
@@ -151,6 +151,7 @@ To capture frames of video and any related audio, inside an `async` function cre
 
 ```javascript
 let capture = await macadam.capture({
+  deviceInfo: 0, // Index relative to the 'macadam.getDeviceInfo()' array
   displayMode: macadam.bmdModeHD1080i50,
   pixelFormat: macadam.bmdFormat8BitYUV,
   channels: 2, // enables audio - omit if audio is not required
@@ -162,6 +163,21 @@ let capture = await macadam.capture({
 An example of the capture object returned is shown below:
 
 ```javascript
+{ type: 'capture',
+  displayModeName: '1080i50',
+  width: 1920,
+  height: 1080,
+  fieldDominance: 'upperFieldFirst',
+  frameRate: [ 1000, 25000 ],
+  pixelFormat: '8-bit YUV',
+  audioEnabled: true,
+  sampleRate: 48000,
+  sampleType: 16,
+  channels: 2,
+  pause: [Function: pause],
+  stop: [Function: stop],
+  frame: [Function: frame],
+  deckLinkInput: [External] }
 ```
 
 Use the `frame` method provided by the object the wait for the next frames-worth of data. The following example grabs 1000 frames and then stops the capture process.
@@ -196,13 +212,13 @@ Each frame is self-contained and self-describing. An example of the value of the
     data: <Buffer 00 a0 00 b0 00 c0 00 d0 ... > } }
 ```
 
-Note that the `data` buffers returned hold onto RAM allocated by the Blackmagic SDK until the buffer is no longer referenced and garbage collected. Try not to hold on to them for too long or copy the data into another buffer.
+Note that the `data` buffers returned hold onto RAM allocated by the Blackmagic SDK until the buffer is no longer referenced and garbage collected. Try not to hold on to these buffers for too long, perhaps by copying the data into another buffer.
 
 Stream capture may be paused and restarted by calling the `pause` method. This will stop the resolution of outstanding frame promises and skip frames on the input.
 
 ### Playback
 
-Playback has two modes, scheduled and synchronous. The recommended approach to playback is to use promises with `async`/`await` and the scheduled approach. Lower latency can be achieved with the synchronous approach, but note that this requires the user to manage the timing of sending video and audio with hardware output timing.
+Playback has two modes, scheduled and synchronous. The recommended approach to playback is to use promises with `async`/`await` and the scheduled approach. Lower latency can be achieved with the synchronous approach, but note that this requires the user to control the timing of sending video and audio with respect to hardware output timing.
 
 For the previous event-based version of playback, please see the description of the [deprecated APIs](./deprecated.md).
 
@@ -214,7 +230,7 @@ Playback starts by creating a playback object inside an `async` function.
 
 ```javascript
 let playback = await macadam.playback({
-  deviceIndex: 0, // Index relative to deviceInfo
+  deviceIndex: 0, // Index relative to the 'macadam.getDeviceInfo()' array
   displayMode: macadam.bmdModeHD1080i50,
   pixelFormat: macadam.bmdFormat10BitYUV,
   channels: 2, // omit the channels property if no audio
@@ -226,6 +242,31 @@ let playback = await macadam.playback({
 This created playback object will be like the one shown below:
 
 ```javascript
+{ type: 'playback',
+  displayModeName: '1080i50',
+  width: 1920,
+  height: 1080,
+  rowBytes: 5120,
+  bufferSize: 5529600,
+  fieldDominance: 'upperFieldFirst',
+  frameRate: [ 1000, 25000 ],
+  pixelFormat: '10-bit YUV',
+  audioEnabled: true,
+  sampleRate: 48000,
+  sampleType: 16,
+  channels: 2,
+  rejectTimeout: 1000,
+  displayFrame: [Function: displayFrame],
+  start: [Function: start],
+  stop: [Function: stop],
+  schedule: [Function: schedule],
+  played: [Function: played],
+  referenceStatus: [Function: referenceStatus],
+  scheduledTime: [Function: scheduledTime],
+  hardwareTime: [Function: hardwareTime],
+  bufferedFrames: [Function: bufferedFrames],
+  bufferedAudioFrames: [Function: bufferedAudioFrames],
+  deckLinkOutput: [External] }
 ```
 
 The following code snippet shows how video and audio data can be scheduled based on scheduled stream time.
@@ -234,8 +275,8 @@ The following code snippet shows how video and audio data can be scheduled based
 for ( let x = 0 ; x < 100 ; x++ ) { // Play 100 frames
   // somehow get Node.JS buffers for next 'videoFrame' and 'audioFrame'
   playback.schedule({
-    video: videoFrame, // See SDK documentation for byte packing
-    audio: audioFrame, // Frames worth of interleaved audio data
+    video: videoFrame, // Video frame data. Decklink SDK docs have byte packing
+    audio: audioFrame, // Frames-worth of interleaved audio data
     sampleFrameCount: 1920, // Optional - otherwise based on buffer length
     time: x * 1000 }); // Relative to timescale in playback object
                        // Hint: Use 1001 for fractional framerates like 59.94
@@ -252,7 +293,7 @@ playback.stop();
 
 The playback `start` method takes the following options:
 
-* `startTime` - Time to start scheduled playback from in unit of playback `frameRate`. Defaults to `0`.
+* `startTime` - Time to start scheduled playback from, measured in units of playback `frameRate`. Defaults to `0`.
 * `playbackSpeed` - Relative playback speed. Allows slower or reverse play. Defaults to `1.0` for real time forward playback.
 
 #### Playback status
@@ -283,7 +324,7 @@ The playback object provides a number of utility methods for finding out what th
 
 #### Synchronous playback
 
-With synchronous playback, frame data is sent to the card immediately for display at the next possible opportunity using the `displayFrame` method. It is up to the use of the synchronous API to make sure that frame data is replaced at a suitable frequency to ensure smooth playback. The `playback.hardwareTime()` method can be used to help with this.
+With synchronous playback, frame data is sent to the card immediately for display at the next possible opportunity using the `displayFrame` method. It is up to the user of the synchronous API to make sure that frame data is replaced at a suitable frequency to ensure smooth playback. The `playback.hardwareTime()` method (see previous section) can be used to help with this.
 
 Note that synchronous audio playback is still in development and not covered here.
 
@@ -318,7 +359,7 @@ development in progress. To follow shortly.
 
 ### Check the DeckLink API version
 
-To check the DeckLinkAPI version:
+To check the DeckLink API version:
 
 ```javascript
 var macadam = require('macadam');
@@ -342,11 +383,9 @@ In summary, there are:
 
 ## Status, support and further development
 
-This is prototype software that is not yet suitable for production use. The software is being actively tested and developed.
+This is prototype software that is not yet suitable for production use. The software is being actively tested and developed. Note that some of the asynchronous features of the N-API used by this software are marked as _experimental_.
 
-A variant for the Linux platform is also available but still in an experimental stage.
-
-Contributions can be made via pull requests and will be considered by the author on their merits. Enhancement requests and bug reports should be raised as github issues. For support, please contact [Streampunk Media](http://www.streampunk.media/). For updates follow [@StrmPunkd](https://twitter.com/StrmPunkd) on Twitter.
+Contributions can be made via pull requests and will be considered by the author on their merits. Enhancement requests and bug reports should be raised as github issues. For support, please contact [Streampunk Media](https://www.streampunk.media/). For updates follow [@StrmPunkd](https://twitter.com/StrmPunkd) on Twitter.
 
 ## License
 

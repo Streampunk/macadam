@@ -127,8 +127,3 @@ H(function (push, next) { push(null, baseFolder); next(); })
   .flatMap(x => writeFile(x.name.replace('.yuv10', '.v210'), x.contents))
   .errors(H.log)
   .done(() => { playback.stop(); });
-
-process.on('SIGINT', () => {
-  playback.stop();
-  process.exit();
-});

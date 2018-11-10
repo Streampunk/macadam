@@ -13,6 +13,8 @@
   limitations under the License.
 */
 
+// This example uses the deprecated event-based playback mode
+
 var H = require('highland');
 var fs = require('fs');
 var mac = require('../index.js');
@@ -44,8 +46,3 @@ H('frame', recorder)
 recorder.on('error', console.error);
 
 recorder.start();
-
-process.on('SIGINT', () => {
-  recorder.stop();
-  process.exit();
-});
