@@ -127,6 +127,14 @@ NAN_METHOD(GetFirstDevice) {
     info.GetReturnValue().Set(Nan::New(deviceName).ToLocalChecked());
     return;
   }
+  #else
+  char* deviceName;
+  hresult = deckLink->GetModelName((const char **) &deviceName);
+  if (hresult == S_OK) {
+    status = napi_create_string_utf8(env, deviceName, NAPI_AUTO_LENGTH, &result);
+    free(deviceName);
+    return;
+  }
   #endif
   info.GetReturnValue().SetUndefined();
 }
