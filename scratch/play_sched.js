@@ -50,9 +50,9 @@ async function run() {
     playback.schedule({ video: frame, time: x * 1000 });
     // console.log(process.hrtime(start)[1]);
     // playback.schedule({ video: frame2, time: x * 2000 + 1000 });
-    if (x === 2) playback.start({ startTime: 0 });
-    if (x > 1) {
-      console.log(x, await playback.played(x * 1000 - 2000));
+    if (x === 3) playback.start({ startTime: 0 });
+    if (x > 2) {
+      console.log(x, await playback.played(x * 1000 - 3000));
       console.log(playback.hardwareTime());
       console.log();
       // await timer(20);

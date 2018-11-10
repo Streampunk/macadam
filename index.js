@@ -59,132 +59,114 @@ function Capture (deviceIndex, displayMode, pixelFormat) {
     this.emit('error', new Error('Capture requires three number arguments: ' +
       'index, display mode and pixel format'));
   } else {
-    this.capture = new macadamNative.Capture(deviceIndex, displayMode, pixelFormat);
-  }
-  this.initialised = false;
+    this.capture = macadamNative.capture({
+      deviceIndex: deviceIndex,
+      displayMode: displayMode,
+      pixelFormat: pixelFormat
+  }).catch(err => { this.emit('error', err); });
+  this.running = true;
   EventEmitter.call(this);
 }
 
 util.inherits(Capture, EventEmitter);
 
 Capture.prototype.start = function () {
-  try {
-    if (!this.initialised) {
-      this.initialised = this.capture.init() ? true : false;
-      if (!this.initialised) {
-        console.error('Cannot start capture when no device is present.');
-        return 'Cannot start capture when no device is present.';
+  this.capture = this.capture.then(x => {
+    return capture.frame().then(f => {
+      if (f.audio) {
+        this.emit('frame', f.video.data, f.audio.data);
+      } else {
+        this.emit('frame', f.video.data);
       }
-    }
-    this.capture.doCapture((v, a) => {
-      this.emit('frame', v, a);
-    });
-  } catch (err) {
-    this.emit('error', err);
-  }
+      if (this.running === true) this.start();
+    })
+  }).catch(err => { this.emit('error', err); });
 }
 
 Capture.prototype.stop = function () {
-  try {
-    this.capture.stop();
+  this.running = false;
+  this.capture.then(x => {
+    x.stop();
     this.emit('done');
-  } catch (err) {
-    this.emit('error', err);
-  }
+  }).catch(err => { this.emit('error', err); });
 }
 
 Capture.prototype.enableAudio = function (sampleRate, sampleType, channelCount) {
-  try {
-    if (!this.initialised) {
-      this.initialised = this.capture.init() ? true : false;
-      if (!this.initialised) {
-        console.error('Cannot initialise audio when no device is present.');
-        return 'Cannot initialise audio when no device is present.';
-      }
-    }
-    return this.capture.enableAudio(
-      typeof sampleRate === 'string' ? +sampleRate : sampleRate,
-      typeof sampleType === 'string' ? +sampleType: sampleType,
-      typeof channelCount === 'string' ? +channelCount : channelCount);
-  } catch (err) {
-    return "Error when enabling audio: " + err;
-  }
+  this.capture.then(x => {
+    x.stop();
+    this.capture = macadam.capture({ // substitute promise - yuk - deprecating
+      deviceIndex: this.deviceIndex,
+      pixelFormat: this.pixelFormat,
+      displayMode: this.displayMode,
+      channels: channelCount,
+      sampleRate: sampleRate,
+      sampleTyoe: sampleType
+    }).catch(err => { this.emit('error', err); });
+  }.catch(err => { this.emit('error', err); } );
 }
 
+// Playback cass is deprecated
 function Playback (deviceIndex, displayMode, pixelFormat) {
+  this.index = 0;
+  this.deviceIndex = deviceIndex;
+  this.displayMode = displayMode;
+  this.pixelFormat = pixelFormat;
   if (arguments.length !== 3 || typeof deviceIndex !== 'number' ||
       typeof displayMode !== 'number' || typeof pixelFormat !== 'number' ) {
     this.emit('error', new Error('Playback requires three number arguments: ' +
       'index, display mode and pixel format'));
   } else {
-    this.playback = new macadamNative.Playback(deviceIndex, displayMode, pixelFormat);
-  }
-  this.initialised = false;
+    this.playback = macadamNative.playback({
+      deviceIndex: deviceIndex,
+      displayMode: displayMode,
+      pixelFormat: pixelFormat
+    }).catch(err => { this.emit('error', err); });
+
   EventEmitter.call(this);
 }
 
 util.inherits(Playback, EventEmitter);
 
 Playback.prototype.start = function () {
-  try {
-    if (!this.initialised) {
-      console.log("*** playback.init", this.playback.init());
-      this.initialised = true;
-    }
-    console.log("*** playback.doPlayback", this.playback.doPlayback(function (x) {
-      this.emit('played', x);
-    }.bind(this)));
-  } catch (err) {
-    this.emit('error', err);
-  }
+  let index = this.index;
+  this.playback.then(x => {
+    x.start(index * x.frameRate[0]);
+  }).catch(err => { this.emit('error', err); });
 }
 
 Playback.prototype.frame = function (f, a) {
-  try {
-    if (!this.initialised) {
-      this.playback.init();
-      this.initialised = true;
-    }
-    var result = a ? this.playback.scheduleFrame(f, a) : this.playback.scheduleFrame(f);
-    // console.log("*** playback.scheduleFrame", result);
-    if (typeof result === 'string')
-      throw new Error("Problem scheduling frame: " + result);
-    else
-      return result;
-  } catch (err) {
-    this.emit('error', err);
-  }
+  let index = this.index++;
+  this.playback.then(x => {
+    x.frame({
+      videoFrame: f,
+      audioFrame: a,
+      time: index * x.frameRate[0]
+    });
+    x.played(index * x.frameRate[0]).then(r => {
+      this.emit('played', r.result);
+    });
+  }.catch(err => { this.emit('error', err); });
 }
 
 Playback.prototype.stop = function () {
-  try {
-    console.log('*** playback stop', this.playback.stop());
+  this.playback.then(x => {
+    x.stop();
     this.emit('done');
-  } catch (err) {
-    this.emit('error', err);
-  }
+  }, err => { this.emit('error', err); });
 }
 
 Playback.prototype.enableAudio = function (sampleRate, sampleType, channelCount) {
-  try {
-    if (!this.initialised) {
-      this.initialised = this.playback.init() ? true : false;
-      if (!this.initialised) {
-        console.error('Cannot initialise audio when no device is present.');
-        return 'Cannot initialise audio when no device is present.';
-      }
-    }
-    return this.playback.enableAudio(
-      typeof sampleRate === 'string' ? +sampleRate : sampleRate,
-      typeof sampleType === 'string' ? +sampleType: sampleType,
-      typeof channelCount === 'string' ? +channelCount : channelCount);
-  } catch (err) {
-    return "Error when enabling audio: " + err;
-  }
-}
-
-Playback.prototype.testStuff = function () {
-  this.playback.testStuff();
+  this.playback.then(x => {
+    x.stop();
+    this.playback = macadam.playback({ // substitute promise - yuk - deprecating
+      deviceIndex: this.deviceIndex,
+      pixelFormat: this.pixelFormat,
+      displayMode: this.displayMode,
+      channels: channelCount,
+      sampleRate: sampleRate,
+      sampleTyoe: sampleType
+    }).catch(err => { this.emit('error', err); });
+  }.catch(err => { this.emit('error', err); } );
 }
 
 function bmCodeToInt (s) {

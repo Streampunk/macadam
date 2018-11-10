@@ -14,9 +14,9 @@ async function run() {
     // frame = null;
     // if (x % 10 === 0) global.gc();
   }
-  capture.pause();
-  capture.frame().then(console.log);
-  setTimeout(() => { capture.pause(); }, 500);
+  //capture.pause();
+  //capture.frame().then(console.log);
+  //setTimeout(() => { capture.pause(); }, 500);
   setTimeout(() => { capture.stop(); }, 1000);
 }
 

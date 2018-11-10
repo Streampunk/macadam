@@ -1030,7 +1030,7 @@ napi_value startPlayback(napi_env env, napi_callback_info info) {
 
   if (pbts->started) NAPI_THROW_ERROR("Already started.");
 
-  if (argc == 1) {
+  if (argc >= 1) {
     status = napi_typeof(env, argv[0], &type);
     CHECK_STATUS;
     if (type != napi_object) NAPI_THROW_ERROR("Parameters must be provided in an object.");

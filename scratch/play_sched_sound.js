@@ -48,7 +48,7 @@ async function run() {
     process.exit();
   });
   console.log(playback.referenceStatus(), playback.scheduledTime());
-  for ( let x = 0 ; x < 40 ; x++ ) {
+  for ( let x = 0 ; x < 1000 ; x++ ) {
     // console.log('Scheduling', x * 1000);
     let start = process.hrtime();
     playback.schedule({
@@ -59,10 +59,10 @@ async function run() {
     // playback.schedule({ video: frame2, time: x * 2000 + 1000 });
     if (x === 3) playback.start({ startTime: 0 });
     if (x > 2) {
-      console.log(x, await playback.played(x * 1000 - 3000));
-      console.log(playback.hardwareTime());
-      console.log(playback.bufferedFrames(), playback.bufferedAudioFrames());
-      console.log();
+      let pb = await playback.played(x * 1000 - 3000);
+      // console.log(playback.hardwareTime());
+      // console.log(playback.bufferedFrames(), playback.bufferedAudioFrames());
+      //console.log(x, pb.summary);
       // await timer(20);
     }
     /* if (x === 39) {
