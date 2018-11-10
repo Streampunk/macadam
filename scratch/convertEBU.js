@@ -1,4 +1,4 @@
-/* Copyright 2017 Streampunk Media Ltd.
+/* Copyright 2018 Streampunk Media Ltd.
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -127,8 +127,3 @@ H(function (push, next) { push(null, baseFolder); next(); })
   .flatMap(x => writeFile(x.name.replace('.yuv10', '.v210'), x.contents))
   .errors(H.log)
   .done(() => { playback.stop(); });
-
-process.on('SIGINT', () => {
-  playback.stop();
-  process.exit();
-});

@@ -1,4 +1,4 @@
-/* Copyright 2017 Streampunk Media Ltd.
+/* Copyright 2018 Streampunk Media Ltd.
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -12,6 +12,8 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 */
+
+// This example uses the deprecated event-based playback mode
 
 var H = require('highland');
 var fs = require('fs');
@@ -44,8 +46,3 @@ H('frame', recorder)
 recorder.on('error', console.error);
 
 recorder.start();
-
-process.on('SIGINT', () => {
-  recorder.stop();
-  process.exit();
-});

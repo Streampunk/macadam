@@ -1,5 +1,5 @@
 /* -LICENSE-START-
-** Copyright (c) 2016 Blackmagic Design
+** Copyright (c) 2018 Blackmagic Design
 **
 ** Permission is hereby granted, free of charge, to any person or organization
 ** obtaining a copy of the software and accompanying documentation covered by
@@ -99,6 +99,7 @@ typedef [v1_enum] enum	_BMDPacketType {
 
     /* Flags that are applicable only to instances of IDeckLinkVideoInputFrame */
 
+    bmdFrameCapturedAsPsF                                        = 1 << 30,
     bmdFrameHasNoInputSource                                     = 1 << 31
 };
 
@@ -184,6 +185,14 @@ typedef [v1_enum] enum	_BMDDisplayModeSupport {
     bmdDisplayModeSupported,                                    
     bmdDisplayModeSupportedWithConversion                       
 } BMDDisplayModeSupport;
+
+/* Enum BMDAncillaryPacketFormat - Ancillary packet format */
+
+typedef [v1_enum] enum	_BMDAncillaryPacketFormat {
+    bmdAncillaryPacketFormatUInt8                                = /* 'ui08' */ 0x75693038,
+    bmdAncillaryPacketFormatUInt16                               = /* 'ui16' */ 0x75693136,
+    bmdAncillaryPacketFormatYCbCr10                              = /* 'v210' */ 0x76323130
+} BMDAncillaryPacketFormat;
 
 /* Enum BMDTimecodeFormat - Timecode formats for frame metadata */
 
@@ -293,18 +302,31 @@ typedef [v1_enum] enum	_BMDDeviceInterface {
     bmdDeviceInterfaceThunderbolt                                = /* 'thun' */ 0x7468756E
 } BMDDeviceInterface;
 
+/* Enum BMDColorspace - Colorspace */
+
+typedef [v1_enum] enum	_BMDColorspace {
+    bmdColorspaceRec601                                          = /* 'r601' */ 0x72363031,
+    bmdColorspaceRec709                                          = /* 'r709' */ 0x72373039,
+    bmdColorspaceRec2020                                         = /* '2020' */ 0x32303230
+} BMDColorspace;
+
 /* Enum BMDDeckLinkFrameMetadataID - DeckLink Frame Metadata ID */
 
 typedef [v1_enum] enum	_BMDDeckLinkFrameMetadataID {
+    bmdDeckLinkFrameMetadataColorspace                           = /* 'cspc' */ 0x63737063,	// Colorspace of video frame (see BMDColorspace)
     bmdDeckLinkFrameMetadataHDRElectroOpticalTransferFunc        = /* 'eotf' */ 0x656F7466,	// EOTF in range 0-7 as per CEA 861.3
     bmdDeckLinkFrameMetadataCintelFilmType                       = /* 'cfty' */ 0x63667479,	// Current film type
     bmdDeckLinkFrameMetadataCintelFilmGauge                      = /* 'cfga' */ 0x63666761,	// Current film gauge
     bmdDeckLinkFrameMetadataCintelOffsetDetectedHorizontal       = /* 'odfh' */ 0x6F646668,	// Horizontal offset (pixels) detected in image
     bmdDeckLinkFrameMetadataCintelOffsetDetectedVertical         = /* 'odfv' */ 0x6F646676,	// Vertical offset (pixels) detected in image
-    bmdDeckLinkFrameMetadataCintelOffsetAppliedHorizontal        = /* 'odah' */ 0x6F646168,	// Horizontal offset (pixels) applied to image
-    bmdDeckLinkFrameMetadataCintelOffsetAppliedVertical          = /* 'odav' */ 0x6F646176,	// Vertical offset (pixels) applied to image
     bmdDeckLinkFrameMetadataCintelKeykodeLow                     = /* 'ckkl' */ 0x636B6B6C,	// Raw keykode value - low 64 bits
     bmdDeckLinkFrameMetadataCintelKeykodeHigh                    = /* 'ckkh' */ 0x636B6B68,	// Raw keykode value - high 64 bits
+    bmdDeckLinkFrameMetadataCintelTile1Size                      = /* 'ct1s' */ 0x63743173,	// Size in bytes of compressed raw tile 1
+    bmdDeckLinkFrameMetadataCintelTile2Size                      = /* 'ct2s' */ 0x63743273,	// Size in bytes of compressed raw tile 2
+    bmdDeckLinkFrameMetadataCintelTile3Size                      = /* 'ct3s' */ 0x63743373,	// Size in bytes of compressed raw tile 3
+    bmdDeckLinkFrameMetadataCintelTile4Size                      = /* 'ct4s' */ 0x63743473,	// Size in bytes of compressed raw tile 4
+    bmdDeckLinkFrameMetadataCintelImageWidth                     = /* 'IWPx' */ 0x49575078,	// Width in pixels of image
+    bmdDeckLinkFrameMetadataCintelImageHeight                    = /* 'IHPx' */ 0x49485078,	// Height in pixels of image
     bmdDeckLinkFrameMetadataCintelLinearMaskingRedInRed          = /* 'mrir' */ 0x6D726972,	// Red in red linear masking parameter
     bmdDeckLinkFrameMetadataCintelLinearMaskingGreenInRed        = /* 'mgir' */ 0x6D676972,	// Green in red linear masking parameter
     bmdDeckLinkFrameMetadataCintelLinearMaskingBlueInRed         = /* 'mbir' */ 0x6D626972,	// Blue in red linear masking parameter
@@ -323,6 +345,7 @@ typedef [v1_enum] enum	_BMDDeckLinkFrameMetadataID {
     bmdDeckLinkFrameMetadataCintelLogMaskingRedInBlue            = /* 'mlrb' */ 0x6D6C7262,	// Red in blue log masking parameter
     bmdDeckLinkFrameMetadataCintelLogMaskingGreenInBlue          = /* 'mlgb' */ 0x6D6C6762,	// Green in blue log masking parameter
     bmdDeckLinkFrameMetadataCintelLogMaskingBlueInBlue           = /* 'mlbb' */ 0x6D6C6262,	// Blue in blue log masking parameter
+    bmdDeckLinkFrameMetadataCintelFilmFrameRate                  = /* 'cffr' */ 0x63666672,	// Film frame rate
     bmdDeckLinkFrameMetadataHDRDisplayPrimariesRedX              = /* 'hdrx' */ 0x68647278,	// Red display primaries in range 0.0 - 1.0
     bmdDeckLinkFrameMetadataHDRDisplayPrimariesRedY              = /* 'hdry' */ 0x68647279,	// Red display primaries in range 0.0 - 1.0
     bmdDeckLinkFrameMetadataHDRDisplayPrimariesGreenX            = /* 'hdgx' */ 0x68646778,	// Green display primaries in range 0.0 - 1.0
@@ -335,11 +358,14 @@ typedef [v1_enum] enum	_BMDDeckLinkFrameMetadataID {
     bmdDeckLinkFrameMetadataHDRMinDisplayMasteringLuminance      = /* 'hmil' */ 0x686D696C,	// Min display mastering luminance in range 0.0001 cd/m2 - 6.5535 cd/m2
     bmdDeckLinkFrameMetadataHDRMaximumContentLightLevel          = /* 'mcll' */ 0x6D636C6C,	// Maximum Content Light Level in range 1 cd/m2 - 65535 cd/m2
     bmdDeckLinkFrameMetadataHDRMaximumFrameAverageLightLevel     = /* 'fall' */ 0x66616C6C,	// Maximum Frame Average Light Level in range 1 cd/m2 - 65535 cd/m2
-    bmdDeckLinkFrameMetadataCintel16mmCropRequired               = /* 'c16c' */ 0x63313663,	// The image should be cropped to 16mm size
-    bmdDeckLinkFrameMetadataCintelInversionRequired              = /* 'cinv' */ 0x63696E76,	// The image should be colour inverted
-    bmdDeckLinkFrameMetadataCintelFlipRequired                   = /* 'cflr' */ 0x63666C72,	// The image should be flipped horizontally
-    bmdDeckLinkFrameMetadataCintelFocusAssistEnabled             = /* 'cfae' */ 0x63666165,	// Focus Assist is currently enabled
-    bmdDeckLinkFrameMetadataCintelKeykodeIsInterpolated          = /* 'kkii' */ 0x6B6B6969	// The keykode for this frame is interpolated from nearby keykodes
+    bmdDeckLinkFrameMetadataCintelOffsetToApplyHorizontal        = /* 'otah' */ 0x6F746168,	// Horizontal offset (pixels) to be applied to image
+    bmdDeckLinkFrameMetadataCintelOffsetToApplyVertical          = /* 'otav' */ 0x6F746176,	// Vertical offset (pixels) to be applied to image
+    bmdDeckLinkFrameMetadataCintelGainRed                        = /* 'LfRd' */ 0x4C665264,	// Red gain parameter to apply after log
+    bmdDeckLinkFrameMetadataCintelGainGreen                      = /* 'LfGr' */ 0x4C664772,	// Green gain parameter to apply after log
+    bmdDeckLinkFrameMetadataCintelGainBlue                       = /* 'LfBl' */ 0x4C66426C,	// Blue gain parameter to apply after log
+    bmdDeckLinkFrameMetadataCintelLiftRed                        = /* 'GnRd' */ 0x476E5264,	// Red lift parameter to apply after log and gain
+    bmdDeckLinkFrameMetadataCintelLiftGreen                      = /* 'GnGr' */ 0x476E4772,	// Green lift parameter to apply after log and gain
+    bmdDeckLinkFrameMetadataCintelLiftBlue                       = /* 'GnBl' */ 0x476E426C	// Blue lift parameter to apply after log and gain
 } BMDDeckLinkFrameMetadataID;
 
 /* Enum BMDDuplexMode - Duplex for configurable ports */
@@ -375,6 +401,7 @@ typedef [v1_enum] enum	_BMDDeckLinkAttributeID {
     BMDDeckLinkHasLTCTimecodeInput                               = /* 'hltc' */ 0x686C7463,
     BMDDeckLinkSupportsDuplexModeConfiguration                   = /* 'dupx' */ 0x64757078,
     BMDDeckLinkSupportsHDRMetadata                               = /* 'hdrm' */ 0x6864726D,
+    BMDDeckLinkSupportsColorspaceMetadata                        = /* 'cmet' */ 0x636D6574,
 
     /* Integers */
 
@@ -444,6 +471,7 @@ typedef [v1_enum] enum	_BMDDeckLinkStatusID {
     bmdDeckLinkStatusDuplexMode                                  = /* 'dupx' */ 0x64757078,
     bmdDeckLinkStatusBusy                                        = /* 'busy' */ 0x62757379,
     bmdDeckLinkStatusInterchangeablePanelType                    = /* 'icpt' */ 0x69637074,
+    bmdDeckLinkStatusDeviceTemperature                           = /* 'dtmp' */ 0x64746D70,
 
     /* Flags */
 
@@ -524,6 +552,9 @@ interface IDeckLinkMutableVideoFrame;
 interface IDeckLinkVideoFrame3DExtensions;
 interface IDeckLinkVideoFrameMetadataExtensions;
 interface IDeckLinkVideoInputFrame;
+interface IDeckLinkAncillaryPacket;
+interface IDeckLinkAncillaryPacketIterator;
+interface IDeckLinkVideoFrameAncillaryPackets;
 interface IDeckLinkVideoFrameAncillary;
 interface IDeckLinkEncoderPacket;
 interface IDeckLinkEncoderVideoPacket;
@@ -653,7 +684,7 @@ interface IDeckLinkDiscovery;
 
     HRESULT SetVideoOutputFrameMemoryAllocator([in] IDeckLinkMemoryAllocator *theAllocator);
     HRESULT CreateVideoFrame([in] int width, [in] int height, [in] int rowBytes, [in] BMDPixelFormat pixelFormat, [in] BMDFrameFlags flags, [out] IDeckLinkMutableVideoFrame **outFrame);
-    HRESULT CreateAncillaryData([in] BMDPixelFormat pixelFormat, [out] IDeckLinkVideoFrameAncillary **outBuffer);
+    HRESULT CreateAncillaryData([in] BMDPixelFormat pixelFormat, [out] IDeckLinkVideoFrameAncillary **outBuffer); // Use of IDeckLinkVideoFrameAncillaryPackets is preferred
 
     HRESULT DisplayVideoFrameSync([in] IDeckLinkVideoFrame *theFrame);
     HRESULT ScheduleVideoFrame([in] IDeckLinkVideoFrame *theFrame, [in] BMDTimeValue displayTime, [in] BMDTimeValue displayDuration, [in] BMDTimeScale timeScale);
@@ -783,7 +814,7 @@ interface IDeckLinkDiscovery;
     HRESULT GetBytes([out] void **buffer);
 
     HRESULT GetTimecode([in] BMDTimecodeFormat format, [out] IDeckLinkTimecode **timecode);
-    HRESULT GetAncillaryData([out] IDeckLinkVideoFrameAncillary **ancillary);
+    HRESULT GetAncillaryData([out] IDeckLinkVideoFrameAncillary **ancillary); // Use of IDeckLinkVideoFrameAncillaryPackets is preferred
 };
 
 /* Interface IDeckLinkMutableVideoFrame - Created by IDeckLinkOutput::CreateVideoFrame. */
@@ -844,17 +875,61 @@ interface IDeckLinkDiscovery;
     HRESULT GetHardwareReferenceTimestamp([in] BMDTimeScale timeScale, [out] BMDTimeValue *frameTime, [out] BMDTimeValue *frameDuration);
 };
 
-/* Interface IDeckLinkVideoFrameAncillary - Obtained through QueryInterface() on an IDeckLinkVideoFrame object. */
+/* Interface IDeckLinkAncillaryPacket - On output, user needs to implement this interface */
+
+[
+    object,
+    uuid(CC5BBF7E-029C-4D3B-9158-6000EF5E3670),
+    helpstring("On output, user needs to implement this interface")
+] interface IDeckLinkAncillaryPacket : IUnknown
+{
+
+    HRESULT GetBytes([in] BMDAncillaryPacketFormat format /* For output, only one format need be offered */, [out] const void **data /* Optional */, [out] unsigned int *size /* Optional */);
+    unsigned char GetDID(void);
+    unsigned char GetSDID(void);
+    unsigned int GetLineNumber(void); // On output, zero is auto
+    unsigned char GetDataStreamIndex(void); // Usually zero. Can only be 1 if non-SD and the first data stream is completely full
+};
+
+/* Interface IDeckLinkAncillaryPacketIterator - Enumerates ancillary packets */
+
+[
+    object,
+    uuid(3FC8994B-88FB-4C17-968F-9AAB69D964A7),
+    helpstring("Enumerates ancillary packets")
+] interface IDeckLinkAncillaryPacketIterator : IUnknown
+{
+    HRESULT Next([out] IDeckLinkAncillaryPacket **packet);
+};
+
+/* Interface IDeckLinkVideoFrameAncillaryPackets - Obtained through QueryInterface() on an IDeckLinkVideoFrame object. */
+
+[
+    object,
+    uuid(6C186C0F-459E-41D8-AEE2-4812D81AEE68),
+    local, 
+    helpstring("Obtained through QueryInterface() on an IDeckLinkVideoFrame object.")
+] interface IDeckLinkVideoFrameAncillaryPackets : IUnknown
+{
+
+    HRESULT GetPacketIterator([out] IDeckLinkAncillaryPacketIterator **iterator);
+    HRESULT GetFirstPacketByID([in] unsigned char DID, [in] unsigned char SDID, [out] IDeckLinkAncillaryPacket **packet);
+    HRESULT AttachPacket([in] IDeckLinkAncillaryPacket *packet); // Implement IDeckLinkAncillaryPacket to output your own
+    HRESULT DetachPacket([in] IDeckLinkAncillaryPacket *packet);
+    HRESULT DetachAllPackets(void);
+};
+
+/* Interface IDeckLinkVideoFrameAncillary - Use of IDeckLinkVideoFrameAncillaryPackets is preferred. Obtained through QueryInterface() on an IDeckLinkVideoFrame object. */
 
 [
     object,
     uuid(732E723C-D1A4-4E29-9E8E-4A88797A0004),
     local, 
-    helpstring("Obtained through QueryInterface() on an IDeckLinkVideoFrame object.")
+    helpstring("Use of IDeckLinkVideoFrameAncillaryPackets is preferred. Obtained through QueryInterface() on an IDeckLinkVideoFrame object.")
 ] interface IDeckLinkVideoFrameAncillary : IUnknown
 {
 
-    HRESULT GetBufferForVerticalBlankingLine([in] unsigned int lineNumber, [out] void **buffer);
+    HRESULT GetBufferForVerticalBlankingLine([in] unsigned int lineNumber, [out] void **buffer); // Pixels/rowbytes is same as display mode, except for above HD where it's 1920 pixels for UHD modes and 2048 pixels for DCI modes
     BMDPixelFormat GetPixelFormat(void);
     BMDDisplayMode GetDisplayMode(void);
 };
@@ -1134,8 +1209,17 @@ importlib("stdole2.tlb");
     [default] interface IDeckLinkDiscovery;
 };
 
+[
+    uuid(F891AD29-D0C2-46E9-A926-4E2D0DD8CFAD),
+    helpstring("CDeckLinkVideoFrameAncillaryPackets Class")
+] coclass CDeckLinkVideoFrameAncillaryPackets
+{
+    [default] interface IDeckLinkVideoFrameAncillaryPackets;
+};
+
 
 // import deprecated interfaces
+#include "DeckLinkAPI_v10_9.idl"
 #include "DeckLinkAPIStreaming_v10_8.idl"
 #include "DeckLinkAPI_v10_8.idl"
 #include "DeckLinkAPI_v10_6.idl"

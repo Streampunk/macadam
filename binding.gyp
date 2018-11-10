@@ -6,7 +6,8 @@
     ],
     "conditions": [
       ['OS=="mac"', {
-        'sources' : [ "src/macadam.cc", "src/Capture.cc", "src/Playback.cc" ],
+        'sources' : [ "src/macadam_util.cc", "src/macadam.cc",
+          "src/capture_promise.cc", "src/playback_promise.cc" ],
         'xcode_settings': {
           'GCC_ENABLE_CPP_RTTI': 'YES',
           'MACOSX_DEPLOYMENT_TARGET': '10.7',
@@ -25,7 +26,8 @@
         ]
       }],
       ['OS=="linux"', {
-        'sources' : [ "src/macadam.cc", "src/Capture.cc", "src/Playback.cc" ],
+        'sources' : [ "src/macadam_util.cc", "src/macadam.cc",
+          "src/capture_promise.cc", "src/playback_promise.cc" ],
         'link_settings' : {
           "libraries": [
             "/usr/lib/libDeckLinkAPI.so"
@@ -39,7 +41,8 @@
         ]
       }],
       ['OS=="win"', {
-        "sources" : [ "src/macadam.cc", "src/Capture.cc", "src/Playback.cc",
+        "sources" : [ "src/macadam_util.cc", "src/macadam.cc",
+          "src/capture_promise.cc", "src/playback_promise.cc",
           "decklink/Win/include/DeckLinkAPI_i.c" ],
         "configurations": {
           "Release": {
