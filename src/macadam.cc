@@ -56,6 +56,7 @@
 #include "macadam_util.h"
 #include "capture_promise.h"
 #include "playback_promise.h"
+#include "keying_promise.h"
 #include "node_api.h"
 
 // List of known pixel formats and their matching display names
@@ -158,7 +159,7 @@ napi_value getFirstDevice(napi_env env, napi_callback_info info) {
   char* deviceName;
   hresult = deckLink->GetModelName((const char **) &deviceName);
   if (hresult == S_OK) {
-    info.GetReturnValue().Set(Nan::New(deviceName).ToLocalChecked());  
+    info.GetReturnValue().Set(Nan::New(deviceName).ToLocalChecked());
     free(deviceName);
     return;
   }
