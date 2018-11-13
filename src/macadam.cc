@@ -56,7 +56,6 @@
 #include "macadam_util.h"
 #include "capture_promise.h"
 #include "playback_promise.h"
-#include "keying_promise.h"
 #include "node_api.h"
 
 // List of known pixel formats and their matching display names

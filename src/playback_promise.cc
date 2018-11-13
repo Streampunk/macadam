@@ -118,6 +118,7 @@ void playbackExecute(napi_env env, void* data) {
   IDeckLinkIterator* deckLinkIterator;
   IDeckLink* deckLink;
   IDeckLinkOutput* deckLinkOutput;
+  IDeckLinkKeyer* deckLinkKeyer = nullptr;
   HRESULT hresult;
 
   #ifdef WIN32
@@ -146,8 +147,18 @@ void playbackExecute(napi_env env, void* data) {
     return;
   }
 
+  if (c->enableKeying) {
+    if (deckLink->QueryInterface(IID_IDeckLinkKeyer, (void **)&deckLinkKeyer) != S_OK) {
+      deckLink->Release();
+      c->status = MACADAM_NO_OUTPUT;
+      c->errorMsg = "Unable to retrieve the requested keyer.";
+      return;
+    }
+  }
+
   deckLink->Release();
   c->deckLinkOutput = deckLinkOutput;
+  c->deckLinkKeyer = deckLinkKeyer;
 
   BMDDisplayModeSupport supported;
 
@@ -221,6 +232,22 @@ void playbackExecute(napi_env env, void* data) {
     }
     hresult = deckLinkOutput->BeginAudioPreroll();
     printf("Begin audio preroll %i.\n", hresult);
+  }
+
+  if (c->enableKeying) {
+    hresult = deckLinkKeyer->Enable(c->isExternal);
+    if (hresult != S_OK) {
+      c->status = MACADAM_CALL_FAILURE;
+      c->errorMsg = "Failed to enable keying.";
+      return;
+    }
+
+    hresult = deckLinkKeyer->SetLevel(c->keyLevel);
+    if (hresult != S_OK) {
+      c->status = MACADAM_CALL_FAILURE;
+      c->errorMsg = "Failed to set key level.";
+      return;
+    }
   }
 }
 
@@ -400,6 +427,24 @@ void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
   c->status = napi_set_named_property(env, result, "rejectTimeout", param);
   REJECT_STATUS;
 
+  c->status = napi_get_boolean(env, c->enableKeying, &param);
+  REJECT_STATUS;
+  c->status = napi_set_named_property(env, result, "enableKeying", param);
+  REJECT_STATUS;
+
+  if (c->enableKeying) {
+    c->status = napi_get_boolean(env, c->isExternal, &param);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "isExternal", param);
+    REJECT_STATUS;
+
+    // TODO this is the initial key level, not a maintained level
+    c->status = napi_create_int32(env, c->keyLevel, &param);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "level", param);
+    REJECT_STATUS;
+  }
+
   playbackThreadsafe* pbts = new playbackThreadsafe;
   pbts->deckLinkOutput = c->deckLinkOutput;
   c->deckLinkOutput = nullptr;
@@ -417,6 +462,12 @@ void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
     pbts->sampleRate = c->requestedSampleRate;
     pbts->sampleType = c->requestedSampleType;
     pbts->sampleByteFactor = c->channels * (pbts->sampleType / 8);
+  }
+  pbts->enableKeying = c->enableKeying;
+  if (c->enableKeying) {
+    pbts->isExternal = c->isExternal;
+    pbts->keyLevel = c->keyLevel;
+    pbts->deckLinkKeyer = c->deckLinkKeyer;
   }
 
   hresult = pbts->deckLinkOutput->SetScheduledFrameCompletionCallback(pbts);
@@ -511,6 +562,7 @@ napi_value playback(napi_env env, napi_callback_info info) {
   napi_valuetype type;
   bool isArray;
   playbackCarrier* c = new playbackCarrier;
+  int32_t keyLevel = 255;
 
   c->status = napi_create_promise(env, &c->_deferred, &promise);
   REJECT_RETURN;
@@ -612,6 +664,61 @@ napi_value playback(napi_env env, napi_callback_info info) {
       "Promise rejection timeout must be a number.", MACADAM_INVALID_ARGS);
     c->status = napi_get_value_int32(env, param, &c->rejectTimeoutMs);
     REJECT_RETURN;
+  }
+
+  c->status = napi_get_named_property(env, options, "enableKeying", &param);
+  REJECT_RETURN;
+  c->status = napi_typeof(env, param, &type);
+  REJECT_RETURN;
+  if (type != napi_undefined) {
+    if (type != napi_boolean) REJECT_ERROR_RETURN(
+      "Enable keying with a 'true' boolean value for 'enableKeying' parameter.",
+      MACADAM_INVALID_ARGS);
+    c->status = napi_get_value_bool(env, param, &c->enableKeying);
+    REJECT_RETURN;
+    if (c->enableKeying) {
+      switch (c->requestedPixelFormat) {
+        case bmdFormat8BitARGB:
+        case bmdFormat8BitBGRA:
+          break;
+        default:
+          REJECT_ERROR_RETURN(
+            "Pixel format must include an alpha channel. Only 8-bit ARGB and BGRA are supported.",
+            MACADAM_INVALID_ARGS);
+      }
+    }
+  }
+
+  c->status = napi_get_named_property(env, options, "isExternal", &param);
+  REJECT_RETURN;
+  c->status = napi_typeof(env, param, &type);
+  REJECT_RETURN;
+  if (type != napi_undefined) {
+    if (type != napi_boolean) REJECT_ERROR_RETURN(
+      "Setting external or internal keying requires a boolean parameter.",
+      MACADAM_INVALID_ARGS);
+    if (!c->enableKeying) REJECT_ERROR_RETURN(
+      "Setting keying type withing explicitly enabling keying.",
+      MACADAM_INVALID_ARGS);
+    c->status = napi_get_value_bool(env, param, &c->isExternal);
+    REJECT_RETURN;
+  }
+
+  c->status = napi_get_named_property(env, options, "level", &param);
+  REJECT_RETURN;
+  c->status = napi_typeof(env, param, &type);
+  REJECT_RETURN;
+  if (type != napi_undefined) {
+    if (type != napi_number) REJECT_ERROR_RETURN(
+      "Keying level must be a number.", MACADAM_INVALID_ARGS);
+    if (!c->enableKeying) REJECT_ERROR_RETURN(
+      "Setting keying level withing explicitly enabling keying.",
+      MACADAM_INVALID_ARGS);
+    c->status = napi_get_value_int32(env, param, &keyLevel);
+    REJECT_RETURN;
+    if ((keyLevel < 0) || (keyLevel > 255)) REJECT_ERROR_RETURN(
+      "Keying level is outside of range 0 to 255.", MACADAM_OUT_OF_BOUNDS);
+    c->keyLevel = (uint8_t) keyLevel;
   }
 
   c->status = napi_create_string_utf8(env, "CreatePlayback", NAPI_AUTO_LENGTH, &resourceName);
@@ -1360,6 +1467,11 @@ napi_value stopPlayback(napi_env env, napi_callback_info info) {
   if (pbts->started) {
     hresult = pbts->deckLinkOutput->StopScheduledPlayback(0, nullptr, 0);
     if (hresult != S_OK) NAPI_THROW_ERROR("Failed to stop scheduled playback.");
+  }
+
+  if (pbts->enableKeying) {
+    hresult = pbts->deckLinkKeyer->Disable();
+    if (hresult != S_OK) NAPI_THROW_ERROR("Failed to disable keyer.");
   }
 
   hresult = pbts->deckLinkOutput->DisableVideoOutput();
