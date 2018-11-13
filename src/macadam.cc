@@ -129,8 +129,8 @@ NAN_METHOD(GetFirstDevice) {
   }
   #else
   char* deviceName;
-  hresult = deckLink->GetModelName((const char **) &deviceName);
-  if (hresult == S_OK) {
+  result = deckLink->GetModelName((const char **) &deviceName);
+  if (result == S_OK) {
     info.GetReturnValue().Set(Nan::New(deviceName).ToLocalChecked());  
     free(deviceName);
     return;
