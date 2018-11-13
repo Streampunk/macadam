@@ -70,6 +70,9 @@ napi_value scheduledStreamTime(napi_env env, napi_callback_info info);
 napi_value hardwareReferenceClock(napi_env env, napi_callback_info info);
 napi_value bufferedVideoFrameCount(napi_env env, napi_callback_info info);
 napi_value bufferedAudioSampleFrameCount(napi_env env, napi_callback_info info);
+napi_value rampUp(napi_env env, napi_callback_info info);
+napi_value rampDown(napi_env env, napi_callback_info info);
+napi_value setLevel(napi_env env, napi_callback_info info);
 
 struct playbackCarrier : carrier {
   IDeckLinkOutput* deckLinkOutput = nullptr;

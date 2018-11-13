@@ -151,7 +151,7 @@ void playbackExecute(napi_env env, void* data) {
     if (deckLink->QueryInterface(IID_IDeckLinkKeyer, (void **)&deckLinkKeyer) != S_OK) {
       deckLink->Release();
       c->status = MACADAM_NO_OUTPUT;
-      c->errorMsg = "Unable to retrieve the requested keyer.";
+      c->errorMsg = "Unable to retrieve the requested keyer. Is keying supported?";
       return;
     }
   }
@@ -536,6 +536,26 @@ void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
   REJECT_STATUS;
   c->status = napi_set_named_property(env, result, "bufferedAudioFrames", param);
   REJECT_STATUS;
+
+  if (c->enableKeying) {
+    c->status = napi_create_function(env, "rampUp", NAPI_AUTO_LENGTH,
+      rampUp, nullptr, &param);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "rampUp", param);
+    REJECT_STATUS;
+
+    c->status = napi_create_function(env, "rampDown", NAPI_AUTO_LENGTH,
+      rampDown, nullptr, &param);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "rampDown", param);
+    REJECT_STATUS;
+
+    c->status = napi_create_function(env, "setLevel", NAPI_AUTO_LENGTH,
+      setLevel, nullptr, &param);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "setLevel", param);
+    REJECT_STATUS;
+  }
 
   c->status = napi_create_string_utf8(env, "playback", NAPI_AUTO_LENGTH, &asyncName);
   REJECT_STATUS;
@@ -1495,6 +1515,136 @@ napi_value stopPlayback(napi_env env, napi_callback_info info) {
   CHECK_STATUS;
   return value;
 }
+
+napi_value rampUp(napi_env env, napi_callback_info info) {
+  napi_status status;
+  napi_value playback, param, value;
+  napi_valuetype type;
+  playbackThreadsafe* pbts;
+  HRESULT hresult;
+  uint32_t frameCount;
+
+  size_t argc = 1;
+  napi_value argv[1];
+  status = napi_get_cb_info(env, info, &argc, argv, &playback, nullptr);
+  CHECK_STATUS;
+
+  status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
+  CHECK_STATUS;
+  status = napi_get_value_external(env, param, (void**) &pbts);
+  CHECK_STATUS;
+
+  if (pbts->stopped) NAPI_THROW_ERROR("Already stopped.");
+  if (!pbts->enableKeying) NAPI_THROW_ERROR("Keying is not enabled for this output.");
+  if (argc != 1) NAPI_THROW_ERROR("To set keying ramp up frame count, a value must be provided.");
+
+  status = napi_typeof(env, argv[0], &type);
+  CHECK_STATUS;
+  if (type != napi_number) NAPI_THROW_ERROR("Keying ramp up frame count must be set with a number.");
+
+  status = napi_get_value_uint32(env, argv[0], &frameCount);
+  CHECK_STATUS;
+
+  hresult = pbts->deckLinkKeyer->RampUp(frameCount);
+  if (hresult != S_OK) NAPI_THROW_ERROR("Failed to request keyer ramp up. Call failure.");
+
+  pbts->keyLevel = 255; // TODO eventually
+  status = napi_create_int32(env, 255, &param);
+  CHECK_STATUS;
+  status = napi_set_named_property(env, playback, "level", param);
+  CHECK_STATUS;
+
+  status = napi_get_undefined(env, &value);
+  CHECK_STATUS;
+  return value;
+}
+
+napi_value rampDown(napi_env env, napi_callback_info info) {
+  napi_status status;
+  napi_value playback, param, value;
+  napi_valuetype type;
+  playbackThreadsafe* pbts;
+  HRESULT hresult;
+  uint32_t frameCount;
+
+  size_t argc = 1;
+  napi_value argv[1];
+  status = napi_get_cb_info(env, info, &argc, argv, &playback, nullptr);
+  CHECK_STATUS;
+
+  status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
+  CHECK_STATUS;
+  status = napi_get_value_external(env, param, (void**) &pbts);
+  CHECK_STATUS;
+
+  if (pbts->stopped) NAPI_THROW_ERROR("Already stopped.");
+  if (!pbts->enableKeying) NAPI_THROW_ERROR("Keying is not enabled for this output.");
+  if (argc != 1) NAPI_THROW_ERROR("To set keying ramp down frame count, a value must be provided.");
+
+  status = napi_typeof(env, argv[0], &type);
+  CHECK_STATUS;
+  if (type != napi_number) NAPI_THROW_ERROR("Keying ramp down frame count must be set with a number.");
+
+  status = napi_get_value_uint32(env, argv[0], &frameCount);
+  CHECK_STATUS;
+
+  hresult = pbts->deckLinkKeyer->RampDown(frameCount);
+  if (hresult != S_OK) NAPI_THROW_ERROR("Failed to request keyer ramp down. Call failure.");
+
+  pbts->keyLevel = 0; // TODO eventually
+  status = napi_create_int32(env, 0, &param);
+  CHECK_STATUS;
+  status = napi_set_named_property(env, playback, "level", param);
+  CHECK_STATUS;
+
+  status = napi_get_undefined(env, &value);
+  CHECK_STATUS;
+  return value;
+}
+
+napi_value setLevel(napi_env env, napi_callback_info info) {
+  napi_status status;
+  napi_value playback, param, value;
+  napi_valuetype type;
+  playbackThreadsafe* pbts;
+  HRESULT hresult;
+  int32_t keyLevel;
+
+  size_t argc = 1;
+  napi_value argv[1];
+  status = napi_get_cb_info(env, info, &argc, argv, &playback, nullptr);
+  CHECK_STATUS;
+
+  status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
+  CHECK_STATUS;
+  status = napi_get_value_external(env, param, (void**) &pbts);
+  CHECK_STATUS;
+
+  if (pbts->stopped) NAPI_THROW_ERROR("Already stopped.");
+  if (!pbts->enableKeying) NAPI_THROW_ERROR("Keying is not enabled for this output.");
+  if (argc != 1) NAPI_THROW_ERROR("To set key level, a value must be provided.");
+
+  status = napi_typeof(env, argv[0], &type);
+  CHECK_STATUS;
+  if (type != napi_number) NAPI_THROW_ERROR("Key level must be set with a number.");
+
+  status = napi_get_value_int32(env, argv[0], &keyLevel);
+  CHECK_STATUS;
+  if ((keyLevel < 0) || (keyLevel > 255))
+    NAPI_THROW_ERROR("Key level must be a value between 0 and 255.");
+
+  hresult = pbts->deckLinkKeyer->SetLevel((uint8_t) keyLevel);
+  if (hresult != S_OK) NAPI_THROW_ERROR("Unalbe to set key level. Call failure.");
+
+  pbts->keyLevel = (uint8_t) keyLevel;
+  status = napi_set_named_property(env, playback, "level", argv[0]);
+  CHECK_STATUS;
+
+  status = napi_get_undefined(env, &value);
+  CHECK_STATUS;
+  return value;
+}
+
 
 void playbackTsFnFinalize(napi_env env, void* data, void* hint) {
   printf("Threadsafe playback finalizer called.\n");
