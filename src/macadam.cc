@@ -155,14 +155,6 @@ napi_value getFirstDevice(napi_env env, napi_callback_info info) {
     free(deviceName);
     CHECK_BAIL;
   }
-  #else
-  char* deviceName;
-  hresult = deckLink->GetModelName((const char **) &deviceName);
-  if (hresult == S_OK) {
-    info.GetReturnValue().Set(Nan::New(deviceName).ToLocalChecked());
-    free(deviceName);
-    return;
-  }
   #endif
 
 bail:
