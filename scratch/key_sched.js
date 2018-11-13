@@ -30,9 +30,9 @@ function shift(b, rowBytes) {
 }
 
 async function run() {
-  let frame = await readFile(__dirname + '/EBU_3325_1080_7.v210');
-  console.log(frame.length, frame);
-  let frame2 = Buffer.alloc(frame.length, 0x7f);
+  //let frame = await readFile(__dirname + '/EBU_3325_1080_7.v210');
+  // console.log(frame.length, frame);
+  let frame = Buffer.alloc(1920*1080*4, 0x7f);
   let playback = await macadam.playback({
     displayMode: macadam.bmdModeHD1080i50,
     pixelFormat: macadam.bmdFormat8BitARGB,
