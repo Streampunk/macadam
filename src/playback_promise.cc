@@ -154,6 +154,8 @@ void playbackExecute(napi_env env, void* data) {
       c->errorMsg = "Unable to retrieve the requested keyer. Is keying supported?";
       return;
     }
+    printf("Address of keyer is %p.\n", deckLinkKeyer);
+    deckLinkKeyer->AddRef();
   }
 
   deckLink->Release();
@@ -248,7 +250,9 @@ void playbackExecute(napi_env env, void* data) {
       c->errorMsg = "Failed to set key level.";
       return;
     }
-  }
+    printf("Enabled decklink %s keying at level %i.\n",
+      c->isExternal ? "external" : "internal", c->keyLevel);
+  } 
 }
 
 void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
@@ -468,7 +472,12 @@ void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
     pbts->isExternal = c->isExternal;
     pbts->keyLevel = c->keyLevel;
     pbts->deckLinkKeyer = c->deckLinkKeyer;
+    c->deckLinkOutput = nullptr;
   }
+
+  printf("Address of %s keyer at level %i in pbts is %p.\n",
+    pbts->isExternal ? "external" : "internal", pbts->keyLevel,
+    pbts->deckLinkKeyer);
 
   hresult = pbts->deckLinkOutput->SetScheduledFrameCompletionCallback(pbts);
   if (hresult != S_OK) {
@@ -1220,6 +1229,20 @@ napi_value startPlayback(napi_env env, napi_callback_info info) {
     if (hresult != S_OK) NAPI_THROW_ERROR("Failed to end audio preroll.\n");
   }
 
+  /* if (pbts->enableKeying) {
+    hresult = pbts->deckLinkKeyer->Enable(pbts->isExternal);
+    if (hresult != S_OK) {
+      NAPI_THROW_ERROR("Failed to enable keying.");
+    }
+
+    hresult = pbts->deckLinkKeyer->SetLevel(pbts->keyLevel);
+    if (hresult != S_OK) {
+      NAPI_THROW_ERROR("Failed to set key level.");
+    }
+    printf("Enabled decklink %s keying at level %i.\n",
+      pbts->isExternal ? "external" : "internal", pbts->keyLevel);
+  } */
+
   hresult = pbts->deckLinkOutput->StartScheduledPlayback(
     startTime, pbts->timeScale, playbackSpeed);
   if (hresult != S_OK) NAPI_THROW_ERROR("Failed to start scheduled playback.");
@@ -1492,6 +1515,7 @@ napi_value stopPlayback(napi_env env, napi_callback_info info) {
   if (pbts->enableKeying) {
     hresult = pbts->deckLinkKeyer->Disable();
     if (hresult != S_OK) NAPI_THROW_ERROR("Failed to disable keyer.");
+    pbts->deckLinkKeyer->Release();
   }
 
   hresult = pbts->deckLinkOutput->DisableVideoOutput();

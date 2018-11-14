@@ -30,14 +30,22 @@ function shift(b, rowBytes) {
 }
 
 async function run() {
-  let frame = await readFile(__dirname + '/EBU_3325_1080_7.v210');
-  console.log(frame.length, frame);
-  let frame2 = Buffer.alloc(frame.length, 0x7f);
+  //let frame = await readFile(__dirname + '/out.bgra');
+  // console.log(frame.length, frame);
+  let frame = Buffer.alloc(1920*1080*4, 0x7f);
   let playback = await macadam.playback({
     displayMode: macadam.bmdModeHD1080i50,
-    pixelFormat: macadam.bmdFormat8BitARGB,
-    enableKeying: true
+    pixelFormat: macadam.bmdFormat8BitBGRA,
+    enableKeying: true,
+    isExternal: false,
+    level: 255
   });
+  for ( let y = 0 ; y < frame.length ; y += 4 ) {
+    frame[y+0] = y % 256;
+    frame[y+1] = 0;
+    frame[y+2] = 0;
+    frame[y+3] = y%256;
+  }
   console.log(playback);
   process.on('SIGINT', function () {
     console.log('Received SIGINT.');
@@ -45,7 +53,7 @@ async function run() {
     process.exit();
   });
   console.log(playback.referenceStatus(), playback.scheduledTime());
-  for ( let x = 0 ; x < 40 ; x++ ) {
+  for ( let x = 0 ; x < 4000 ; x++ ) {
     // console.log('Scheduling', x * 1000);
     let start = process.hrtime();
     playback.schedule({ video: frame, time: x * 1000 });
