@@ -1,9 +1,15 @@
 {
   "name": "macadam",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "Async node.js interface to Blackmagic Design capture and playback devices.",
   "main": "index.js",
-  "keyqords": [ "blackmagic", "SDI", "playback", "capture", "decklink" ],
+  "keyqords": [
+    "blackmagic",
+    "SDI",
+    "playback",
+    "capture",
+    "decklink"
+  ],
   "scripts": {
     "install": "node-gyp rebuild",
     "test": "echo \"Error: no test specified\" && exit 1"

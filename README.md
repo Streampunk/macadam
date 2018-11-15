@@ -1,6 +1,6 @@
 # Macadam
 
-Prototype bindings to link [Node.js](http://nodejs.org/) and the Blackmagic Desktop Video SDK, enabling asynchronous capture and playback to and from [Blackmagic Design](https://www.blackmagicdesign.com/) devices via a simple Javascript API.
+Prototype bindings to link [Node.js](http://nodejs.org/) and the Blackmagic Desktop Video SDK, enabling asynchronous capture and playback to and from [Blackmagic Design](https://www.blackmagicdesign.com/) devices via a simple Javascript API. Keying is supported where it is available on the device.
 
 This is prototype software and is not yet suitable for production use. Linux is now a fully supported platform. However, please note that Blackmagic USB3 devices are not supported under Linux.
 
@@ -11,7 +11,7 @@ Why _macadam_? _Tarmacadam_ is the black stuff that magically makes roads, so it
 Macadam has a number of prerequisites:
 
 1. Install [Node.js](http://nodejs.org/) for your platform. This software has been developed against version 10.11.0 and will track the Node LTS version.
-2. Install the latest version of the Blackmagic Desktop Video SDKs for your platform, available from https://www.blackmagicdesign.com/support. At least version 10.12.0 is required.
+2. Install the latest version of the Blackmagic Desktop Video software for your platform, available from https://www.blackmagicdesign.com/support. At least version 10.12.0 is required.
 3. Install [node-gyp](https://github.com/nodejs/node-gyp) and make sure that you have the prerequisites for compiling Javascript addons for your platform as described. This requires a C/C++ development kit and python v2.7.
 
 Macadam is designed to be used as a module included into another project. To include macadam into your project (`--save` is now assumed so could be omitted):
@@ -355,14 +355,39 @@ for ( let x = 0 ; x < 100 ; x++ ) {
 
 ### Keying
 
-development in progress. To follow shortly.
+Keying is implemented as an extension of the playback functionality and can be used with both the scheduled and synchronous mode. Keying allows the combination of a provided graphics overlay with a video source, either within the the Blackmagic card (_internal keying_) or by outputting a _key and fill_ signal on two separate SDI outputs (_external keying_).
+
+Not all Blackmagic devices support keying. Use the `macadam.getDeviceInfo()` call to check the `supportsExternalKeying` and `supportsInternalKeying`. Also, for HD keying support, check `supportsHDKeying`.
+
+Keys must be provided as 8-bit BGRA or ARGB uncompressed images, with the 8-bit alpha channel providing a variable key determining whether the graphic's fill pixel is transparent (`0`) or opaque (`255`). Any conversions required to or from YCbCr are done by the Blackmagic hardware. For internal keying, the pixel format must match that of the expected input. In this mode, the configured pixel format is that of the graphic key and fill (either `bmdFormat8BitARGB` or `bmdFormat8BitBGRA`) but the output format is based on the input format.
+
+To set up keying, set playback property `enableKeying` to `true`. Use the `isExternal` property to switch on _external keying_ by setting the value to `true` or leave as the default value of `false` for internal keying. You can also set an overall key level, with a range between `0` (fully translucent) and `255` (opaque) and a default value of `255`. The alpha level in the image key is reduced according to overall level set for the keyer.
+
+To create a playback object with keying:
+
+```javascript
+let playback = await macadam.playback({
+  deviceIndex: 0,
+  displayMode: macadam.bmdModeHD1080i50,
+  pixelFormat: macadam.bmdFormat8BitBGRA,
+  enableKeying: true,
+  isExternal: true, // omit or set to false for internal keying
+  level: 255 // or just omit this line. Only really useful if key level is changed
+});
+```
+
+Send the graphics images to key as if they were frames of video. The keyer is stopped and destroyed with the `stop()` method.
+
+The overall key level can be set with the `setLevel(<level>)` method of the playback object.
+
+The key level can be ramped up to `255` over a given number of frames using the `rampUp(<count>)` method or ramped down to zero with the `rampDown(<count>)` method.
 
 ### Check the DeckLink API version
 
 To check the DeckLink API version:
 
 ```javascript
-var macadam = require('macadam');
+const macadam = require('macadam');
 console.log(macadam.deckLinkVersion());
 ```
 
