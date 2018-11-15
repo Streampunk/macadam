@@ -165,7 +165,6 @@ struct playbackThreadsafe : IDeckLinkVideoOutputCallback {
   int32_t height;
   int32_t rowBytes;
   bool started = false;
-  bool stopped = false;
   std::map<BMDTimeValue, scheduleCarrier*> pendingPlays;
   BMDTimeValue pendingTimeoutTicks = 1000;
   bool enableKeying = false;

@@ -64,6 +64,8 @@ async function run() {
   }
   console.log(playback.referenceStatus(), playback.scheduledTime());
   playback.stop();
+  await timer(1000);
+  playback.stop();
 }
 
 run().catch(console.error);

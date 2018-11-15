@@ -252,7 +252,7 @@ void playbackExecute(napi_env env, void* data) {
     }
     printf("Enabled decklink %s keying at level %i.\n",
       c->isExternal ? "external" : "internal", c->keyLevel);
-  } 
+  }
 }
 
 void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
@@ -978,14 +978,12 @@ napi_value displayFrame(napi_env env, napi_callback_info info) {
   c->status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
   REJECT_RETURN;
   c->status = napi_get_value_external(env, param, (void**) &pbts);
+  if (c->status == napi_invalid_arg) REJECT_ERROR_RETURN(
+    "Display frame cannot be used once an output is stopped.", MACADAM_ALREADY_STOPPED);
   REJECT_RETURN;
 
   if (pbts->started) REJECT_ERROR_RETURN(
     "Display frame cannot be used in conjuction with scheduled playback.",
-    MACADAM_ERROR_START);
-
-  if (pbts->stopped) REJECT_ERROR_RETURN(
-    "Display frame cannot be used once an output is stopped.",
     MACADAM_ERROR_START);
 
   if (argc == 2) { // Audio data provided
@@ -1087,6 +1085,8 @@ napi_value schedule(napi_env env, napi_callback_info info) {
   status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
   CHECK_STATUS;
   status = napi_get_value_external(env, param, (void**) &pbts);
+  if (status == napi_invalid_arg)
+    NAPI_THROW_ERROR("Cannot schedule frames after playout has stopped.");
   CHECK_STATUS;
 
   if (pbts->channels > 0) {
@@ -1114,9 +1114,6 @@ napi_value schedule(napi_env env, napi_callback_info info) {
       sampleFrameCount = 0;
     }
   }
-
-  if (pbts->stopped)
-    NAPI_THROW_ERROR("Cannot schedule frames after playout has stopped.");
 
   if (((int32_t) frame->dataSize) < (pbts->rowBytes * pbts->height))
     NAPI_THROW_ERROR("Insufficient bytes provided to schedule video frame.");
@@ -1194,9 +1191,8 @@ napi_value startPlayback(napi_env env, napi_callback_info info) {
   status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
   CHECK_STATUS;
   status = napi_get_value_external(env, param, (void**) &pbts);
+  if (status == napi_invalid_arg) NAPI_THROW_ERROR("Already started and then stopped.");
   CHECK_STATUS;
-
-  if (pbts->stopped) NAPI_THROW_ERROR("Already started and then stopped.");
 
   if (pbts->started) NAPI_THROW_ERROR("Already started.");
 
@@ -1312,9 +1308,8 @@ napi_value scheduledStreamTime(napi_env env, napi_callback_info info) {
   status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
   CHECK_STATUS;
   status = napi_get_value_external(env, param, (void**) &pbts);
+  if (status == napi_invalid_arg) NAPI_THROW_ERROR("Already stopped.");
   CHECK_STATUS;
-
-  if (pbts->stopped) NAPI_THROW_ERROR("Already stopped.");
 
   BMDTimeValue streamTime;
   double playbackSpeed;
@@ -1356,9 +1351,8 @@ napi_value referenceStatus(napi_env env, napi_callback_info info) {
   status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
   CHECK_STATUS;
   status = napi_get_value_external(env, param, (void**) &pbts);
+  if (status == napi_invalid_arg) NAPI_THROW_ERROR("Already stopped.");
   CHECK_STATUS;
-
-  if (pbts->stopped) NAPI_THROW_ERROR("Already stopped.");
 
   BMDReferenceStatus refStatus;
   hresult = pbts->deckLinkOutput->GetReferenceStatus(&refStatus);
@@ -1397,9 +1391,8 @@ napi_value hardwareReferenceClock(napi_env env, napi_callback_info info) {
   status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
   CHECK_STATUS;
   status = napi_get_value_external(env, param, (void**) &pbts);
+  if (status == napi_invalid_arg) NAPI_THROW_ERROR("Already stopped.");
   CHECK_STATUS;
-
-  if (pbts->stopped) NAPI_THROW_ERROR("Already stopped.");
 
   hresult = pbts->deckLinkOutput->GetHardwareReferenceClock(pbts->timeScale,
     &hardwareTime, &timeInFrame, &ticksPerFrame);
@@ -1449,9 +1442,8 @@ napi_value bufferedVideoFrameCount(napi_env env, napi_callback_info info) {
   status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
   CHECK_STATUS;
   status = napi_get_value_external(env, param, (void**) &pbts);
+  if (status == napi_invalid_arg) NAPI_THROW_ERROR("Already stopped.");
   CHECK_STATUS;
-
-  if (pbts->stopped) NAPI_THROW_ERROR("Already stopped.");
 
   uint32_t sampleFrameCount;
   hresult = pbts->deckLinkOutput->GetBufferedVideoFrameCount(&sampleFrameCount);
@@ -1476,9 +1468,8 @@ napi_value bufferedAudioSampleFrameCount(napi_env env, napi_callback_info info) 
   status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
   CHECK_STATUS;
   status = napi_get_value_external(env, param, (void**) &pbts);
+  if (status == napi_invalid_arg) NAPI_THROW_ERROR("Already stopped.");
   CHECK_STATUS;
-
-  if (pbts->stopped) NAPI_THROW_ERROR("Already stopped.");
 
   uint32_t sampleFrameCount;
   hresult = pbts->deckLinkOutput->GetBufferedAudioSampleFrameCount(&sampleFrameCount);
@@ -1503,9 +1494,8 @@ napi_value stopPlayback(napi_env env, napi_callback_info info) {
   status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
   CHECK_STATUS;
   status = napi_get_value_external(env, param, (void**) &pbts);
+  if (status == napi_invalid_arg) NAPI_THROW_ERROR("Already stopped.");
   CHECK_STATUS;
-
-  if (pbts->stopped) NAPI_THROW_ERROR("Already stopped.");
 
   if (pbts->started) {
     hresult = pbts->deckLinkOutput->StopScheduledPlayback(0, nullptr, 0);
@@ -1533,10 +1523,14 @@ napi_value stopPlayback(napi_env env, napi_callback_info info) {
 
   status = napi_release_threadsafe_function(pbts->tsFn, napi_tsfn_release);
   CHECK_STATUS;
-  pbts->stopped = true;
 
   status = napi_get_undefined(env, &value);
   CHECK_STATUS;
+
+  // Don't hold onto PBTS after delete.
+  status = napi_set_named_property(env, playback, "deckLinkOutput", value);
+  CHECK_STATUS;
+
   return value;
 }
 
@@ -1556,9 +1550,9 @@ napi_value rampUp(napi_env env, napi_callback_info info) {
   status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
   CHECK_STATUS;
   status = napi_get_value_external(env, param, (void**) &pbts);
+  if (status == napi_invalid_arg) NAPI_THROW_ERROR("Already stopped.");
   CHECK_STATUS;
 
-  if (pbts->stopped) NAPI_THROW_ERROR("Already stopped.");
   if (!pbts->enableKeying) NAPI_THROW_ERROR("Keying is not enabled for this output.");
   if (argc != 1) NAPI_THROW_ERROR("To set keying ramp up frame count, a value must be provided.");
 
@@ -1599,9 +1593,9 @@ napi_value rampDown(napi_env env, napi_callback_info info) {
   status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
   CHECK_STATUS;
   status = napi_get_value_external(env, param, (void**) &pbts);
+  if (status == napi_invalid_arg) NAPI_THROW_ERROR("Already stopped.");
   CHECK_STATUS;
 
-  if (pbts->stopped) NAPI_THROW_ERROR("Already stopped.");
   if (!pbts->enableKeying) NAPI_THROW_ERROR("Keying is not enabled for this output.");
   if (argc != 1) NAPI_THROW_ERROR("To set keying ramp down frame count, a value must be provided.");
 
@@ -1642,9 +1636,9 @@ napi_value setLevel(napi_env env, napi_callback_info info) {
   status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
   CHECK_STATUS;
   status = napi_get_value_external(env, param, (void**) &pbts);
+  if (status == napi_invalid_arg) NAPI_THROW_ERROR("Already stopped.");
   CHECK_STATUS;
 
-  if (pbts->stopped) NAPI_THROW_ERROR("Already stopped.");
   if (!pbts->enableKeying) NAPI_THROW_ERROR("Keying is not enabled for this output.");
   if (argc != 1) NAPI_THROW_ERROR("To set key level, a value must be provided.");
 
@@ -1669,8 +1663,8 @@ napi_value setLevel(napi_env env, napi_callback_info info) {
   return value;
 }
 
-
 void playbackTsFnFinalize(napi_env env, void* data, void* hint) {
-  printf("Threadsafe playback finalizer called.\n");
-  // FIXME: Implement this
+  printf("Threadsafe playback finalizer called with data %p and hint %p.\n", data, hint);
+  playbackThreadsafe* pbts = (playbackThreadsafe*) hint;
+  delete pbts;
 }
