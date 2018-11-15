@@ -1,9 +1,6 @@
 {
   "targets": [{
     "target_name" : "macadam",
-    "include_dirs" : [
-      "<!(node -e \"require('nan')\")"
-    ],
     "conditions": [
       ['OS=="mac"', {
         'sources' : [ "src/macadam_util.cc", "src/macadam.cc",
@@ -18,7 +15,7 @@
         },
         "link_settings": {
           "libraries": [
-            "/Library/Frameworks/DeckLinkAPI.framework"
+            '-framework', 'DeckLinkAPI'
           ]
         },
         "include_dirs" : [
