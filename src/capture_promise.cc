@@ -161,9 +161,8 @@ napi_value stopStreams(napi_env env, napi_callback_info info) {
   status = napi_get_named_property(env, capture, "deckLinkInput", &param);
   CHECK_STATUS;
   status = napi_get_value_external(env, param, (void**) &crts);
+  if (status == napi_invalid_arg) NAPI_THROW_ERROR("Already stopped.");
   CHECK_STATUS;
-
-  if (crts->stopped) NAPI_THROW_ERROR("Already stopped.");
 
   hresult = crts->deckLinkInput->StopStreams();
   if (hresult != S_OK) NAPI_THROW_ERROR("Unable to stop streams. May be already stopped?");
@@ -174,10 +173,13 @@ napi_value stopStreams(napi_env env, napi_callback_info info) {
 
   status = napi_release_threadsafe_function(crts->tsFn, napi_tsfn_release);
   CHECK_STATUS;
-  crts->stopped = true;
 
   status = napi_get_undefined(env, &value);
   CHECK_STATUS;
+
+  status = napi_set_named_property(env, capture, "deckLinkInput", value);
+  CHECK_STATUS;
+
   return value;
 }
 
@@ -194,9 +196,9 @@ napi_value pauseStreams(napi_env env, napi_callback_info info) {
   status = napi_get_named_property(env, capture, "deckLinkInput", &param);
   CHECK_STATUS;
   status = napi_get_value_external(env, param, (void**) &crts);
+  if (status == napi_invalid_arg) NAPI_THROW_ERROR("Already stopped.");
   CHECK_STATUS;
 
-  if (crts->stopped) NAPI_THROW_ERROR("Already stopped.");
   hresult = crts->deckLinkInput->PauseStreams();
   if (hresult != S_OK) NAPI_THROW_ERROR("Unable to pause or restart streams.");
 
@@ -620,10 +622,9 @@ napi_value framePromise(napi_env env, napi_callback_info info) {
   c->status = napi_get_named_property(env, capture, "deckLinkInput", &param);
   REJECT_RETURN;
   c->status = napi_get_value_external(env, param, (void**) &crts);
-  REJECT_RETURN;
-
-  if (crts->stopped) REJECT_ERROR_RETURN(
+  if (c->status == napi_invalid_arg) REJECT_ERROR_RETURN(
     "Cannot request frames after stream stop.", MACADAM_ALREADY_STOPPED);
+  REJECT_RETURN;
 
   if (!crts->started) {
     hresult = crts->deckLinkInput->StartStreams();
@@ -866,6 +867,7 @@ bail:
 }
 
 void captureTsFnFinalize(napi_env env, void* data, void* hint) {
-  printf("Threadsafe capture finalizer called.\n");
-  // FIXME: Implement this
+  printf("Threadsafe capture finalizer called with data %p and hint %p.\n", data, hint);
+  captureThreadsafe* cpts = (captureThreadsafe*) hint;
+  delete cpts;
 }

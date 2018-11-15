@@ -93,7 +93,6 @@ struct captureThreadsafe : IDeckLinkInputCallback {
   ULONG Release() { return 1; }
   napi_threadsafe_function tsFn;
   bool started = false;
-  bool stopped = false;
   IDeckLinkInput* deckLinkInput = nullptr;
   IDeckLinkDisplayMode* displayMode = nullptr;
   BMDPixelFormat pixelFormat;
