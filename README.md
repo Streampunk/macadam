@@ -352,10 +352,12 @@ function timer(t) {
 }
 for ( let x = 0 ; x < 100 ; x++ ) {
   // Get hold of frame data as a Node.JS buffer
-  await displayFrame(frame); // Does not wait for frame to display ... work done off main thread
+  await playback.displayFrame(frame); // Does not wait for frame to display ... work done off main thread
   await timer(500); // Replace frame data around every half second
 }
 ```
+
+Once playback if finished, call `playback.stop()` to release the associated resources.
 
 ### Keying
 

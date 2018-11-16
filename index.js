@@ -657,12 +657,79 @@ var macadam = {
   bmdDisplayModeSupports3D        : 1 << 0,
   bmdDisplayModeColorspaceRec601  : 1 << 1,
   bmdDisplayModeColorspaceRec709  : 1 << 2,
+  bmdDisplayModeColorspaceRec2020 : 1 << 3,
+  // Audio parameters
   bmdAudioSampleRate48kHz	        : 48000,
   bmdAudioSampleType16bitInteger	: 16,
   bmdAudioSampleType32bitInteger	: 32,
+  // BMDVideo3DPackingFormat
+  bmdVideo3DPackingSidebySideHalf : bmCodeToInt('sbsh'), // Frames are packed side-by-side as a single stream.
+  bmdVideo3DPackingLinebyLine     : bmCodeToInt('lbyl'), // The two eye frames are packed on alternating lines of the source frame.
+  bmdVideo3DPackingTopAndBottom   : bmCodeToInt('tabo'), // The two eye frames are packed into the top and bottom half of the source frame.
+  bmdVideo3DPackingFramePacking   : bmCodeToInt('frpk'), // Frame packing is a standard HDMI 1.4a 3D mode (Top / Bottom full).
+  bmdVideo3DPackingLeftOnly       : bmCodeToInt('left'), // Only the left eye frame is displayed.
+  bmdVideo3DPackingRightOnly      : bmCodeToInt('righ'), // Only the right eye frame is displayed.
+  // BMDDeckLinkCapturePassthroughMode
+  bmdDeckLinkCapturePassthroughModeDisabled    : bmCodeToInt('pdis'), // Electronic connection - input to output
+  bmdDeckLinkCapturePassthroughModeDirect      : bmCodeToInt('pdir'), // Uses playout mechanism for clear switch
+  bmdDeckLinkCapturePassthroughModeCleanSwitch : bmCodeToInt('pcln'), // No input to output link - use idle mode
+  // BMDVideoOutputConversionMode
+  bmdNoVideoOutputConversion                             : bmCodeToInt('none'), // No video output conversion
+  bmdVideoOutputLetterboxDownconversion                  : bmCodeToInt('ltbx'), // Down-converted letterbox SD output
+  bmdVideoOutputAnamorphicDownconversion                 : bmCodeToInt('amph'), // Down-converted anamorphic SD output
+  bmdVideoOutputHD720toHD1080Conversion                  : bmCodeToInt('720c'), // HD720 to HD1080 conversion output
+  bmdVideoOutputHardwareLetterboxDownconversion          : bmCodeToInt('HWlb'), // Simultaneous HD and down-converted letterbox SD
+  bmdVideoOutputHardwareAnamorphicDownconversion         : bmCodeToInt('HWam'), // Simultaneous HD and down-converted anamorphic SD
+  bmdVideoOutputHardwareCenterCutDownconversion          : bmCodeToInt('HWcc'), // Simultaneous HD and center cut SD
+  bmdVideoOutputHardware720p1080pCrossconversion         : bmCodeToInt('xcap'), // Simultaneous 720p and 1080p cross-conversion
+  bmdVideoOutputHardwareAnamorphic720pUpconversion       : bmCodeToInt('ua7p'), // Simultaneous SD and up-converted anamorphic 720p
+  bmdVideoOutputHardwareAnamorphic1080iUpconversion      : bmCodeToInt('ua1i'), // Simultaneous SD and up-converted anamorphic 1080i
+  bmdVideoOutputHardwareAnamorphic149To720pUpconversion  : bmCodeToInt('u47p'), // Simultaneous SD and up-converted anamorphic widescreen aspect ratio 14:9 to 720p.
+  bmdVideoOutputHardwareAnamorphic149To1080iUpconversion : bmCodeToInt('u41i'), // Simultaneous SD and up-converted anamorphic widescreen aspect ratio 14:9 to 1080i.
+  bmdVideoOutputHardwarePillarbox720pUpconversion        : bmCodeToInt('up7p'), // Simultaneous SD and up-converted pillarbox 720p
+  bmdVideoOutputHardwarePillarbox1080iUpconversion       : bmCodeToInt('up1i'), // Simultaneous SD and up-converted pillarbox 1080i
+  // BMDVideoInputConversionMode
+  bmdNoVideoInputConversion                       : bmCodeToInt('none'), // No video input conversion
+  bmdVideoInputLetterboxDownconversionFromHD1080  : bmCodeToInt('10lb'), // HD1080 to SD video input down conversion
+  bmdVideoInputAnamorphicDownconversionFromHD1080 : bmCodeToInt('10am'), // Anamorphic from HD1080 to SD video input down conversion
+  bmdVideoInputLetterboxDownconversionFromHD720   : bmCodeToInt('72lb'), // Letter box from HD720 to SD video input down conversion
+  bmdVideoInputAnamorphicDownconversionFromHD720  : bmCodeToInt('72am'), // Anamorphic from HD720 to SD video input down conversion
+  bmdVideoInputLetterboxUpconversion              : bmCodeToInt('lbup'), // Letterbox video input up conversion
+  bmdVideoInputAnamorphicUpconversion             : bmCodeToInt('amup'), // Anamorphic video input up conversion
+  // BMDAnalogVideoFlags
+  bmdAnalogVideoFlagCompositeSetup75        : 1 << 0, // If set, composite black level is 7.5 IRE (USA) rather than 0.0 IRE (Japan)
+  bmdAnalogVideoFlagComponentBetacamLevels  : 1 << 1, // IF set, component video color different channels boosted 4/3 for Betacam
+  // BMDVideoConnection
+  bmdVideoConnectionSDI        : 1 << 0,
+  bmdVideoConnectionHDMI       : 1 << 1,
+  bmdVideoConnectionOpticalSDI : 1 << 2,
+  bmdVideoConnectionComponent  : 1 << 3,
+  bmdVideoConnectionComposite  : 1 << 4,
+  bmdVideoConnectionSVideo     : 1 << 5,
+  // BMDAudioConnectionAnalog
+  bmdAudioConnectionEmbedded   : 1 << 0,
+  bmdAudioConnectionAESEBU     : 1 << 1,
+  bmdAudioConnectionAnalog     : 1 << 2,
+  bmdAudioConnectionAnalogXLR  : 1 << 3,
+  bmdAudioConnectionAnalogRCA  : 1 << 4,
+  bmdAudioConnectionMicrophone : 1 << 5,
+  bmdAudioConnectionHeadphones : 1 << 6,
+  // BMDLinkConfiguration
+  bmdLinkConfigurationSingleLink : bmCodeToInt('lcsl'), // A single video stream uses one connector
+  bmdLinkConfigurationDualLink   : bmCodeToInt('lcdl'), // A single video stream uses two connectors
+  bmdLinkConfigurationQuadLink   : bmCodeToInt('lcql'), // A single video stream uses four connectors
+  // BMDIdleVideoOutputOperation
+  bmdIdleVideoOutputBlack      : bmCodeToInt('blac'), // When not playing video, the device will output black frames
+  bmdIdleVideoOutputLastFrame  : bmCodeToInt('lafa'), // When not playing video, the device will output the last frame played
+  // BMDDeckControlConnection
+  bmdDeckControlConnectionRS422Remote1 : 1 << 0, // First RS422 deck control connection
+  bmdDeckControlConnectionRS422Remote2 : 1 << 1, // Second RS422 deck control connection
+  // BMDDuplexMode
+  bmdDuplexModeFull : bmCodeToInt('fdup'), // Configure this sub-device to use two connectors (full-duplex).
+  bmdDuplexModeHalf : bmCodeToInt('hdup'), // Configure this sub-device to use a single connector (half-duplex).
   // Convert to and from Black Magic codes.
   intToBMCode : intToBMCode,
-  bmCodeToInt : bmCodeToInt,
+  bmCodeToInt : bmCodeToInt, //
   // Get parameters from modes and formats
   modeWidth : modeWidth,
   modeHeight : modeHeight,
@@ -677,11 +744,12 @@ var macadam = {
   deckLinkVersion : macadamNative.deckLinkVersion,
   getFirstDevice : macadamNative.getFirstDevice,
   getDeviceInfo : macadamNative.getDeviceInfo,
+  getDeviceConfig : macadamNative.getDeviceConfig,
+  setDeviceConfig : macadamNative.setDeviceConfig,
   // Raw access to device classes
   DirectCapture : macadamNative.Capture,
   Capture : Capture,
   Playback : Playback,
-  asyncTest : macadamNative.asyncTest,
   capture : macadamNative.capture,
   playback : macadamNative.playback
 };

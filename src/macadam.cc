@@ -1683,16 +1683,37 @@ bail:
   return status;
 }
 
+napi_value getDeviceConfig(napi_env env, napi_callback_info info) {
+  napi_status status;
+  napi_value value;
+
+  status = napi_create_object(env, &value);
+  CHECK_STATUS;
+
+  return value;
+}
+
+napi_value setDeviceConfig(napi_env env, napi_callback_info info) {
+  napi_status status;
+  napi_value value;
+
+  status = napi_get_undefined(env, &value);
+  CHECK_STATUS;
+  return value;
+}
+
 napi_value Init(napi_env env, napi_value exports) {
   napi_status status;
   napi_property_descriptor desc[] = {
     DECLARE_NAPI_METHOD("deckLinkVersion", deckLinkVersion),
     DECLARE_NAPI_METHOD("getFirstDevice", getFirstDevice),
     DECLARE_NAPI_METHOD("getDeviceInfo", getDeviceInfo),
+    DECLARE_NAPI_METHOD("getDeviceConfig", getDeviceConfig),
+    DECLARE_NAPI_METHOD("setDeviceConfig", setDeviceConfig),
     DECLARE_NAPI_METHOD("capture", capture),
     DECLARE_NAPI_METHOD("playback", playback)
    };
-  status = napi_define_properties(env, exports, 5, desc);
+  status = napi_define_properties(env, exports, 7, desc);
   CHECK_STATUS;
 
   #ifdef WIN32
