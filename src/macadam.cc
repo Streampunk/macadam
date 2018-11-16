@@ -1708,7 +1708,7 @@ napi_value getDeviceConfig(napi_env env, napi_callback_info info) {
   #ifdef WIN32
   BSTR stringValueBSTR;
   #elif __APPLE__
-  CStringRef stringValueCFStr;
+  CFStringRef stringValueCFStr;
   #else
   chat* stringValue;
   #endif
@@ -1828,7 +1828,7 @@ napi_value getDeviceConfig(napi_env env, napi_callback_info info) {
           char stringValue [256];
           CFStringGetCString(stringValueCFStr, stringValue, sizeof(stringValue), kCFStringEncodingMacRoman);
           CFRelease(stringValueCFStr);
-          status = napi_create_string_utf8(env, deviceName, NAPI_AUTO_LENGTH, &param);
+          status = napi_create_string_utf8(env, stringValue, NAPI_AUTO_LENGTH, &param);
           CHECK_BAIL;
         }
         #else
@@ -1842,18 +1842,17 @@ napi_value getDeviceConfig(napi_env env, napi_callback_info info) {
         switch (hresult) {
           case S_OK:
             break;
-            case E_NOTIMPL:
-              status = napi_get_null(env, &param);
-              CHECK_BAIL;
-              break;
-            case E_FAIL:
-            case E_INVALIDARG:
-            default:
-              status = napi_get_undefined(env, &param);
-              CHECK_BAIL;
-              break;
+          case E_NOTIMPL:
+            status = napi_get_null(env, &param);
+            CHECK_BAIL;
+            break;
+          case E_FAIL:
+          case E_INVALIDARG:
+          default:
+            status = napi_get_undefined(env, &param);
+            CHECK_BAIL;
+            break;
         }
-        break;
         status = napi_set_named_property(env, result, knownConfigNames[configIndex], param);
         CHECK_BAIL;
         break;
