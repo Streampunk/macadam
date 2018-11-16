@@ -281,7 +281,7 @@ const char* knownConfigNames[] = {
   "deviceInformationDate", // bmdDeckLinkConfigDeviceInformationDate
 
   /* Deck Control Integers */
-  "DeckControlConnection", // bmdDeckLinkConfigDeckControlConnection
+  "deckControlConnection", // bmdDeckLinkConfigDeckControlConnection
   nullptr
 };
 
@@ -1702,14 +1702,16 @@ napi_value getDeviceConfig(napi_env env, napi_callback_info info) {
   IDeckLink* deckLink = nullptr;
   IDeckLinkConfiguration* deckLinkConfig = nullptr;
 
-  bool flag;
   int64_t intValue;
   double floatValue;
   #ifdef WIN32
+  BOOL flag;
   BSTR stringValueBSTR;
   #elif __APPLE__
+  bool flag;
   CFStringRef stringValueCFStr;
   #else
+  bool flag;
   chat* stringValue;
   #endif
 
@@ -1746,6 +1748,17 @@ napi_value getDeviceConfig(napi_env env, napi_callback_info info) {
     napi_throw_error(env, nullptr, "Failed to get deck link configuration for device.");
     goto bail;
   }
+
+  status = napi_create_string_utf8(env, "configuration", NAPI_AUTO_LENGTH, &param);
+  CHECK_BAIL;
+  status = napi_set_named_property(env, result, "type", param);
+  CHECK_BAIL;
+
+  status = napi_create_uint32(env, deviceIndex, &param);
+  CHECK_BAIL;
+  status = napi_set_named_property(env, result, "deviceIndex", param);
+  CHECK_BAIL;
+
   while ( (knownConfigNames[configIndex] != nullptr) &&
             (knownConfigValues[configIndex] != 0) &&
             (knownConfigTypes[configIndex] != 0) ) {
@@ -1816,14 +1829,14 @@ napi_value getDeviceConfig(napi_env env, napi_callback_info info) {
         break;
       case macadamString:
         #ifdef WIN32
-        hresult = deckLink->GetModelName(&stringValueBSTR);
+        hresult = deckLinkConfig->GetString(knownConfigValues[configIndex], &stringValueBSTR);
         if (hresult == S_OK) {
           _bstr_t stringValue(stringValueBSTR, false);
           status = napi_create_string_utf8(env, (char*) stringValue, NAPI_AUTO_LENGTH, &param);
           CHECK_BAIL;
         }
         #elif __APPLE__
-        hresult = deckLink->GetModelName(&stringValueCFStr);
+        hresult = deckLinkConfig->GetString(knownConfigValues[configIndex], &stringValueCFStr);
         if (hresult == S_OK) {
           char stringValue [256];
           CFStringGetCString(stringValueCFStr, stringValue, sizeof(stringValue), kCFStringEncodingMacRoman);
@@ -1832,7 +1845,7 @@ napi_value getDeviceConfig(napi_env env, napi_callback_info info) {
           CHECK_BAIL;
         }
         #else
-        hresult = deckLink->GetModelName((const char **) &stringValue);
+        hresult = deckLinkConfig->GetString(knownConfigValues[configIndex], (const char **) &stringValue);
         if (hresult == S_OK) {
           status = napi_create_string_utf8(env, stringValue, NAPI_AUTO_LENGTH, &param);
           free(stringValue);
@@ -1865,8 +1878,8 @@ napi_value getDeviceConfig(napi_env env, napi_callback_info info) {
   }
 
   bail:
-    if (deckLink != nullptr) { deckLink->Release(); }
     if (deckLinkConfig != nullptr) { deckLinkConfig->Release(); }
+    if (deckLink != nullptr) { deckLink->Release(); }
     return result;
 }
 
