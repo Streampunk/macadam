@@ -170,7 +170,8 @@ const BMDDeckLinkConfigurationID knownConfigValues[] = {
   bmdDeckLinkConfigDeviceInformationDate,
 
   /* Deck Control Integers */
-  bmdDeckLinkConfigDeckControlConnection
+  bmdDeckLinkConfigDeckControlConnection,
+  (BMDDeckLinkConfigurationID) 0
 };
 
 const char* knownConfigNames[] = {
@@ -281,6 +282,7 @@ const char* knownConfigNames[] = {
 
   /* Deck Control Integers */
   "DeckControlConnection", // bmdDeckLinkConfigDeckControlConnection
+  nullptr
 };
 
 const MacadamConfigType knownConfigTypes[] = {
@@ -391,7 +393,9 @@ const MacadamConfigType knownConfigTypes[] = {
   macadamString, // bmdDeckLinkConfigDeviceInformationDate
 
   /* Deck Control Integers */
-  macadamInt64 // bmdDeckLinkConfigDeckControlConnection
+  macadamInt64, // bmdDeckLinkConfigDeckControlConnection
+
+  (MacadamConfigType) 0
 };
 
 napi_status queryOutputDisplayModes(napi_env env, IDeckLink* deckLink, napi_value result);
@@ -1685,12 +1689,136 @@ bail:
 
 napi_value getDeviceConfig(napi_env env, napi_callback_info info) {
   napi_status status;
-  napi_value value;
+  napi_value result, param;
+  napi_valuetype type;
+  uint32_t deviceIndex = 0;
+  uint32_t configIndex = 0;
 
-  status = napi_create_object(env, &value);
+  status = napi_create_object(env, &result);
   CHECK_STATUS;
 
-  return value;
+  IDeckLinkIterator* deckLinkIterator;
+  HRESULT	hresult;
+  IDeckLink* deckLink = nullptr;
+  IDeckLinkConfiguration* deckLinkConfig = nullptr;
+
+  bool flag;
+  int64_t intValue;
+  double floatValue;
+
+  size_t argc = 1;
+  napi_value argv[1];
+  status = napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
+  CHECK_STATUS;
+
+  if (argc >= 1) {
+    status = napi_typeof(env, argv[0], &type);
+    CHECK_STATUS;
+    if (type != napi_number) NAPI_THROW_ERROR("Argument must be a device index.");
+    status = napi_get_value_uint32(env, argv[0], &deviceIndex);
+    CHECK_STATUS;
+  }
+
+  #ifdef WIN32
+  CoCreateInstance(CLSID_CDeckLinkIterator, NULL, CLSCTX_ALL, IID_IDeckLinkIterator, (void**)&deckLinkIterator);
+  #else
+  deckLinkIterator = CreateDeckLinkIteratorInstance();
+  #endif
+
+  for ( uint32_t x = 0 ; x <= deviceIndex ; x++ ) {
+    if (deckLinkIterator->Next(&deckLink) != S_OK) {
+      deckLinkIterator->Release();
+      NAPI_THROW_ERROR("Device index exceeds the number of installed devices.");
+    }
+  }
+
+  deckLinkIterator->Release();
+
+  hresult = deckLink->QueryInterface(IID_IDeckLinkConfiguration, (void**)&deckLinkConfig);
+  if (hresult != S_OK) {
+    napi_throw_error(env, nullptr, "Failed to get deck link configuration for device.");
+    goto bail;
+  }
+  while ( (knownConfigNames[configIndex] != nullptr) &&
+            (knownConfigValues[configIndex] != 0) &&
+            (knownConfigTypes[configIndex] != 0) ) {
+
+    switch (knownConfigTypes[configIndex]) {
+      case macadamFlag:
+        hresult = deckLinkConfig->GetFlag(knownConfigValues[configIndex], &flag);
+        switch (hresult) {
+          case S_OK:
+            status = napi_get_boolean(env, flag, &param);
+            CHECK_BAIL;
+            break;
+          case E_NOTIMPL:
+            status = napi_get_null(env, &param);
+            CHECK_BAIL;
+            break;
+          case E_FAIL:
+          case E_INVALIDARG:
+          default:
+            status = napi_get_undefined(env, &param);
+            CHECK_BAIL;
+            break;
+        }
+        status = napi_set_named_property(env, result, knownConfigNames[configIndex], param);
+        CHECK_BAIL;
+        break;
+      case macadamInt64:
+        hresult = deckLinkConfig->GetInt(knownConfigValues[configIndex], &intValue);
+        switch (hresult) {
+          case S_OK:
+            status = napi_create_int64(env, intValue, &param);
+            CHECK_BAIL;
+            break;
+          case E_NOTIMPL:
+            status = napi_get_null(env, &param);
+            CHECK_BAIL;
+            break;
+          case E_FAIL:
+          case E_INVALIDARG:
+          default:
+            status = napi_get_undefined(env, &param);
+            CHECK_BAIL;
+            break;
+        }
+        status = napi_set_named_property(env, result, knownConfigNames[configIndex], param);
+        CHECK_BAIL;
+        break;
+      case macadamFloat:
+        hresult = deckLinkConfig->GetFloat(knownConfigValues[configIndex], &floatValue);
+        switch (hresult) {
+          case S_OK:
+            status = napi_create_double(env, floatValue, &param);
+            CHECK_BAIL;
+            break;
+          case E_NOTIMPL:
+            status = napi_get_null(env, &param);
+            CHECK_BAIL;
+            break;
+          case E_FAIL:
+          case E_INVALIDARG:
+          default:
+            status = napi_get_undefined(env, &param);
+            CHECK_BAIL;
+            break;
+        }
+        status = napi_set_named_property(env, result, knownConfigNames[configIndex], param);
+        CHECK_BAIL;
+        break;
+      default:
+        printf("DEBUG: Unexpected config parameter type %i named %s.\n",
+          knownConfigTypes[configIndex], knownConfigNames[configIndex]);
+        break;
+    }
+    configIndex++;
+  }
+
+  bail:
+    if (deckLink != nullptr) { deckLink->Release(); }
+    if (deckLinkConfig != nullptr) { deckLinkConfig->Release(); }
+    return result;
 }
 
 napi_value setDeviceConfig(napi_env env, napi_callback_info info) {
