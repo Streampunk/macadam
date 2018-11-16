@@ -1705,6 +1705,13 @@ napi_value getDeviceConfig(napi_env env, napi_callback_info info) {
   bool flag;
   int64_t intValue;
   double floatValue;
+  #ifdef WIN32
+  BSTR stringValueBSTR;
+  #elif __APPLE__
+  CStringRef stringValueCFStr;
+  #else
+  chat* stringValue;
+  #endif
 
   size_t argc = 1;
   napi_value argv[1];
@@ -1804,6 +1811,49 @@ napi_value getDeviceConfig(napi_env env, napi_callback_info info) {
             CHECK_BAIL;
             break;
         }
+        status = napi_set_named_property(env, result, knownConfigNames[configIndex], param);
+        CHECK_BAIL;
+        break;
+      case macadamString:
+        #ifdef WIN32
+        hresult = deckLink->GetModelName(&stringValueBSTR);
+        if (hresult == S_OK) {
+          _bstr_t stringValue(stringValueBSTR, false);
+          status = napi_create_string_utf8(env, (char*) stringValue, NAPI_AUTO_LENGTH, &param);
+          CHECK_BAIL;
+        }
+        #elif __APPLE__
+        hresult = deckLink->GetModelName(&stringValueCFStr);
+        if (hresult == S_OK) {
+          char stringValue [256];
+          CFStringGetCString(stringValueCFStr, stringValue, sizeof(stringValue), kCFStringEncodingMacRoman);
+          CFRelease(stringValueCFStr);
+          status = napi_create_string_utf8(env, deviceName, NAPI_AUTO_LENGTH, &param);
+          CHECK_BAIL;
+        }
+        #else
+        hresult = deckLink->GetModelName((const char **) &stringValue);
+        if (hresult == S_OK) {
+          status = napi_create_string_utf8(env, stringValue, NAPI_AUTO_LENGTH, &param);
+          free(stringValue);
+          CHECK_BAIL;
+        }
+        #endif
+        switch (hresult) {
+          case S_OK:
+            break;
+            case E_NOTIMPL:
+              status = napi_get_null(env, &param);
+              CHECK_BAIL;
+              break;
+            case E_FAIL:
+            case E_INVALIDARG:
+            default:
+              status = napi_get_undefined(env, &param);
+              CHECK_BAIL;
+              break;
+        }
+        break;
         status = napi_set_named_property(env, result, knownConfigNames[configIndex], param);
         CHECK_BAIL;
         break;
