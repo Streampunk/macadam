@@ -222,7 +222,7 @@ const char* knownConfigNames[] = {
 
   /* Video Input Flags */
   "videoInputScanning", // bmdDeckLinkConfigVideoInputScanning - applicable to H264 Pro Recorder only
-  "UseDedicatedLTCInput", // bmdDeckLinkConfigUseDedicatedLTCInput - use timecode from LTC input instead of SDI stream
+  "useDedicatedLTCInput", // bmdDeckLinkConfigUseDedicatedLTCInput - use timecode from LTC input instead of SDI stream
   "SDIInput3DPayloadOverride", // bmdDeckLinkConfigSDIInput3DPayloadOverride
 
   /* Video Input Flags */
