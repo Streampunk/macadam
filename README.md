@@ -12,7 +12,11 @@ Macadam has a number of prerequisites:
 
 1. Install [Node.js](http://nodejs.org/) for your platform. This software has been developed against version 10.11.0 and will track the Node LTS version.
 2. Install the latest version of the Blackmagic Desktop Video software for your platform, available from https://www.blackmagicdesign.com/support. At least version 10.12.0 is required.
-3. Install [node-gyp](https://github.com/nodejs/node-gyp) and make sure that you have the prerequisites for compiling Javascript addons for your platform as described. This requires a C/C++ development kit and python v2.7.
+3. Install [node-gyp](https://github.com/nodejs/node-gyp) and make sure that you have the prerequisites for compiling Javascript native addons for your platform as described. This requires a C/C++ development kit and python v2.7.
+
+Note: For MacOSX _Mojave_, the install the following package after `xcode-select --install`:
+
+    /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg
 
 Macadam is designed to be used as a module included into another project. To include macadam into your project (`--save` is now assumed so could be omitted):
 

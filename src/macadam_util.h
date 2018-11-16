@@ -104,4 +104,16 @@ extern const char* gKnownPixelFormatNames[]; //= {"8-bit YUV", "10-bit YUV", "8-
 
 napi_value nop(napi_env env, napi_callback_info info);
 
+typedef uint32_t MacadamConfigType;
+enum _MacadamConfigType {
+    macadamFlag = 1,
+    macadamInt64 = 2,
+    macadamFloat = 3,
+    macadamString = 4
+};
+
+extern const BMDDeckLinkConfigurationID knownConfigValues[];
+extern const char* knownConfigNames[];
+extern const MacadamConfigType knownConfigTypes[];
+
 #endif // MACADAM_UTIL_H

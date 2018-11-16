@@ -62,6 +62,338 @@
 const BMDPixelFormat gKnownPixelFormats[] = {bmdFormat8BitYUV, bmdFormat10BitYUV, bmdFormat8BitARGB, bmdFormat8BitBGRA, bmdFormat10BitRGB, bmdFormat12BitRGB, bmdFormat12BitRGBLE, bmdFormat10BitRGBXLE, bmdFormat10BitRGBX, (BMDPixelFormat) 0};
 const char* gKnownPixelFormatNames[] = {"8-bit YUV", "10-bit YUV", "8-bit ARGB", "8-bit BGRA", "10-bit RGB", "12-bit RGB", "12-bit RGBLE", "10-bit RGBXLE", "10-bit RGBX", NULL};
 
+const BMDDeckLinkConfigurationID knownConfigValues[] = {
+  /* Serial port Flags */
+  bmdDeckLinkConfigSwapSerialRxTx,
+
+  /* Video Input/Output Integers */
+  bmdDeckLinkConfigHDMI3DPackingFormat,
+  bmdDeckLinkConfigBypass,
+  bmdDeckLinkConfigClockTimingAdjustment,
+  bmdDeckLinkConfigDuplexMode,
+
+  /* Audio Input/Output Flags */
+  bmdDeckLinkConfigAnalogAudioConsumerLevels,
+
+  /* Video output flags */
+  bmdDeckLinkConfigFieldFlickerRemoval,
+  bmdDeckLinkConfigHD1080p24ToHD1080i5994Conversion,
+  bmdDeckLinkConfig444SDIVideoOutput,
+  bmdDeckLinkConfigBlackVideoOutputDuringCapture,
+  bmdDeckLinkConfigLowLatencyVideoOutput,
+  bmdDeckLinkConfigDownConversionOnAllAnalogOutput,
+  bmdDeckLinkConfigSMPTELevelAOutput,
+  bmdDeckLinkConfigRec2020Output,	// Ensure output is Rec.2020 colorspace
+  bmdDeckLinkConfigQuadLinkSDIVideoOutputSquareDivisionSplit,
+
+  /* Video Output Flags */
+  bmdDeckLinkConfigOutput1080pAsPsF,
+
+  /* Video Output Integers */
+  bmdDeckLinkConfigVideoOutputConnection,
+  bmdDeckLinkConfigVideoOutputConversionMode,
+  bmdDeckLinkConfigAnalogVideoOutputFlags,
+  bmdDeckLinkConfigReferenceInputTimingOffset,
+  bmdDeckLinkConfigVideoOutputIdleOperation,
+  bmdDeckLinkConfigDefaultVideoOutputMode,
+  bmdDeckLinkConfigDefaultVideoOutputModeFlags,
+  bmdDeckLinkConfigSDIOutputLinkConfiguration,
+
+  /* Video Output Floats */
+  bmdDeckLinkConfigVideoOutputComponentLumaGain,
+  bmdDeckLinkConfigVideoOutputComponentChromaBlueGain,
+  bmdDeckLinkConfigVideoOutputComponentChromaRedGain,
+  bmdDeckLinkConfigVideoOutputCompositeLumaGain,
+  bmdDeckLinkConfigVideoOutputCompositeChromaGain,
+  bmdDeckLinkConfigVideoOutputSVideoLumaGain,
+  bmdDeckLinkConfigVideoOutputSVideoChromaGain,
+
+  /* Video Input Flags */
+
+  bmdDeckLinkConfigVideoInputScanning,	// Applicable to H264 Pro Recorder only
+  bmdDeckLinkConfigUseDedicatedLTCInput,	// Use timecode from LTC input instead of SDI stream
+  bmdDeckLinkConfigSDIInput3DPayloadOverride,
+
+  /* Video Input Flags */
+  bmdDeckLinkConfigCapture1080pAsPsF,
+
+  /* Video Input Integers */
+  bmdDeckLinkConfigVideoInputConnection,
+  bmdDeckLinkConfigAnalogVideoInputFlags,
+  bmdDeckLinkConfigVideoInputConversionMode,
+  bmdDeckLinkConfig32PulldownSequenceInitialTimecodeFrame,
+  bmdDeckLinkConfigVANCSourceLine1Mapping,
+  bmdDeckLinkConfigVANCSourceLine2Mapping,
+  bmdDeckLinkConfigVANCSourceLine3Mapping,
+  bmdDeckLinkConfigCapturePassThroughMode,
+
+  /* Video Input Floats */
+  bmdDeckLinkConfigVideoInputComponentLumaGain,
+  bmdDeckLinkConfigVideoInputComponentChromaBlueGain,
+  bmdDeckLinkConfigVideoInputComponentChromaRedGain,
+  bmdDeckLinkConfigVideoInputCompositeLumaGain,
+  bmdDeckLinkConfigVideoInputCompositeChromaGain,
+  bmdDeckLinkConfigVideoInputSVideoLumaGain,
+  bmdDeckLinkConfigVideoInputSVideoChromaGain,
+
+  /* Audio Input Flags */
+  bmdDeckLinkConfigMicrophonePhantomPower,
+
+  /* Audio Input Integers */
+  bmdDeckLinkConfigAudioInputConnection,
+
+  /* Audio Input Floats */
+  bmdDeckLinkConfigAnalogAudioInputScaleChannel1,
+  bmdDeckLinkConfigAnalogAudioInputScaleChannel2,
+  bmdDeckLinkConfigAnalogAudioInputScaleChannel3,
+  bmdDeckLinkConfigAnalogAudioInputScaleChannel4,
+  bmdDeckLinkConfigDigitalAudioInputScale,
+  bmdDeckLinkConfigMicrophoneInputGain,
+
+  /* Audio Output Integers */
+  bmdDeckLinkConfigAudioOutputAESAnalogSwitch,
+
+  /* Audio Output Floats */
+  bmdDeckLinkConfigAnalogAudioOutputScaleChannel1,
+  bmdDeckLinkConfigAnalogAudioOutputScaleChannel2,
+  bmdDeckLinkConfigAnalogAudioOutputScaleChannel3,
+  bmdDeckLinkConfigAnalogAudioOutputScaleChannel4,
+  bmdDeckLinkConfigDigitalAudioOutputScale,
+  bmdDeckLinkConfigHeadphoneVolume,
+
+  /* Device Information Strings */
+  bmdDeckLinkConfigDeviceInformationLabel,
+  bmdDeckLinkConfigDeviceInformationSerialNumber,
+  bmdDeckLinkConfigDeviceInformationCompany,
+  bmdDeckLinkConfigDeviceInformationPhone,
+  bmdDeckLinkConfigDeviceInformationEmail,
+  bmdDeckLinkConfigDeviceInformationDate,
+
+  /* Deck Control Integers */
+  bmdDeckLinkConfigDeckControlConnection
+};
+
+const char* knownConfigNames[] = {
+  /* Serial port Flags */
+  "swapSerialRxTx", // bmdDeckLinkConfigSwapSerialRxTx
+
+  /* Video Input/Output Integers */
+  "HDMI3DPackingFormat", // bmdDeckLinkConfigHDMI3DPackingFormat
+  "bypass", // bmdDeckLinkConfigBypass
+  "clockTimingAdjustment", // bmdDeckLinkConfigClockTimingAdjustment
+  "duplexMode", // bmdDeckLinkConfigDuplexMode
+
+  /* Audio Input/Output Flags */
+  "analogAudioConsumerLevels", // bmdDeckLinkConfigAnalogAudioConsumerLevels
+
+  /* Video output flags */
+  "fieldFlickerRemoval", // bmdDeckLinkConfigFieldFlickerRemoval
+  "HD1080p24ToHD1080i5994Conversion", // bmdDeckLinkConfigHD1080p24ToHD1080i5994Conversion
+  "SDIVideoOutput444", // bmdDeckLinkConfig444SDIVideoOutput
+  "blackVideoOutputDuringCapture", // bmdDeckLinkConfigBlackVideoOutputDuringCapture
+  "lowLatencyVideoOutput", // bmdDeckLinkConfigLowLatencyVideoOutput
+  "downConversionOnAllAnalogOutput", // bmdDeckLinkConfigDownConversionOnAllAnalogOutput
+  "SMPTELevelAOutput", //bmdDeckLinkConfigSMPTELevelAOutput
+  "rec2020Output", // bmdDeckLinkConfigRec2020Output - Ensure output is Rec.2020 colorspace
+  "quadLinkSDIVideoOutputSquareDivisionSplit", // bmdDeckLinkConfigQuadLinkSDIVideoOutputSquareDivisionSplit
+
+  /* Video Output Flags */
+  "output1080pAsPsF", // bmdDeckLinkConfigOutput1080pAsPsF
+
+  /* Video Output Integers */
+  "videoOutputConnection", // bmdDeckLinkConfigVideoOutputConnection
+  "videoOutputConversionMode", // bmdDeckLinkConfigVideoOutputConversionMode
+  "videoOutputFlags", // bmdDeckLinkConfigAnalogVideoOutputFlags
+  "referenceInputTimingOffset", // bmdDeckLinkConfigReferenceInputTimingOffset
+  "videoOutputIdelOperation", // bmdDeckLinkConfigVideoOutputIdleOperation
+  "videoOutputMode", // bmdDeckLinkConfigDefaultVideoOutputMode
+  "defaultVideoModeOutputFlags", // bmdDeckLinkConfigDefaultVideoOutputModeFlags
+  "SDIOutputLinkConfiguration", // bmdDeckLinkConfigSDIOutputLinkConfiguration
+
+  /* Video Output Floats */
+  "videoOutputComponentLumaGain", // bmdDeckLinkConfigVideoOutputComponentLumaGain
+  "videoOutputComponentChromaBlueGain", // bmdDeckLinkConfigVideoOutputComponentChromaBlueGain
+  "videoOutputComponentChromaRedGain", // bmdDeckLinkConfigVideoOutputComponentChromaRedGain
+  "videoOutputCompositeLumaGain", // bmdDeckLinkConfigVideoOutputCompositeLumaGain
+  "videoOutputCompositeChromaGain", // bmdDeckLinkConfigVideoOutputCompositeChromaGain
+  "videoOutputSVideoLumaGain", // bmdDeckLinkConfigVideoOutputSVideoLumaGain
+  "videoOutputSVideoChromaGain", // bmdDeckLinkConfigVideoOutputSVideoChromaGain
+
+  /* Video Input Flags */
+  "videoInputScanning", // bmdDeckLinkConfigVideoInputScanning - applicable to H264 Pro Recorder only
+  "UseDedicatedLTCInput", // bmdDeckLinkConfigUseDedicatedLTCInput - use timecode from LTC input instead of SDI stream
+  "SDIInput3DPayloadOverride", // bmdDeckLinkConfigSDIInput3DPayloadOverride
+
+  /* Video Input Flags */
+  "capture1080pAsPsF", // bmdDeckLinkConfigCapture1080pAsPsF
+
+  /* Video Input Integers */
+  "videoInputConnection", // bmdDeckLinkConfigVideoInputConnection
+  "analogVideoInputFlags", // bmdDeckLinkConfigAnalogVideoInputFlags
+  "videoInputConversionMode", // bmdDeckLinkConfigVideoInputConversionMode
+  "pulldown32SequenceInitialTimecodeFrame", // bmdDeckLinkConfig32PulldownSequenceInitialTimecodeFrame
+  "VANCSourceLine1Mapping", // bmdDeckLinkConfigVANCSourceLine1Mapping
+  "VANCSourceLine2Mapping", // bmdDeckLinkConfigVANCSourceLine2Mapping
+  "VANCSourceLine3Mapping", // bmdDeckLinkConfigVANCSourceLine3Mapping
+  "capturePassThroughMode", // bmdDeckLinkConfigCapturePassThroughMode
+
+  /* Video Input Floats */
+  "videoInputComponentLumaGain", // bmdDeckLinkConfigVideoInputComponentLumaGain
+  "videoInputComponentChromaBlueGain", // bmdDeckLinkConfigVideoInputComponentChromaBlueGain
+  "videoInputComponentChromaRedGain", // bmdDeckLinkConfigVideoInputComponentChromaRedGain
+  "videoInputCompositeLumaGain", // bmdDeckLinkConfigVideoInputCompositeLumaGain
+  "videoInputCompositeChromaGain", // bmdDeckLinkConfigVideoInputCompositeChromaGain
+  "videoInputSVideoLumaGain", // bmdDeckLinkConfigVideoInputSVideoLumaGain
+  "videoInputSVideoChromaGain", // bmdDeckLinkConfigVideoInputSVideoChromaGain
+
+  /* Audio Input Flags */
+  "microphonePhantomPower", // bmdDeckLinkConfigMicrophonePhantomPower
+
+  /* Audio Input Integers */
+  "audioInputConnection", // bmdDeckLinkConfigAudioInputConnection
+
+  /* Audio Input Floats */
+  "analogAudioInputScaleChannel1", // bmdDeckLinkConfigAnalogAudioInputScaleChannel1
+  "analogAudioInputScaleChannel2", // bmdDeckLinkConfigAnalogAudioInputScaleChannel2
+  "analogAudioInputScaleChannel3", // bmdDeckLinkConfigAnalogAudioInputScaleChannel3
+  "analogAudioInputScaleChannel4", // bmdDeckLinkConfigAnalogAudioInputScaleChannel4
+  "digitalAudioInputScale", // bmdDeckLinkConfigDigitalAudioInputScale
+  "microphoneInputGain", // bmdDeckLinkConfigMicrophoneInputGain
+
+  /* Audio Output Integers */
+  "audioOutputAESAnalogSwitch", // bmdDeckLinkConfigAudioOutputAESAnalogSwitch
+
+  /* Audio Output Floats */
+  "analogAudioOutputScaleChannel1", // bmdDeckLinkConfigAnalogAudioOutputScaleChannel1
+  "analogAudioOutputScaleChannel2", // bmdDeckLinkConfigAnalogAudioOutputScaleChannel2
+  "analogAudioOutputScaleChannel3", // bmdDeckLinkConfigAnalogAudioOutputScaleChannel3
+  "analogAudioOutputScaleChannel4", // bmdDeckLinkConfigAnalogAudioOutputScaleChannel4
+  "digitalAudioOutputScale", // bmdDeckLinkConfigDigitalAudioOutputScale
+  "headphoneVolume", // bmdDeckLinkConfigHeadphoneVolume
+
+  /* Device Information Strings */
+  "deviceInformationLabel", // bmdDeckLinkConfigDeviceInformationLabel
+  "deviceInformationSerialNumber", // bmdDeckLinkConfigDeviceInformationSerialNumber
+  "deviceInformationCompany", // bmdDeckLinkConfigDeviceInformationCompany
+  "deviceInformationPhone", // bmdDeckLinkConfigDeviceInformationPhone
+  "deviceInformationEmail", // bmdDeckLinkConfigDeviceInformationEmail
+  "deviceInformationDate", // bmdDeckLinkConfigDeviceInformationDate
+
+  /* Deck Control Integers */
+  "DeckControlConnection", // bmdDeckLinkConfigDeckControlConnection
+};
+
+const MacadamConfigType knownConfigTypes[] = {
+  /* Serial port Flags */
+  macadamFlag, // bmdDeckLinkConfigSwapSerialRxTx
+
+  /* Video Input/Output Integers */
+  macadamInt64, // bmdDeckLinkConfigHDMI3DPackingFormat
+  macadamInt64, // bmdDeckLinkConfigBypass
+  macadamInt64, // bmdDeckLinkConfigClockTimingAdjustment
+  macadamInt64, // bmdDeckLinkConfigDuplexMode
+
+  /* Audio Input/Output Flags */
+  macadamFlag, // bmdDeckLinkConfigAnalogAudioConsumerLevels
+
+  /* Video output flags */
+  macadamFlag, // bmdDeckLinkConfigFieldFlickerRemoval
+  macadamFlag, // bmdDeckLinkConfigHD1080p24ToHD1080i5994Conversion
+  macadamFlag, // bmdDeckLinkConfig444SDIVideoOutput
+  macadamFlag, // bmdDeckLinkConfigBlackVideoOutputDuringCapture
+  macadamFlag, // bmdDeckLinkConfigLowLatencyVideoOutput
+  macadamFlag, // bmdDeckLinkConfigDownConversionOnAllAnalogOutput
+  macadamFlag, // bmdDeckLinkConfigSMPTELevelAOutput
+  macadamFlag, // bmdDeckLinkConfigRec2020Output - ensure output is Rec.2020 colorspace
+  macadamFlag, // bmdDeckLinkConfigQuadLinkSDIVideoOutputSquareDivisionSplit
+
+  /* Video Output Flags */
+  macadamFlag, // bmdDeckLinkConfigOutput1080pAsPsF
+
+  /* Video Output Integers */
+  macadamInt64, // bmdDeckLinkConfigVideoOutputConnection
+  macadamInt64, // bmdDeckLinkConfigVideoOutputConversionMode
+  macadamInt64, // bmdDeckLinkConfigAnalogVideoOutputFlags
+  macadamInt64, // bmdDeckLinkConfigReferenceInputTimingOffset
+  macadamInt64, // bmdDeckLinkConfigVideoOutputIdleOperation
+  macadamInt64, // bmdDeckLinkConfigDefaultVideoOutputMode
+  macadamInt64, // bmdDeckLinkConfigDefaultVideoOutputModeFlags
+  macadamInt64, // bmdDeckLinkConfigSDIOutputLinkConfiguration
+
+  /* Video Output Floats */
+  macadamFloat, // bmdDeckLinkConfigVideoOutputComponentLumaGain
+  macadamFloat, // bmdDeckLinkConfigVideoOutputComponentChromaBlueGain
+  macadamFloat, // bmdDeckLinkConfigVideoOutputComponentChromaRedGain
+  macadamFloat, // bmdDeckLinkConfigVideoOutputCompositeLumaGain
+  macadamFloat, // bmdDeckLinkConfigVideoOutputCompositeChromaGain
+  macadamFloat, // bmdDeckLinkConfigVideoOutputSVideoLumaGain
+  macadamFloat, // bmdDeckLinkConfigVideoOutputSVideoChromaGain
+
+  /* Video Input Flags */
+
+  macadamFlag, // bmdDeckLinkConfigVideoInputScanning - applicable to H264 Pro Recorder only
+  macadamFlag, // bmdDeckLinkConfigUseDedicatedLTCInput - use timecode from LTC input instead of SDI stream
+  macadamFlag, // bmdDeckLinkConfigSDIInput3DPayloadOverride
+
+  /* Video Input Flags */
+  macadamFlag, // bmdDeckLinkConfigCapture1080pAsPsF
+
+  /* Video Input Integers */
+  macadamInt64, // bmdDeckLinkConfigVideoInputConnection
+  macadamInt64, // bmdDeckLinkConfigAnalogVideoInputFlags
+  macadamInt64, // bmdDeckLinkConfigVideoInputConversionMode
+  macadamInt64, // bmdDeckLinkConfig32PulldownSequenceInitialTimecodeFrame
+  macadamInt64, // bmdDeckLinkConfigVANCSourceLine1Mapping
+  macadamInt64, // bmdDeckLinkConfigVANCSourceLine2Mapping
+  macadamInt64, // bmdDeckLinkConfigVANCSourceLine3Mapping
+  macadamInt64, // bmdDeckLinkConfigCapturePassThroughMode
+
+  /* Video Input Floats */
+  macadamFloat, // bmdDeckLinkConfigVideoInputComponentLumaGain
+  macadamFloat, // bmdDeckLinkConfigVideoInputComponentChromaBlueGain
+  macadamFloat, // bmdDeckLinkConfigVideoInputComponentChromaRedGain
+  macadamFloat, // bmdDeckLinkConfigVideoInputCompositeLumaGain
+  macadamFloat, // bmdDeckLinkConfigVideoInputCompositeChromaGain
+  macadamFloat, // bmdDeckLinkConfigVideoInputSVideoLumaGain
+  macadamFloat, // bmdDeckLinkConfigVideoInputSVideoChromaGain
+
+  /* Audio Input Flags */
+  macadamFlag, // bmdDeckLinkConfigMicrophonePhantomPower
+
+  /* Audio Input Integers */
+  macadamInt64, // bmdDeckLinkConfigAudioInputConnection
+
+  /* Audio Input Floats */
+  macadamFloat, // bmdDeckLinkConfigAnalogAudioInputScaleChannel1
+  macadamFloat, // bmdDeckLinkConfigAnalogAudioInputScaleChannel2
+  macadamFloat, // bmdDeckLinkConfigAnalogAudioInputScaleChannel3
+  macadamFloat, // bmdDeckLinkConfigAnalogAudioInputScaleChannel4
+  macadamFloat, // bmdDeckLinkConfigDigitalAudioInputScale
+  macadamFloat, // bmdDeckLinkConfigMicrophoneInputGain
+
+  /* Audio Output Integers */
+  macadamInt64, // bmdDeckLinkConfigAudioOutputAESAnalogSwitch
+
+  /* Audio Output Floats */
+  macadamFloat, // bmdDeckLinkConfigAnalogAudioOutputScaleChannel1
+  macadamFloat, // bmdDeckLinkConfigAnalogAudioOutputScaleChannel2
+  macadamFloat, // bmdDeckLinkConfigAnalogAudioOutputScaleChannel3
+  macadamFloat, // bmdDeckLinkConfigAnalogAudioOutputScaleChannel4
+  macadamFloat, // bmdDeckLinkConfigDigitalAudioOutputScale
+  macadamFloat, // bmdDeckLinkConfigHeadphoneVolume
+
+  /* Device Information Strings */
+  macadamString, // bmdDeckLinkConfigDeviceInformationLabel
+  macadamString, // bmdDeckLinkConfigDeviceInformationSerialNumber
+  macadamString, // bmdDeckLinkConfigDeviceInformationCompany
+  macadamString, // bmdDeckLinkConfigDeviceInformationPhone
+  macadamString, // bmdDeckLinkConfigDeviceInformationEmail
+  macadamString, // bmdDeckLinkConfigDeviceInformationDate
+
+  /* Deck Control Integers */
+  macadamInt64 // bmdDeckLinkConfigDeckControlConnection
+};
+
 napi_status queryOutputDisplayModes(napi_env env, IDeckLink* deckLink, napi_value result);
 napi_status queryInputDisplayModes(napi_env env, IDeckLink* deckLink, napi_value result);
 
