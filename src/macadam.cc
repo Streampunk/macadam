@@ -1712,7 +1712,7 @@ napi_value getDeviceConfig(napi_env env, napi_callback_info info) {
   CFStringRef stringValueCFStr;
   #else
   bool flag;
-  chat* stringValue;
+  char* stringValue;
   #endif
 
   size_t argc = 1;
@@ -1885,11 +1885,201 @@ napi_value getDeviceConfig(napi_env env, napi_callback_info info) {
 
 napi_value setDeviceConfig(napi_env env, napi_callback_info info) {
   napi_status status;
-  napi_value value;
+  napi_value result, param, errors;
+  napi_valuetype type;
+  uint32_t deviceIndex = 0;
+  uint32_t configIndex = 0;
+  bool isArray, hasProperty;
+  HRESULT hresult = S_OK ;
 
-  status = napi_get_undefined(env, &value);
+  IDeckLink* deckLink = nullptr;
+  IDeckLinkIterator* deckLinkIterator = nullptr;
+  IDeckLinkConfiguration* deckLinkConfig = nullptr;
+
+  int64_t intValue;
+  double floatValue;
+  #ifdef WIN32
+  BOOL flag;
+  //BSTR stringValueBSTR;
+  #elif __APPLE__
+  bool flag;
+  //CFStringRef stringValueCFStr;
+  #else
+  bool flag;
+  //char* stringValue;
+  #endif
+
+  size_t argc = 1;
+  napi_value argv[1];
+  status = napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
   CHECK_STATUS;
-  return value;
+
+  if (argc != 1)
+    NAPI_THROW_ERROR("Properties to set must be provided as a single object.");
+
+  status = napi_typeof(env, argv[0], &type);
+  CHECK_STATUS;
+  status = napi_is_array(env, argv[0], &isArray);
+  CHECK_STATUS;
+  if ((type != napi_object) || isArray)
+    NAPI_THROW_ERROR("Configuration properties must be provided as an object.");
+
+  status = napi_get_named_property(env, argv[0], "deviceIndex", &param);
+  CHECK_STATUS;
+  status = napi_typeof(env, param, &type);
+  CHECK_STATUS;
+  if (type == napi_number) {
+    status = napi_get_value_uint32(env, param, &deviceIndex);
+    CHECK_STATUS;
+  }
+
+  #ifdef WIN32
+  CoCreateInstance(CLSID_CDeckLinkIterator, NULL, CLSCTX_ALL, IID_IDeckLinkIterator, (void**)&deckLinkIterator);
+  #else
+  deckLinkIterator = CreateDeckLinkIteratorInstance();
+  #endif
+
+  for ( uint32_t x = 0 ; x <= deviceIndex ; x++ ) {
+    if (deckLinkIterator->Next(&deckLink) != S_OK) {
+      deckLinkIterator->Release();
+      NAPI_THROW_ERROR("Device index exceeds the number of installed devices.");
+    }
+  }
+
+  deckLinkIterator->Release();
+
+  hresult = deckLink->QueryInterface(IID_IDeckLinkConfiguration, (void**)&deckLinkConfig);
+  if (hresult != S_OK) {
+    napi_throw_error(env, nullptr, "Failed to get deck link configuration for device.");
+    goto bail;
+  }
+
+  status = napi_create_object(env, &result);
+  CHECK_BAIL;
+  status = napi_create_string_utf8(env, "configSetResult", NAPI_AUTO_LENGTH, &param);
+  CHECK_BAIL;
+  status = napi_set_named_property(env, result, "type", param);
+  CHECK_BAIL;
+
+  status = napi_create_uint32(env, deviceIndex, &param);
+  CHECK_BAIL;
+  status = napi_set_named_property(env, result, "deviceIndex", param);
+  CHECK_BAIL;
+
+  status = napi_create_object(env, &errors);
+  CHECK_BAIL;
+
+  while ( (knownConfigNames[configIndex] != nullptr) &&
+            (knownConfigValues[configIndex] != 0) &&
+            (knownConfigTypes[configIndex] != 0) ) {
+
+    status = napi_has_named_property(env, argv[0], knownConfigNames[configIndex], &hasProperty);
+    CHECK_BAIL;
+    if (!hasProperty) { configIndex++; continue; }
+
+    status = napi_get_named_property(env, argv[0], knownConfigNames[configIndex], &param);
+    CHECK_BAIL;
+    status = napi_typeof(env, param, &type);
+    CHECK_BAIL;
+    switch (knownConfigTypes[configIndex]) {
+      case macadamFlag:
+        if (type != napi_boolean) {
+          status = napi_create_string_utf8(env,
+            "Cannot set configuration property as the given value is not of Boolean type.",
+            NAPI_AUTO_LENGTH, &param);
+          CHECK_BAIL;
+          status = napi_set_named_property(env, errors, knownConfigNames[configIndex], param);
+          CHECK_BAIL;
+          configIndex++; continue;
+        }
+        status = napi_get_value_bool(env, param, &flag);
+        CHECK_BAIL;
+        hresult = deckLinkConfig->SetFlag(knownConfigValues[configIndex], flag);
+        break;
+      case macadamInt64:
+        if (type != napi_number) {
+          status = napi_create_string_utf8(env,
+            "Cannot set configuration property as the given value is not a number.",
+            NAPI_AUTO_LENGTH, &param);
+          CHECK_BAIL;
+          status = napi_set_named_property(env, errors, knownConfigNames[configIndex], param);
+          CHECK_BAIL;
+          configIndex++; continue;
+        }
+        status = napi_get_value_int64(env, param, &intValue);
+        CHECK_BAIL;
+        hresult = deckLinkConfig->SetInt(knownConfigValues[configIndex], intValue);
+        break;
+      case macadamFloat:
+        if (type != napi_number) {
+          status = napi_create_string_utf8(env,
+            "Cannot set configuration property as the given value is not a number.",
+            NAPI_AUTO_LENGTH, &param);
+          CHECK_BAIL;
+          status = napi_set_named_property(env, errors, knownConfigNames[configIndex], param);
+          CHECK_BAIL;
+          configIndex++; continue;
+        }
+        status = napi_get_value_double(env, param, &floatValue);
+        CHECK_BAIL;
+        hresult = deckLinkConfig->SetFloat(knownConfigValues[configIndex], floatValue);
+        break;
+      case macadamString:
+        // FIXME
+        break;
+      default:
+        hresult = E_UNEXPECTED;
+        break;
+    }
+    switch (hresult) {
+      case S_OK:
+        status = napi_set_named_property(env, result, knownConfigNames[configIndex], param);
+        CHECK_BAIL;
+        break;
+      case E_FAIL:
+        status = napi_create_string_utf8(env,
+          "General failure (E_FAIL) when trying to set configuration property.",
+          NAPI_AUTO_LENGTH, &param);
+        CHECK_BAIL;
+        status = napi_set_named_property(env, errors, knownConfigNames[configIndex], param);
+        CHECK_BAIL;
+        break;
+      case E_INVALIDARG:
+        status = napi_create_string_utf8(env,
+          "No known configuration property of this type (E_INVALIDARG).",
+          NAPI_AUTO_LENGTH, &param);
+        CHECK_BAIL;
+        status = napi_set_named_property(env, errors, knownConfigNames[configIndex], param);
+        CHECK_BAIL;
+        break;
+      case E_NOTIMPL:
+        status = napi_create_string_utf8(env,
+          "The configuration property is known but not supported by this DeckLink hardware (E_NOTIMPL).",
+          NAPI_AUTO_LENGTH, &param);
+        CHECK_BAIL;
+        status = napi_set_named_property(env, errors, knownConfigNames[configIndex], param);
+        CHECK_BAIL;
+        break;
+      case E_UNEXPECTED:
+      default:
+        status = napi_create_string_utf8(env,
+          "Unexpected property type or other unexpected behaviour (E_UNEXPECTED).",
+          NAPI_AUTO_LENGTH, &param);
+        CHECK_BAIL;
+        status = napi_set_named_property(env, errors, knownConfigNames[configIndex], param);
+        CHECK_BAIL;
+        break;
+    }
+    configIndex++;
+  }
+
+  status = napi_set_named_property(env, result, "errors", param);
+  CHECK_BAIL;
+
+  bail:
+    if (deckLinkConfig != nullptr) { deckLinkConfig->Release(); }
+    if (deckLink != nullptr) { deckLink->Release(); }
+    return result;
 }
 
 napi_value Init(napi_env env, napi_value exports) {
