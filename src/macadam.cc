@@ -1906,7 +1906,7 @@ napi_value setDeviceConfig(napi_env env, napi_callback_info info) {
   char* buf;
   #ifdef WIN32
   BOOL flag;
-  BSTR stringValueBSTR;
+  // BSTR stringValueBSTR;
   #elif __APPLE__
   bool flag;
   CFStringRef stringValueCFStr;
@@ -1998,7 +1998,7 @@ napi_value setDeviceConfig(napi_env env, napi_callback_info info) {
           CHECK_BAIL;
           configIndex++; continue;
         }
-        status = napi_get_value_bool(env, param, &flag);
+        status = napi_get_value_bool(env, param, (bool*) &flag);
         CHECK_BAIL;
         hresult = deckLinkConfig->SetFlag(knownConfigValues[configIndex], flag);
         break;
@@ -2030,7 +2030,7 @@ napi_value setDeviceConfig(napi_env env, napi_callback_info info) {
         CHECK_BAIL;
         hresult = deckLinkConfig->SetFloat(knownConfigValues[configIndex], floatValue);
         break;
-      case macadamString:
+      case macadamString: {
         if (type != napi_string) {
           status = napi_create_string_utf8(env,
             "Canoot set configuration property as the given value is not a string.",
@@ -2045,9 +2045,9 @@ napi_value setDeviceConfig(napi_env env, napi_callback_info info) {
         status = napi_get_value_string_utf8(env, param, buf, bufSize + 1, &bufSize);
         CHECK_BAIL;
         #ifdef WIN32
-        _bstr_t stringValueBSTR(buf);
+        bstr_t stringValueBSTR(buf);
         hresult = deckLinkConfig->SetString(knownConfigValues[configIndex], stringValueBSTR);
-        delete stringValueBSTR;
+        // delete stringValueBSTR;
         #elif __APPLE__
         stringValueCFStr = CFStringCreateWithCString(nullptr, buf, kCFStringEncodingMacRoman);
         if (stringValueCFStr == nullptr) {
@@ -2065,6 +2065,7 @@ napi_value setDeviceConfig(napi_env env, napi_callback_info info) {
         free(buf);
 
         break;
+      }
       default:
         hresult = E_UNEXPECTED;
         break;
