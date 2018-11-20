@@ -1906,13 +1906,11 @@ napi_value setDeviceConfig(napi_env env, napi_callback_info info) {
   char* buf;
   #ifdef WIN32
   BOOL flag;
-  // BSTR stringValueBSTR;
   #elif __APPLE__
   bool flag;
   CFStringRef stringValueCFStr;
   #else
   bool flag;
-  char* stringValue;
   #endif
 
   size_t argc = 1;

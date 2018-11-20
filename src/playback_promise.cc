@@ -777,7 +777,7 @@ void playedFrame(napi_env env, napi_value jsCb, void* context, void* data) {
     if (it->first > frame->scheduledTime - pbts->pendingTimeoutTicks) break;
     char* extMsg = (char *) malloc(sizeof(char) * 200);
     sprintf(extMsg, "Pending frame promise timed out for scheduled time %lld as just played %lld.",
-      it->second->scheduledTime, frame->scheduledTime);
+      (long long) it->second->scheduledTime, (long long) frame->scheduledTime);
     char errorCodeChars[20];
     sprintf(errorCodeChars, "%d", MACADAM_FRAME_TIMEOUT);
     status = napi_create_string_utf8(env, errorCodeChars,
@@ -855,15 +855,15 @@ void playedFrame(napi_env env, napi_value jsCb, void* context, void* data) {
     tidyCarrier(env, c);
   }
   else {
-    printf("No promise to resolve for played frame with scheduled time %lld.\n",
-      frame->scheduledTime);
+    printf("DEBUG: No promise to resolve for played frame with scheduled time %lld.\n",
+      (long long) frame->scheduledTime);
   }
 
 bail:
   status = napi_delete_reference(env, frame->sourceBufferRef);
   if (status != napi_ok) {
     printf("DEBUG: Failed to delete video buffer reference for scheduled frame %lld.\n",
-      frame->scheduledTime);
+      (long long) frame->scheduledTime);
   }
   delete frame;
   return;
