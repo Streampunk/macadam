@@ -210,7 +210,7 @@ const char* knownConfigNames[] = {
   "videoOutputConversionMode", // bmdDeckLinkConfigVideoOutputConversionMode
   "videoOutputFlags", // bmdDeckLinkConfigAnalogVideoOutputFlags
   "referenceInputTimingOffset", // bmdDeckLinkConfigReferenceInputTimingOffset
-  "videoOutputIdelOperation", // bmdDeckLinkConfigVideoOutputIdleOperation
+  "videoOutputIdleOperation", // bmdDeckLinkConfigVideoOutputIdleOperation
   "videoOutputMode", // bmdDeckLinkConfigDefaultVideoOutputMode
   "defaultVideoModeOutputFlags", // bmdDeckLinkConfigDefaultVideoOutputModeFlags
   "SDIOutputLinkConfiguration", // bmdDeckLinkConfigSDIOutputLinkConfiguration
