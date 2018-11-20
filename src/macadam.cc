@@ -2111,7 +2111,7 @@ napi_value setDeviceConfig(napi_env env, napi_callback_info info) {
     configIndex++;
   }
 
-  status = napi_set_named_property(env, result, "errors", param);
+  status = napi_set_named_property(env, result, "errors", errors);
   CHECK_BAIL;
 
   bail:
