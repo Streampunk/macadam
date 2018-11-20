@@ -52,6 +52,10 @@
 #include <comdef.h>
 #endif
 
+#ifdef __APPLE__
+#include <CoreFoundation/CFString.h>
+#endif
+
 #define NAPI_EXPERIMENTAL
 #include "macadam_util.h"
 #include "capture_promise.h"
@@ -1885,12 +1889,12 @@ napi_value getDeviceConfig(napi_env env, napi_callback_info info) {
 
 napi_value setDeviceConfig(napi_env env, napi_callback_info info) {
   napi_status status;
-  napi_value result, param, errors;
+  napi_value result = nullptr, param, errors;
   napi_valuetype type;
   uint32_t deviceIndex = 0;
   uint32_t configIndex = 0;
   bool isArray, hasProperty;
-  HRESULT hresult = S_OK ;
+  HRESULT hresult = S_OK;
 
   IDeckLink* deckLink = nullptr;
   IDeckLinkIterator* deckLinkIterator = nullptr;
@@ -1898,15 +1902,17 @@ napi_value setDeviceConfig(napi_env env, napi_callback_info info) {
 
   int64_t intValue;
   double floatValue;
+  size_t bufSize;
+  char* buf;
   #ifdef WIN32
   BOOL flag;
-  //BSTR stringValueBSTR;
+  BSTR stringValueBSTR;
   #elif __APPLE__
   bool flag;
-  //CFStringRef stringValueCFStr;
+  CFStringRef stringValueCFStr;
   #else
   bool flag;
-  //char* stringValue;
+  char* stringValue;
   #endif
 
   size_t argc = 1;
@@ -1956,7 +1962,7 @@ napi_value setDeviceConfig(napi_env env, napi_callback_info info) {
 
   status = napi_create_object(env, &result);
   CHECK_BAIL;
-  status = napi_create_string_utf8(env, "configSetResult", NAPI_AUTO_LENGTH, &param);
+  status = napi_create_string_utf8(env, "setConfiguration", NAPI_AUTO_LENGTH, &param);
   CHECK_BAIL;
   status = napi_set_named_property(env, result, "type", param);
   CHECK_BAIL;
@@ -2025,7 +2031,39 @@ napi_value setDeviceConfig(napi_env env, napi_callback_info info) {
         hresult = deckLinkConfig->SetFloat(knownConfigValues[configIndex], floatValue);
         break;
       case macadamString:
-        // FIXME
+        if (type != napi_string) {
+          status = napi_create_string_utf8(env,
+            "Canoot set configuration property as the given value is not a string.",
+            NAPI_AUTO_LENGTH, &param);
+          CHECK_BAIL;
+          configIndex++; continue;
+        }
+
+        status = napi_get_value_string_utf8(env, param, nullptr, 0, &bufSize);
+        CHECK_BAIL;
+        buf = (char*) malloc(sizeof(char) * (bufSize + 1));
+        status = napi_get_value_string_utf8(env, param, buf, bufSize + 1, &bufSize);
+        CHECK_BAIL;
+        #ifdef WIN32
+        _bstr_t stringValueBSTR(buf);
+        hresult = deckLinkConfig->SetString(knownConfigValues[configIndex], stringValueBSTR);
+        delete stringValueBSTR;
+        #elif __APPLE__
+        stringValueCFStr = CFStringCreateWithCString(nullptr, buf, kCFStringEncodingMacRoman);
+        if (stringValueCFStr == nullptr) {
+          status = napi_create_string_utf8(env,
+            "Failed to create CFString.",
+            NAPI_AUTO_LENGTH, &param);
+          CHECK_BAIL;
+          configIndex++; continue;
+        }
+        hresult = deckLinkConfig->SetString(knownConfigValues[configIndex], stringValueCFStr);
+        CFRelease(stringValueCFStr);
+        #else
+        hresult = deckLinkConfig->SetString(knownConfigValues, buf);
+        #endif
+        free(buf);
+
         break;
       default:
         hresult = E_UNEXPECTED;
