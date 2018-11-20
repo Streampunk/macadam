@@ -2116,7 +2116,13 @@ napi_value setDeviceConfig(napi_env env, napi_callback_info info) {
   CHECK_BAIL;
 
   bail:
-    if (deckLinkConfig != nullptr) { deckLinkConfig->Release(); }
+    if (deckLinkConfig != nullptr) {
+      hresult = deckLinkConfig->WriteConfigurationToPreferences();
+      if (hresult != S_OK) {
+        printf("DEBUG: Failed to store user preference changes.\n");
+      }
+      deckLinkConfig->Release();
+    }
     if (deckLink != nullptr) { deckLink->Release(); }
     return result;
 }
