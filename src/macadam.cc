@@ -2060,7 +2060,7 @@ napi_value setDeviceConfig(napi_env env, napi_callback_info info) {
         hresult = deckLinkConfig->SetString(knownConfigValues[configIndex], stringValueCFStr);
         CFRelease(stringValueCFStr);
         #else
-        hresult = deckLinkConfig->SetString(knownConfigValues, buf);
+        hresult = deckLinkConfig->SetString(knownConfigValues[configIndex], buf);
         #endif
         free(buf);
 
