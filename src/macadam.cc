@@ -2116,10 +2116,11 @@ napi_value setDeviceConfig(napi_env env, napi_callback_info info) {
   bail:
     if (deckLinkConfig != nullptr) {
       hresult = deckLinkConfig->WriteConfigurationToPreferences();
-      if (hresult != S_OK) {
-        printf("DEBUG: Failed to store user preference changes.\n");
-      }
       deckLinkConfig->Release();
+      if (hresult != S_OK) {
+        if (deckLink != nullptr) { deckLink->Release(); }
+        NAPI_THROW_ERROR("Failed to store DeckLink configuration. Insufficient permissions.");
+      }
     }
     if (deckLink != nullptr) { deckLink->Release(); }
     return result;

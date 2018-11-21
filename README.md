@@ -11,10 +11,10 @@ Why _macadam_? _Tarmacadam_ is the black stuff that magically makes roads, so it
 Macadam has a number of prerequisites:
 
 1. Install [Node.js](http://nodejs.org/) for your platform. This software has been developed against version 10.11.0 and will track the Node LTS version.
-2. Install the latest version of the Blackmagic Desktop Video software for your platform, available from https://www.blackmagicdesign.com/support. At least version 10.12.0 is required.
+2. Install the latest version of the Blackmagic Desktop Video software for your platform, available from https://www.blackmagicdesign.com/support. At least version 10.11.2 is required.
 3. Install [node-gyp](https://github.com/nodejs/node-gyp) and make sure that you have the prerequisites for compiling Javascript native addons for your platform as described. This requires a C/C++ development kit and python v2.7.
 
-Note: For MacOSX _Mojave_, the install the following package after `xcode-select --install`:
+Note: For MacOSX _Mojave_, install the following package after `xcode-select --install`:
 
     /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg
 
@@ -143,7 +143,57 @@ The index of a device in this array is used as the `deviceIndex` in calls to cap
 
 ### Device configuration
 
-Other than setting display mode and pixel format, support for device configuration is not yet available via this addon. In the meantime, use the _Blackmagic Desktop Video Setup_ utility before running macadam.
+Device configuration can be carried out either using the _Blackmagic Desktop Video Setup_ utility before running macadam or by using the `getDeviceConfig()` and `setDeviceConfig()` functions.
+
+Use `getDeviceInfo()` to work out the index of the DeckLink device that you would like to configure. To find out the current configuration of that device, call the get function with the device index as an arguemnt (defaults to `0`). For example, for the third device at index `2`:
+
+```javascript
+const macadam = require('macadam');
+let config = getDeviceConfig(2);
+```
+
+The returned configuration object has the known configruration parameters of a DeckLink device listed as property values. For example:
+
+```javascript
+{ type: 'configuration',
+  deviceIndex: 2,
+  swapSerialRxTx: undefined,
+  HDMI3DPackingFormat: null,  
+  bypass: null,
+  fieldFlickerRemoval: false,
+  HD1080p24ToHD1080i5994Conversion: false,
+  videoOutputMode: 1853125475,
+  defaultVideoModeOutputFlags: 0,
+  videoInputConnection: 1,
+  deviceInformationLabel: '',
+  ... }
+```
+
+Many more properties are shown as the object contains a list of all the current known properties for all DeckLink hardware.
+
+Some properties are _undefined_ meaning that a call to get the configuration parameter failed for this device. Others are _null_ which means that the configuration parameter is understood but not implemented for this hardware. Other properties include integer and floating point numbers, multi-part flags, strings and enumerations.
+
+The enumerations tend to appear as a large integer value, e.g. `videoOutputMode` has value `1853125475`. In this example, the enumeration value is defined as a constant in macadam [index.js](./index.js) called `bmdModeNTSC`. The number is a representation of a four character ASCII string that can be printed using function `intToBMCode()`, for example in the REPL:
+
+```jacascript
+> macadam.intToBMCode(1853125475);
+'ntsc'
+>
+```
+
+For details of what the configuration parameters are, see the description in the Blackmagic SDK Documentation (section 2.7.1 _DeckLink Configuration ID_, page 226, June 2018 edition). The names have been altered to make them suitable for use as Javascript object properties but the relationship between the SDK enumeration names and Javascript names should be obvious.
+
+Multiple configuration parameters can be set at once. Using the same configuration parameter names as returned by the get request, create an object with property names and values. To specify the device to be configured, add in a `deviceIndex` property. For example, to set _field flicker removal_ to on and _video output idle operation_ to display the last frame (rather than black), try:
+
+```javascript
+macadam.setDeviceConfig({
+  deviceIndex: 2,
+  fieldFlickerRemoval: true,
+  videoOutputIdleOperation: macadam.bmdIdleVideoOutputLastFrame
+});
+```
+
+The result returned is an object containing properties for any configuration parameters successfully changed. Any errors in setting a parameter are contained in a sub-object called `errors`. Note that setting certain parameters on certain operating systems may require administrator privileges and macadam will throw an error in this case.
 
 ### Capture
 
