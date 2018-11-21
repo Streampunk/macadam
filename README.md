@@ -193,7 +193,7 @@ macadam.setDeviceConfig({
 });
 ```
 
-The result returned is an object containing properties for any configuration parameters successfully changed. Any errors in setting a parameter are contained in a sub-object called `errors`. Note that setting certain parameters on certain operating systems may require administrator privileges and macadam will throw an error in this case.
+The result returned is an object containing properties for any configuration parameters successfully changed. Any errors in setting a parameter are contained in a sub-object called `errors`. Note that setting certain parameters on certain operating systems may require administrator privileges and macadam will throw an error if their is insufficient permissions.
 
 ### Capture
 
