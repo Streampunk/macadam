@@ -4,7 +4,8 @@
     "conditions": [
       ['OS=="mac"', {
         'sources' : [ "src/macadam_util.cc", "src/macadam.cc",
-          "src/capture_promise.cc", "src/playback_promise.cc"],
+          "src/capture_promise.cc", "src/playback_promise.cc",
+          "src/timecode.cc" ],
         'xcode_settings': {
           'GCC_ENABLE_CPP_RTTI': 'YES',
           'MACOSX_DEPLOYMENT_TARGET': '10.7',
@@ -24,7 +25,8 @@
       }],
       ['OS=="linux"', {
         'sources' : [ "src/macadam_util.cc", "src/macadam.cc",
-          "src/capture_promise.cc", "src/playback_promise.cc"],
+          "src/capture_promise.cc", "src/playback_promise.cc",
+          "src/timecode.cc" ],
         'link_settings' : {
           "libraries": [
             "/usr/lib/libDeckLinkAPI.so"
@@ -40,7 +42,7 @@
       ['OS=="win"', {
         "sources" : [ "src/macadam_util.cc", "src/macadam.cc",
           "src/capture_promise.cc", "src/playback_promise.cc",
-          "decklink/Win/include/DeckLinkAPI_i.c" ],
+          "src/timecode.cc", "decklink/Win/include/DeckLinkAPI_i.c" ],
         "configurations": {
           "Release": {
             "msvs_settings": {

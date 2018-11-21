@@ -186,7 +186,7 @@ void playbackExecute(napi_env env, void* data) {
   }
 
   hresult = deckLinkOutput->EnableVideoOutput(
-    c->requestedDisplayMode, bmdVideoOutputFlagDefault);
+    c->requestedDisplayMode, bmdVideoOutputRP188);
   switch (hresult) {
     case E_INVALIDARG: // Should have been picked up by DoesSupportVideoMode
       c->status = MACADAM_INVALID_ARGS;

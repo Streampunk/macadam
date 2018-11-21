@@ -54,6 +54,7 @@
 
 #define NAPI_EXPERIMENTAL
 #include "macadam_util.h"
+#include "timecode.h"
 #include "node_api.h"
 #include "DeckLinkAPI.h"
 
@@ -113,10 +114,10 @@ struct macadamFrame : IDeckLinkVideoFrame {
   long GetHeight (void) { return height; };
   long GetRowBytes (void) { return rowBytes; };
   BMDPixelFormat GetPixelFormat (void) { return pixelFormat; };
-  BMDFrameFlags GetFlags (void) { return frameFlags; };
+  BMDFrameFlags GetFlags (void) { printf("Get flags called.\n"); return bmdVideoOutputRP188; };
   HRESULT GetTimecode (/* in */BMDTimecodeFormat format, /* out */ IDeckLinkTimecode **timecode) {
-    // FIXME make this work
-    return S_OK;
+    printf("Get timecode called %p!\n", *timecode);
+    return S_FALSE;
   };
   HRESULT GetAncillaryData (/* out */ IDeckLinkVideoFrameAncillary **ancillary) {
     // TODO Consider implementing this
