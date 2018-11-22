@@ -72,6 +72,7 @@ struct macadamTimecode : IDeckLinkTimecode {
   frameTable* frameTab = nullptr;
   BMDTimecodeFlags flags = bmdTimecodeFlagDefault;
   BMDTimecodeBCD GetBCD (void);
+  BMDTimecodeUserBits usrBts;
   macadamTimecode(
     uint16_t fps,
     bool drop = false,

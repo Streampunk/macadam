@@ -30,7 +30,7 @@ async function run() {
   console.log(frame.length, frame);
   let frame2 = Buffer.alloc(frame.length, 0xf7);
   let playback = await macadam.playback({
-    displayMode: macadam.bmdModeHD1080i50,
+    displayMode: macadam.bmdModeHD720p5994,
     pixelFormat: macadam.bmdFormat10BitYUV
   });
   console.log(playback);
@@ -39,17 +39,19 @@ async function run() {
     playback.stop();
     process.exit();
   });
-  for ( let x = 0 ; x < 1000 ; x++ ) {
+  for ( let x = 0 ; x < 100 ; x++ ) {
     let start = process.hrtime();
     let fp = playback.displayFrame(frame).catch(console.error);
     await fp;
     console.log(playback.hardwareTime());
     let end = process.hrtime(start)[1];
-    await timer(500);
+    await timer(16);
     await playback.displayFrame(frame2).catch(console.error);
-    await timer(500);
+    await timer(16);
   }
+  playback.displayFrame(frame2).catch(console.error);
   playback.stop();
+  playback.displayFrame(frame2).catch(console.error);
 }
 
 run();

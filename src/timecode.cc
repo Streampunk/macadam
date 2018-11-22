@@ -62,12 +62,62 @@ BMDTimecodeBCD macadamTimecode::GetBCD() {
   return 0;
 }
 
+// Does not deal with 24fps timecode
 HRESULT macadamTimecode::GetComponents (
   /* out */ uint8_t *hours,
   /* out */ uint8_t *minutes,
   /* out */ uint8_t *seconds,
   /* out */ uint8_t *frames) {
 
+  if ((flags & bmdTimecodeIsDropFrame) != 0) {
+    uint32_t baseTimecode = (fps > 30) ? value / 2 : value;
+    uint16_t baseFps = (fps > 30) ? (uint16_t) (fps / 2) : fps;
+    *frames = (uint8_t) (baseTimecode % baseFps);
+    uint32_t totalSeconds = baseTimecode / baseFps;
+    *seconds = ((uint8_t) totalSeconds % 60);
+    uint32_t totalMinutes = totalSeconds / 60;
+    *minutes = (uint8_t) totalMinutes % 60;
+    *hours = totalMinutes / 60;
+
+    if (fps > 30) {
+      flags = flags & ~bmdTimecodeFieldMark;
+      if ((value % 2) == 1) flags = flags | bmdTimecodeFieldMark;
+    }
+    return S_OK;
+  }
+  uint32_t baseTimecode = (fps > 30) ? value / 2 : value;
+  *hours = baseTimecode / frameTab->dropFpHour;
+  uint32_t remainingFrames = (uint32_t) (baseTimecode % frameTab->dropFpHour);
+  uint32_t majorMinutes = remainingFrames / frameTab->dropFpMin10;
+  remainingFrames = remainingFrames % frameTav->dropFpMin10;
+
+  if (remainingFrames < (fps * 60)) {
+    *minutes = majorMinutes * 10;
+    *seconds = remainingFrames / 30;
+    *frames = remainingFrames % 30;
+  }
+  else {
+    remainingFrames = remainingFrames - (fps * 60);
+    *minutes = majorMinutes * 10 + remainingFrames / frameTab->dropFpMin + 1;
+    remainingFrames = remainingFrames % frameTab->dropFpMin;
+    if (remainingFrames < (fps - 2)) { // Only the first second of a minute is short
+      *seconds = 0;
+      *frames = remainingFrames + 2;
+    }
+    else {
+      remainingFrames += 2;
+      *seconds = (remainingFrames / 30); // No 0 or 1 value.
+      *frames = remainingFrames % 30;
+    }
+  }
+
+  
+  if (fps > 30) {
+    flags = flags & ~bmdTimecodeFieldMark;
+    if ((value % 2) == 1) flags = flags | bmdTimecodeFieldMark;
+  }
+
+  return S_OK;
 }
 
 HRESULT macadamTimecode::SetComponents (
@@ -115,11 +165,11 @@ BMDTimecodeFlags macadamTimecode::GetFlags (void) {
 }
 
 HRESULT macadamTimecode::GetTimecodeUserBits (/* out */ BMDTimecodeUserBits *userBits) {
-
+  *userBits = usrBts;
 }
 
 HRESULT macadamTimecode::SetTimecodeUserBits (BMDTimecodeUserBits userBits) {
-
+  usrBts = userBits;
 }
 
 void macadamTimecode::Update(void) {
