@@ -20,7 +20,7 @@ async function run() {
   let bmdPlayback = await macadam.playback({
 			deviceIndex: 0,
 			displayMode: macadam.bmdModeHD1080i50,
-			pixelFormat: macadam.bmdFormat8BitYUV,
+			pixelFormat: macadam.bmdFormat8BitARGB,
 			isExternal: true,
 			enableKeying: true
 		});

@@ -1506,6 +1506,7 @@ napi_value stopPlayback(napi_env env, napi_callback_info info) {
     hresult = pbts->deckLinkKeyer->Disable();
     if (hresult != S_OK) NAPI_THROW_ERROR("Failed to disable keyer.");
     pbts->deckLinkKeyer->Release();
+    pbts->deckLinkKeyer = nullptr;
   }
 
   hresult = pbts->deckLinkOutput->DisableVideoOutput();
