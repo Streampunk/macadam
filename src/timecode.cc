@@ -89,7 +89,7 @@ HRESULT macadamTimecode::GetComponents (
   *hours = baseTimecode / frameTab->dropFpHour;
   uint32_t remainingFrames = (uint32_t) (baseTimecode % frameTab->dropFpHour);
   uint32_t majorMinutes = remainingFrames / frameTab->dropFpMin10;
-  remainingFrames = remainingFrames % frameTav->dropFpMin10;
+  remainingFrames = remainingFrames % frameTab->dropFpMin10;
 
   if (remainingFrames < (fps * 60)) {
     *minutes = majorMinutes * 10;
@@ -111,7 +111,7 @@ HRESULT macadamTimecode::GetComponents (
     }
   }
 
-  
+
   if (fps > 30) {
     flags = flags & ~bmdTimecodeFieldMark;
     if ((value % 2) == 1) flags = flags | bmdTimecodeFieldMark;
@@ -144,6 +144,8 @@ HRESULT macadamTimecode::SetComponents (
 
   tcv = (fps > 30) ? value * 2 + framePair : value;
   value = tcv;
+
+  return S_OK;
 }
 
 #ifdef WIN32
@@ -166,10 +168,12 @@ BMDTimecodeFlags macadamTimecode::GetFlags (void) {
 
 HRESULT macadamTimecode::GetTimecodeUserBits (/* out */ BMDTimecodeUserBits *userBits) {
   *userBits = usrBts;
+  return S_OK;
 }
 
 HRESULT macadamTimecode::SetTimecodeUserBits (BMDTimecodeUserBits userBits) {
   usrBts = userBits;
+  return S_OK;
 }
 
 void macadamTimecode::Update(void) {

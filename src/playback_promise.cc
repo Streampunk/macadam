@@ -472,7 +472,7 @@ void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
     pbts->isExternal = c->isExternal;
     pbts->keyLevel = c->keyLevel;
     pbts->deckLinkKeyer = c->deckLinkKeyer;
-    c->deckLinkOutput = nullptr;
+    c->deckLinkKeyer = nullptr;
   }
 
   printf("Address of %s keyer at level %i in pbts is %p.\n",
