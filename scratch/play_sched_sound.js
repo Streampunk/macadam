@@ -18,12 +18,12 @@ const fs = require('fs');
 const util = require('util');
 const readFile = util.promisify(fs.readFile);
 
-function timer(t) {
+/* function timer(t) {
   console.log(`Waiting ${t}`);
   return new Promise((f, r) => {
     setTimeout(f, t);
   });
-}
+} */
 
 function shift(b, rowBytes) {
   return Buffer.concat([b.slice(-rowBytes), b.slice(0, -rowBytes)], b.length);
@@ -42,7 +42,7 @@ async function run() {
     stampleType: macadam.bmdAudioSampleType16bitInteger
   });
   console.log(playback);
-  process.on('SIGINT', function () {
+  process.on('SIGINT', () => {
     console.log('Received SIGINT.');
     playback.stop();
     process.exit();
@@ -50,7 +50,7 @@ async function run() {
   console.log(playback.referenceStatus(), playback.scheduledTime());
   for ( let x = 0 ; x < 1000 ; x++ ) {
     // console.log('Scheduling', x * 1000);
-    let start = process.hrtime();
+    // let start = process.hrtime();
     playback.schedule({
       video: frame,
       audio: audio.slice(x * 7680, x * 7680 + 7680),
@@ -59,7 +59,7 @@ async function run() {
     // playback.schedule({ video: frame2, time: x * 2000 + 1000 });
     if (x === 3) playback.start({ startTime: 0 });
     if (x > 2) {
-      let pb = await playback.played(x * 1000 - 3000);
+      /* let pb = */ await playback.played(x * 1000 - 3000);
       // console.log(playback.hardwareTime());
       // console.log(playback.bufferedFrames(), playback.bufferedAudioFrames());
       //console.log(x, pb.summary);

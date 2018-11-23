@@ -8,7 +8,7 @@ audio = audio.slice(0x28);
 
 var playback = new macadam.Playback(0, macadam.bmdModeHD1080i50,
   macadam.bmdFormat10BitYUV);
-playback.enableAudio(macadam.bmdAudioSampleRate48kHz, macadam.bmdAudioSampleType16bitInteger, 2)
+playback.enableAudio(macadam.bmdAudioSampleRate48kHz, macadam.bmdAudioSampleType16bitInteger, 2);
 
 playback.on('error', console.error.bind(null, 'BMD ERROR:'));
 
@@ -24,12 +24,12 @@ playback.frame(frame, audio.slice(7680*4, 7680*5));
 
 playback.start();
 
-var oneRow = 4 * 1920 * 8 / 3;
+// var oneRow = 4 * 1920 * 8 / 3;
 var count = 5;
 
 var lastFrame = process.hrtime();
 
-playback.on('played', function() {
+playback.on('played', () => {
   console.log('Mind the gap', process.hrtime(lastFrame));
   // frame = Buffer.concat([frame.slice(frame.length - oneRow, frame.length),
   //   frame.slice(0, frame.length - oneRow)], frame.length);

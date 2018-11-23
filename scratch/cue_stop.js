@@ -18,14 +18,14 @@ const macadam = require('../index.js');
 async function run() {
 
   let bmdPlayback = await macadam.playback({
-			deviceIndex: 0,
-			displayMode: macadam.bmdModeHD1080i50,
-			pixelFormat: macadam.bmdFormat8BitARGB,
-			isExternal: true,
-			enableKeying: true
-		});
+    deviceIndex: 0,
+    displayMode: macadam.bmdModeHD1080i50,
+    pixelFormat: macadam.bmdFormat8BitARGB,
+    isExternal: true,
+    enableKeying: true
+  });
 
-	bmdPlayback.stop();
+  bmdPlayback.stop();
 }
 
 run();

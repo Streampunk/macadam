@@ -54,29 +54,39 @@ macadamTimecode::macadamTimecode(
   fps = framesps;
   frameTab = new frameTable(framesps);
   if (drop) flags = flags | bmdTimecodeIsDropFrame;
-  SetComponents(hours, minutes, seconds, frames);
+  SetComponents(hours, minutes, seconds, frames, framePair);
 }
 
 BMDTimecodeBCD macadamTimecode::GetBCD() {
+  uint8_t hours;
+  uint8_t minutes;
+  uint8_t seconds;
+  uint8_t frames;
+  BMDTimecodeBCD bcdtc;
+  HRESULT hresult;
 
-  return 0;
+  hresult = GetComponents(&hours, &minutes, &seconds, &frames);
+
+  bcdtc = ((hours / 10) << 28) | ((hours % 10) << 24) |
+    ((minutes / 10) << 20) | ((minutes % 10) << 16) |
+    ((seconds / 10) << 12) | ((seconds % 10) << 8) |
+    ((frames / 10) << 4) | frames % 10;
+  return bcdtc;
 }
 
-// Does not deal with 24fps timecode
 HRESULT macadamTimecode::GetComponents (
   /* out */ uint8_t *hours,
   /* out */ uint8_t *minutes,
   /* out */ uint8_t *seconds,
   /* out */ uint8_t *frames) {
 
-  if ((flags & bmdTimecodeIsDropFrame) != 0) {
+  if ((flags & bmdTimecodeIsDropFrame) == 0) {
     uint32_t baseTimecode = (fps > 30) ? value / 2 : value;
-    uint16_t baseFps = (fps > 30) ? (uint16_t) (fps / 2) : fps;
-    *frames = (uint8_t) (baseTimecode % baseFps);
-    uint32_t totalSeconds = baseTimecode / baseFps;
-    *seconds = ((uint8_t) totalSeconds % 60);
+    *frames = baseTimecode % frameTab->scaledFps;
+    uint32_t totalSeconds = baseTimecode / frameTab->scaledFps;
+    *seconds = totalSeconds % 60;
     uint32_t totalMinutes = totalSeconds / 60;
-    *minutes = (uint8_t) totalMinutes % 60;
+    *minutes = totalMinutes % 60;
     *hours = totalMinutes / 60;
 
     if (fps > 30) {
@@ -91,26 +101,25 @@ HRESULT macadamTimecode::GetComponents (
   uint32_t majorMinutes = remainingFrames / frameTab->dropFpMin10;
   remainingFrames = remainingFrames % frameTab->dropFpMin10;
 
-  if (remainingFrames < (fps * 60)) {
+  if (remainingFrames < (frameTab->scaledFps * 60)) {
     *minutes = majorMinutes * 10;
-    *seconds = remainingFrames / 30;
-    *frames = remainingFrames % 30;
+    *seconds = remainingFrames / frameTab->scaledFps;
+    *frames = remainingFrames % frameTab->scaledFps;
   }
   else {
-    remainingFrames = remainingFrames - (fps * 60);
+    remainingFrames = remainingFrames - (frameTab->scaledFps * 60);
     *minutes = majorMinutes * 10 + remainingFrames / frameTab->dropFpMin + 1;
     remainingFrames = remainingFrames % frameTab->dropFpMin;
-    if (remainingFrames < (fps - 2)) { // Only the first second of a minute is short
+    if (remainingFrames < (frameTab->scaledFps - 2)) { // Only the first second of a minute is short
       *seconds = 0;
       *frames = remainingFrames + 2;
     }
     else {
       remainingFrames += 2;
-      *seconds = (remainingFrames / 30); // No 0 or 1 value.
-      *frames = remainingFrames % 30;
+      *seconds = (remainingFrames / frameTab->scaledFps); // No 0 or 1 value.
+      *frames = remainingFrames % frameTab->scaledFps;
     }
   }
-
 
   if (fps > 30) {
     flags = flags & ~bmdTimecodeFieldMark;
@@ -142,23 +151,58 @@ HRESULT macadamTimecode::SetComponents (
 	tcv += seconds * ((fps > 30) ? fps / 2 : fps);
 	tcv += frames;
 
-  tcv = (fps > 30) ? value * 2 + framePair : value;
+  tcv = (fps > 30) ? tcv * 2 + framePair : tcv;
   value = tcv;
 
   return S_OK;
 }
 
+HRESULT macadamTimecode::formatTimecodeString(const char** timecode) {
+  uint8_t hours;
+  uint8_t minutes;
+  uint8_t seconds;
+  uint8_t frames;
+  HRESULT hresult;
+
+  hresult = GetComponents(&hours, &minutes, &seconds, &frames);
+
+  char* tcstr = (char *) malloc(12 * sizeof(char));
+  sprintf(tcstr, "%2i:%2i:%2i%c%2i", hours, minutes, seconds,
+    ((flags & bmdTimecodeIsDropFrame) != 0) ? ';' : ':', frames);
+  tcstr[11] = '\0';
+  *timecode = (const char*) tcstr;
+
+  return hresult;
+}
+
 #ifdef WIN32
 HRESULT macadamTimecode::GetString (/* out */ BSTR *timecode) {
-  return E_NOTIMPL;
+  const char* tcstr;
+  HRESULT hresult;
+
+  hresult = formatTimecodeString(&tcstr);
+  bstr_t btcstr(tcstre);
+  *timecode = btcstr;
+  return hresult;
 }
 #elif __APPLE__
 HRESULT macadamTimecode::GetString (/* out */ CFStringRef *timecode) {
+  const char* tcstr;
+  HRESULT hresult;
+
+  hresult = formatTimecodeString(&tcstr);
+  CFStringRef cftcstr = CFStringCreateWithCString(nullptr, tcstr, kCFStringEncodingMacRoman);
+  *timecode = cftcstr;
   return E_NOTIMPL;
 }
 #else
-HRESULT macadamTimecode::GetString (/* out */ const char* timecode) {
-  return E_NOTIMPL;
+HRESULT macadamTimecode::GetString (/* out */ const char** timecode) {
+  const char* tcstr;
+  HRESULT hresult;
+
+  hresult = formatTimecodeString(&tcstr);
+  *timecode = tcstr;
+  return hresult;
 }
 #endif
 
@@ -176,6 +220,104 @@ HRESULT macadamTimecode::SetTimecodeUserBits (BMDTimecodeUserBits userBits) {
   return S_OK;
 }
 
+// Does not wrap around at 23:59:59:29.1
 void macadamTimecode::Update(void) {
+  value++;
 
+  if (fps > 30) {
+    flags = flags & ~bmdTimecodeFieldMark;
+    if ((value % 2) == 1) flags = flags | bmdTimecodeFieldMark;
+  }
 }
+
+napi_value timecodeTest(napi_env env, napi_callback_info info) {
+  napi_status status;
+  napi_value result;
+  bool pass = true;
+  macadamTimecode* tc;
+  const char* tcstr = nullptr;
+  uint8_t hours, minutes, seconds, frames;
+  BMDTimecodeBCD bcd;
+
+  tc = new macadamTimecode(30, true);
+  pass = pass && (tc != nullptr);
+  tc->GetComponents(&hours, &minutes, &seconds, &frames);
+  pass = pass && (hours == 0) && (minutes == 0) && (seconds == 0) && (frames == 0);
+  tc->Update();
+  tc->GetComponents(&hours, &minutes, &seconds, &frames);
+  pass = pass && (hours == 0) && (minutes == 0) && (seconds == 0) && (frames == 1);
+  pass = pass && ((tc->GetFlags() & bmdTimecodeIsDropFrame) != 0);
+  pass = pass && ((tc->GetFlags() & bmdTimecodeFieldMark) == 0);
+  delete tc;
+
+  tc = new macadamTimecode(25);
+  pass = pass && (tc != nullptr);
+  tc->GetComponents(&hours, &minutes, &seconds, &frames);
+  pass = pass && (hours == 0) && (minutes == 0) && (seconds == 0) && (frames == 0);
+  tc->Update();
+  tc->GetComponents(&hours, &minutes, &seconds, &frames);
+  pass = pass && (hours == 0) && (minutes == 0) && (seconds == 0) && (frames == 1);
+  pass = pass && ((tc->GetFlags() & bmdTimecodeIsDropFrame) == 0);
+  pass = pass && ((tc->GetFlags() & bmdTimecodeFieldMark) == 0);
+  delete tc;
+
+  tc = new macadamTimecode(30, true, 10, 11, 12, 13);
+  pass = pass && (tc != nullptr);
+  tc->GetComponents(&hours, &minutes, &seconds, &frames);
+  pass = pass && (hours == 10) && (minutes == 11) && (seconds == 12) && (frames == 13);
+  pass = pass && ((tc->GetFlags() & bmdTimecodeFieldMark) == 0);
+  tc->Update();
+  tc->GetComponents(&hours, &minutes, &seconds, &frames);
+  pass = pass && (hours == 10) && (minutes == 11) && (seconds == 12) && (frames == 14);
+  pass = pass && ((tc->GetFlags() & bmdTimecodeFieldMark) == 0);
+  delete tc;
+
+  tc = new macadamTimecode(60, true, 10, 11, 12, 13);
+  pass = pass && (tc != nullptr);
+  tc->GetComponents(&hours, &minutes, &seconds, &frames);
+  pass = pass && (hours == 10) && (minutes == 11) && (seconds == 12) && (frames == 13);
+  pass = pass && ((tc->GetFlags() & bmdTimecodeFieldMark) == 0);
+  tc->Update();
+  tc->GetComponents(&hours, &minutes, &seconds, &frames);
+  pass = pass && (hours == 10) && (minutes == 11) && (seconds == 12) && (frames == 13);
+  pass = pass && ((tc->GetFlags() & bmdTimecodeFieldMark) != 0);
+  tc->Update();
+  tc->GetComponents(&hours, &minutes, &seconds, &frames);
+  pass = pass && (hours == 10) && (minutes == 11) && (seconds == 12) && (frames == 14);
+  pass = pass && ((tc->GetFlags() & bmdTimecodeFieldMark) == 0);
+  delete tc;
+
+  tc = new macadamTimecode(60, true, 10, 11, 12, 13);
+  pass = pass && (tc != nullptr);
+  bcd = tc->GetBCD();
+  pass = pass && (bcd == 0x10111213);
+  delete tc;
+
+  tc = new macadamTimecode(25, false);
+  pass = pass && (tc != nullptr);
+  bcd = tc->GetBCD();
+  pass = pass && (bcd == 0);
+  delete tc;
+
+  tc = new macadamTimecode(60, true, 10, 11, 12, 13);
+  pass = pass && (tc != nullptr);
+  tc->formatTimecodeString(&tcstr);
+  pass = pass && (strcmp(tcstr, "10:11:12;13") == 0); // Zero is no difference
+  delete tc;
+
+  tc = new macadamTimecode(25, false, 10, 11, 12, 13);
+  pass = pass && (tc != nullptr);
+  tc->formatTimecodeString(&tcstr);
+  pass = pass && (strcmp(tcstr, "10:11:12:13") == 0); // Zero is no difference
+  delete tc;
+
+  tc = new macadamTimecode(50, false, 10, 11, 12, 13);
+  pass = pass && (tc != nullptr);
+  tc->formatTimecodeString(&tcstr);
+  pass = pass && (strcmp(tcstr, "10:11:12:13") == 0); // Zero is no difference
+  delete tc;
+
+  status = napi_get_boolean(env, pass, &result);
+  CHECK_STATUS;
+  return result;
+};

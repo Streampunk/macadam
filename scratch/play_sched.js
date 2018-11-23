@@ -20,7 +20,7 @@ const readFile = util.promisify(fs.readFile);
 
 function timer(t) {
   console.log(`Waiting ${t}`);
-  return new Promise((f, r) => {
+  return new Promise((f) => {
     setTimeout(f, t);
   });
 }
@@ -32,13 +32,13 @@ function shift(b, rowBytes) {
 async function run() {
   let frame = await readFile(__dirname + '/EBU_3325_1080_7.v210');
   console.log(frame.length, frame);
-  let frame2 = Buffer.alloc(frame.length, 0x7f);
+  // let frame2 = Buffer.alloc(frame.length, 0x7f);
   let playback = await macadam.playback({
     displayMode: macadam.bmdModeHD1080i50,
     pixelFormat: macadam.bmdFormat10BitYUV
   });
   console.log(playback);
-  process.on('SIGINT', function () {
+  process.on('SIGINT', () => {
     console.log('Received SIGINT.');
     playback.stop();
     process.exit();
@@ -46,7 +46,7 @@ async function run() {
   console.log(playback.referenceStatus(), playback.scheduledTime());
   for ( let x = 0 ; x < 40 ; x++ ) {
     // console.log('Scheduling', x * 1000);
-    let start = process.hrtime();
+    // let start = process.hrtime();
     playback.schedule({ video: frame, time: x * 1000 });
     // console.log(process.hrtime(start)[1]);
     // playback.schedule({ video: frame2, time: x * 2000 + 1000 });

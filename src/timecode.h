@@ -43,9 +43,12 @@
 #ifndef TIMECODE_H
 #define TIMECODE_H
 
+#include <cstring>
 #include "macadam_util.h"
 #include "node_api.h"
 #include "DeckLinkAPI.h"
+
+napi_value timecodeTest(napi_env env, napi_callback_info info);
 
 struct frameTable {
   uint32_t dropFpMin;
@@ -53,9 +56,10 @@ struct frameTable {
   uint32_t dropFpHour;
   uint32_t fpMinute;
   uint32_t fpHour;
+  uint16_t scaledFps;
 
   frameTable(uint16_t fps) {
-    uint16_t scaledFps = (fps > 30) ? ((short) (fps / 2)) : fps;
+    scaledFps = (fps > 30) ? fps / 2 : fps;
 
     dropFpMin = (60 * scaledFps) - 2;
     dropFpMin10 = (10 * dropFpMin + 2);
@@ -67,7 +71,7 @@ struct frameTable {
 };
 
 struct macadamTimecode : IDeckLinkTimecode {
-  uint32_t value;
+  uint32_t value = 0;
   uint16_t fps;
   frameTable* frameTab = nullptr;
   BMDTimecodeFlags flags = bmdTimecodeFlagDefault;
@@ -97,12 +101,16 @@ struct macadamTimecode : IDeckLinkTimecode {
   #elif __APPLE__
   HRESULT GetString (/* out */ CFStringRef *timecode);
   #else
-  HRESULT GetString (/* out */ const char* timecode);
+  HRESULT GetString (/* out */ const char** timecode);
   #endif
+  HRESULT formatTimecodeString(const char** timecode);
   BMDTimecodeFlags GetFlags (void);
   HRESULT GetTimecodeUserBits (/* out */ BMDTimecodeUserBits *userBits);
   HRESULT SetTimecodeUserBits (BMDTimecodeUserBits userBits);
   void Update(void);
+  HRESULT	QueryInterface (REFIID iid, LPVOID *ppv) { return E_NOINTERFACE; }
+  ULONG AddRef() { return 1; };
+  ULONG Release() { return 1; };
   ~macadamTimecode() {
     if (frameTab != nullptr) { delete frameTab; }
   }

@@ -39,7 +39,7 @@ H('frame', recorder)
   .parallel(4)
   .done(() => {
     recorder.stop();
-    console.log("Recording finished.");
+    console.log('Recording finished.');
     process.exit();
   });
 

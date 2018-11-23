@@ -20,7 +20,7 @@ const readFile = util.promisify(fs.readFile);
 
 function timer(t) {
   console.log(`Waiting ${t}`);
-  return new Promise((f, r) => {
+  return new Promise((f) => {
     setTimeout(f, t);
   });
 }
@@ -40,18 +40,18 @@ async function run() {
     stampleType: macadam.bmdAudioSampleType16bitInteger
   });
   console.log(playback);
-  process.on('SIGINT', function () {
+  process.on('SIGINT', () => {
     console.log('Received SIGINT.');
     playback.stop();
     process.exit();
   });
   for ( let x = 0 ; x < 1000 ; x++ ) {
-    let start = process.hrtime();
+    // let start = process.hrtime();
     let fp = playback.displayFrame(frame,
       audio.slice(x * 15360, x * 15360 + 7680)).catch(console.error);
     await fp;
     console.log(playback.hardwareTime());
-    let end = process.hrtime(start)[1];
+    // let end = process.hrtime(start)[1];
     await timer(35);
     await playback.displayFrame(frame2,
       audio.slice(x * 15360 + 7680, x * 15360 + 15360)).catch(console.error);

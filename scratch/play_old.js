@@ -36,13 +36,13 @@ playback.frame(frame);
 
 playback.start();
 
-var oneRow = 4 * 1920 * 8 / 3;
+// var oneRow = 4 * 1920 * 8 / 3;
 
 var lastFrame = process.hrtime();
-var begin = lastFrame;
+// var begin = lastFrame;
 var count = 0;
 
-playback.on('played', function() {
+playback.on('played', () => {
   console.log('Mind the gap', count++, process.hrtime(lastFrame));
   // frame = Buffer.concat([frame.slice(frame.length - oneRow, frame.length),
   //   frame.slice(0, frame.length - oneRow)], frame.length);

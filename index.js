@@ -51,7 +51,7 @@ const util = require('util');
 const EventEmitter = require('events');
 
 var SegfaultHandler = require('segfault-handler');
-SegfaultHandler.registerHandler("crash.log");
+SegfaultHandler.registerHandler('crash.log');
 
 // Capture class is deprecated
 function Capture (deviceIndex, displayMode, pixelFormat) {
@@ -92,16 +92,16 @@ util.inherits(Capture, EventEmitter);
 
 Capture.prototype.start = function () {
   this.capture = this.capture.then(x => {
-    return capture.frame().then(f => {
+    return x.frame().then(f => {
       if (f.audio) {
         this.emit('frame', f.video.data, f.audio.data);
       } else {
         this.emit('frame', f.video.data);
       }
       if (this.running === true) this.start();
-    })
+    });
   }).catch(err => { this.emit('error', err); });
-}
+};
 
 Capture.prototype.stop = function () {
   this.running = false;
@@ -110,7 +110,7 @@ Capture.prototype.stop = function () {
     this.emit('done');
     this.emergencyBrake = null;
   }).catch(err => { this.emit('error', err); });
-}
+};
 
 Capture.prototype.enableAudio = function (sampleRate, sampleType, channelCount) {
   this.capture.then(x => {
@@ -124,7 +124,7 @@ Capture.prototype.enableAudio = function (sampleRate, sampleType, channelCount) 
       sampleTyoe: sampleType
     }).catch(err => { this.emit('error', err); });
   }).catch(err => { this.emit('error', err); } );
-}
+};
 
 // Playback class is deprecated
 function Playback (deviceIndex, displayMode, pixelFormat) {
@@ -168,7 +168,7 @@ Playback.prototype.start = function () {
   this.playback.then(x => {
     x.start({ startTime: index * x.frameRate[0] });
   }).catch(err => { this.emit('error', err); });
-}
+};
 
 Playback.prototype.frame = function (f, a) {
   let index = this.index++;
@@ -183,7 +183,7 @@ Playback.prototype.frame = function (f, a) {
       this.emit('played', r.result);
     });
   }).catch(err => { this.emit('error', err); });
-}
+};
 
 Playback.prototype.stop = function () {
   this.playback.then(x => {
@@ -192,7 +192,7 @@ Playback.prototype.stop = function () {
     this.emergencyBrake = null;
     this.running = false;
   }).catch(err => { this.emit('error', err); });
-}
+};
 
 Playback.prototype.enableAudio = function (sampleRate, sampleType, channelCount) {
   this.playback.then(x => {
@@ -206,7 +206,7 @@ Playback.prototype.enableAudio = function (sampleRate, sampleType, channelCount)
       sampleTyoe: sampleType
     }).catch(err => { this.emit('error', err); });
   }).catch(err => { this.emit('error', err); } );
-}
+};
 
 function bmCodeToInt (s) {
   return Buffer.from(s.substring(0, 4)).readUInt32BE(0);
@@ -220,381 +220,381 @@ function intToBMCode(i) {
 
 function modeWidth (mode) {
   switch (mode) {
-    case macadam.bmdModeNTSC:
-    case macadam.bmdModeNTSC2398:
-    case macadam.bmdModeNTSCp:
-    case macadam.bmdModePAL:
-    case macadam.bmdModePALp:
-      return 720;
-    case macadam.bmdModeHD720p50:
-    case macadam.bmdModeHD720p5994:
-    case macadam.bmdModeHD720p60:
-      return 1280;
-    case macadam.bmdModeHD1080p2398:
-    case macadam.bmdModeHD1080p24:
-    case macadam.bmdModeHD1080p25:
-    case macadam.bmdModeHD1080p2997:
-    case macadam.bmdModeHD1080p30:
-    case macadam.bmdModeHD1080i50:
-    case macadam.bmdModeHD1080i5994:
-    case macadam.bmdModeHD1080i6000:
-    case macadam.bmdModeHD1080p50:
-    case macadam.bmdModeHD1080p5994:
-    case macadam.bmdModeHD1080p6000:
-      return 1920;
-    case macadam.bmdMode2k2398:
-    case macadam.bmdMode2k24:
-    case macadam.bmdMode2k25:
-    case macadam.bmdMode2kDCI2398:
-    case macadam.bmdMode2kDCI24:
-    case macadam.bmdMode2kDCI25:
-      return 2048;
-    case macadam.bmdMode4K2160p2398:
-    case macadam.bmdMode4K2160p24:
-    case macadam.bmdMode4K2160p25:
-    case macadam.bmdMode4K2160p2997:
-    case macadam.bmdMode4K2160p30:
-    case macadam.bmdMode4K2160p50:
-    case macadam.bmdMode4K2160p5994:
-    case macadam.bmdMode4K2160p60:
-      return 3840;
-    case macadam.bmdMode4kDCI2398:
-    case macadam.bmdMode4kDCI24:
-    case macadam.bmdMode4kDCI25:
-      return 4096;
-    default:
-      return 0;
+  case macadam.bmdModeNTSC:
+  case macadam.bmdModeNTSC2398:
+  case macadam.bmdModeNTSCp:
+  case macadam.bmdModePAL:
+  case macadam.bmdModePALp:
+    return 720;
+  case macadam.bmdModeHD720p50:
+  case macadam.bmdModeHD720p5994:
+  case macadam.bmdModeHD720p60:
+    return 1280;
+  case macadam.bmdModeHD1080p2398:
+  case macadam.bmdModeHD1080p24:
+  case macadam.bmdModeHD1080p25:
+  case macadam.bmdModeHD1080p2997:
+  case macadam.bmdModeHD1080p30:
+  case macadam.bmdModeHD1080i50:
+  case macadam.bmdModeHD1080i5994:
+  case macadam.bmdModeHD1080i6000:
+  case macadam.bmdModeHD1080p50:
+  case macadam.bmdModeHD1080p5994:
+  case macadam.bmdModeHD1080p6000:
+    return 1920;
+  case macadam.bmdMode2k2398:
+  case macadam.bmdMode2k24:
+  case macadam.bmdMode2k25:
+  case macadam.bmdMode2kDCI2398:
+  case macadam.bmdMode2kDCI24:
+  case macadam.bmdMode2kDCI25:
+    return 2048;
+  case macadam.bmdMode4K2160p2398:
+  case macadam.bmdMode4K2160p24:
+  case macadam.bmdMode4K2160p25:
+  case macadam.bmdMode4K2160p2997:
+  case macadam.bmdMode4K2160p30:
+  case macadam.bmdMode4K2160p50:
+  case macadam.bmdMode4K2160p5994:
+  case macadam.bmdMode4K2160p60:
+    return 3840;
+  case macadam.bmdMode4kDCI2398:
+  case macadam.bmdMode4kDCI24:
+  case macadam.bmdMode4kDCI25:
+    return 4096;
+  default:
+    return 0;
   }
 }
 
 function modeHeight (mode) {
   switch (mode) {
-    case macadam.bmdModeNTSC:
-    case macadam.bmdModeNTSC2398:
-    case macadam.bmdModeNTSCp:
-        return 486;
-    case macadam.bmdModePAL:
-    case macadam.bmdModePALp:
-      return 576;
-    case macadam.bmdModeHD720p50:
-    case macadam.bmdModeHD720p5994:
-    case macadam.bmdModeHD720p60:
-      return 720;
-    case macadam.bmdModeHD1080p2398:
-    case macadam.bmdModeHD1080p24:
-    case macadam.bmdModeHD1080p25:
-    case macadam.bmdModeHD1080p2997:
-    case macadam.bmdModeHD1080p30:
-    case macadam.bmdModeHD1080i50:
-    case macadam.bmdModeHD1080i5994:
-    case macadam.bmdModeHD1080i6000:
-    case macadam.bmdModeHD1080p50:
-    case macadam.bmdModeHD1080p5994:
-    case macadam.bmdModeHD1080p6000:
-      return 1080;
-    case macadam.bmdMode2k2398:
-    case macadam.bmdMode2k24:
-    case macadam.bmdMode2k25:
-      return 1556;
-    case macadam.bmdMode2kDCI2398:
-    case macadam.bmdMode2kDCI24:
-    case macadam.bmdMode2kDCI25:
-      return 1080;
-    case macadam.bmdMode4K2160p2398:
-    case macadam.bmdMode4K2160p24:
-    case macadam.bmdMode4K2160p25:
-    case macadam.bmdMode4K2160p2997:
-    case macadam.bmdMode4K2160p30:
-    case macadam.bmdMode4K2160p50:
-    case macadam.bmdMode4K2160p5994:
-    case macadam.bmdMode4K2160p60:
-    case macadam.bmdMode4kDCI2398:
-    case macadam.bmdMode4kDCI24:
-    case macadam.bmdMode4kDCI25:
-      return 2160;
-    default:
-      return 0;
-  };
-};
+  case macadam.bmdModeNTSC:
+  case macadam.bmdModeNTSC2398:
+  case macadam.bmdModeNTSCp:
+    return 486;
+  case macadam.bmdModePAL:
+  case macadam.bmdModePALp:
+    return 576;
+  case macadam.bmdModeHD720p50:
+  case macadam.bmdModeHD720p5994:
+  case macadam.bmdModeHD720p60:
+    return 720;
+  case macadam.bmdModeHD1080p2398:
+  case macadam.bmdModeHD1080p24:
+  case macadam.bmdModeHD1080p25:
+  case macadam.bmdModeHD1080p2997:
+  case macadam.bmdModeHD1080p30:
+  case macadam.bmdModeHD1080i50:
+  case macadam.bmdModeHD1080i5994:
+  case macadam.bmdModeHD1080i6000:
+  case macadam.bmdModeHD1080p50:
+  case macadam.bmdModeHD1080p5994:
+  case macadam.bmdModeHD1080p6000:
+    return 1080;
+  case macadam.bmdMode2k2398:
+  case macadam.bmdMode2k24:
+  case macadam.bmdMode2k25:
+    return 1556;
+  case macadam.bmdMode2kDCI2398:
+  case macadam.bmdMode2kDCI24:
+  case macadam.bmdMode2kDCI25:
+    return 1080;
+  case macadam.bmdMode4K2160p2398:
+  case macadam.bmdMode4K2160p24:
+  case macadam.bmdMode4K2160p25:
+  case macadam.bmdMode4K2160p2997:
+  case macadam.bmdMode4K2160p30:
+  case macadam.bmdMode4K2160p50:
+  case macadam.bmdMode4K2160p5994:
+  case macadam.bmdMode4K2160p60:
+  case macadam.bmdMode4kDCI2398:
+  case macadam.bmdMode4kDCI24:
+  case macadam.bmdMode4kDCI25:
+    return 2160;
+  default:
+    return 0;
+  }
+}
 
 // Returns the duration of a frame as fraction of a second as an array:
 //   [<enumverator>, [denominotor>]
 function modeGrainDuration (mode) {
   switch (mode) {
-    case macadam.bmdModeNTSC:
-      return [1001, 30000];
-    case macadam.bmdModeNTSC2398: // 3:2 pulldown applied on card
-      return [1001, 30000];
-    case macadam.bmdModeNTSCp:
-      return [1001, 60000];
-    case macadam.bmdModePAL:
-      return [1000, 25000];
-    case macadam.bmdModePALp:
-      return [1000, 50000];
-    case macadam.bmdModeHD720p50:
-      return [1000, 50000];
-    case macadam.bmdModeHD720p5994:
-      return [1001, 60000];
-    case macadam.bmdModeHD720p60:
-      return [1000, 60000];
-    case macadam.bmdModeHD1080p2398:
-      return [1001, 24000];
-    case macadam.bmdModeHD1080p24:
-      return [1000, 24000];
-    case macadam.bmdModeHD1080p25:
-      return [1000, 25000];
-    case macadam.bmdModeHD1080p2997:
-      return [1001, 30000];
-    case macadam.bmdModeHD1080p30:
-      return [1000, 30000];
-    case macadam.bmdModeHD1080i50:
-      return [1000, 25000];
-    case macadam.bmdModeHD1080i5994:
-      return [1001, 60000];
-    case macadam.bmdModeHD1080i6000:
-      return [1000, 60000];
-    case macadam.bmdModeHD1080p50:
-      return [1000, 50000];
-    case macadam.bmdModeHD1080p5994:
-      return [1001, 60000];
-    case macadam.bmdModeHD1080p6000:
-      return [1000, 60000];
-    case macadam.bmdMode2k2398:
-      return [1001, 24000];
-    case macadam.bmdMode2k24:
-      return [1000, 24000];
-    case macadam.bmdMode2k25:
-      return [1000, 25000];
-    case macadam.bmdMode2kDCI2398:
-      return [1001, 24000];
-    case macadam.bmdMode2kDCI24:
-      return [1000, 24000];
-    case macadam.bmdMode2kDCI25:
-      return [1000, 25000];
-    case macadam.bmdMode4K2160p2398:
-      return [1001, 24000];
-    case macadam.bmdMode4K2160p24:
-      return [1000, 24000];
-    case macadam.bmdMode4K2160p25:
-      return [1000, 25000];
-    case macadam.bmdMode4K2160p2997:
-      return [1001, 30000];
-    case macadam.bmdMode4K2160p30:
-      return [1000, 30000];
-    case macadam.bmdMode4K2160p50:
-      return [1000, 50000];
-    case macadam.bmdMode4K2160p5994:
-      return [1001, 60000];
-    case macadam.bmdMode4K2160p60:
-      return [1000, 60000];
-    case macadam.bmdMode4kDCI2398:
-      return [1001, 24000];
-    case macadam.bmdMode4kDCI24:
-      return [1000, 24000];
-    case macadam.bmdMode4kDCI25:
-      return [1000, 25000];
-    default:
+  case macadam.bmdModeNTSC:
+    return [1001, 30000];
+  case macadam.bmdModeNTSC2398: // 3:2 pulldown applied on card
+    return [1001, 30000];
+  case macadam.bmdModeNTSCp:
+    return [1001, 60000];
+  case macadam.bmdModePAL:
+    return [1000, 25000];
+  case macadam.bmdModePALp:
+    return [1000, 50000];
+  case macadam.bmdModeHD720p50:
+    return [1000, 50000];
+  case macadam.bmdModeHD720p5994:
+    return [1001, 60000];
+  case macadam.bmdModeHD720p60:
+    return [1000, 60000];
+  case macadam.bmdModeHD1080p2398:
+    return [1001, 24000];
+  case macadam.bmdModeHD1080p24:
+    return [1000, 24000];
+  case macadam.bmdModeHD1080p25:
+    return [1000, 25000];
+  case macadam.bmdModeHD1080p2997:
+    return [1001, 30000];
+  case macadam.bmdModeHD1080p30:
+    return [1000, 30000];
+  case macadam.bmdModeHD1080i50:
+    return [1000, 25000];
+  case macadam.bmdModeHD1080i5994:
+    return [1001, 60000];
+  case macadam.bmdModeHD1080i6000:
+    return [1000, 60000];
+  case macadam.bmdModeHD1080p50:
+    return [1000, 50000];
+  case macadam.bmdModeHD1080p5994:
+    return [1001, 60000];
+  case macadam.bmdModeHD1080p6000:
+    return [1000, 60000];
+  case macadam.bmdMode2k2398:
+    return [1001, 24000];
+  case macadam.bmdMode2k24:
+    return [1000, 24000];
+  case macadam.bmdMode2k25:
+    return [1000, 25000];
+  case macadam.bmdMode2kDCI2398:
+    return [1001, 24000];
+  case macadam.bmdMode2kDCI24:
+    return [1000, 24000];
+  case macadam.bmdMode2kDCI25:
+    return [1000, 25000];
+  case macadam.bmdMode4K2160p2398:
+    return [1001, 24000];
+  case macadam.bmdMode4K2160p24:
+    return [1000, 24000];
+  case macadam.bmdMode4K2160p25:
+    return [1000, 25000];
+  case macadam.bmdMode4K2160p2997:
+    return [1001, 30000];
+  case macadam.bmdMode4K2160p30:
+    return [1000, 30000];
+  case macadam.bmdMode4K2160p50:
+    return [1000, 50000];
+  case macadam.bmdMode4K2160p5994:
+    return [1001, 60000];
+  case macadam.bmdMode4K2160p60:
+    return [1000, 60000];
+  case macadam.bmdMode4kDCI2398:
+    return [1001, 24000];
+  case macadam.bmdMode4kDCI24:
+    return [1000, 24000];
+  case macadam.bmdMode4kDCI25:
+    return [1000, 25000];
+  default:
     return [0, 1];
-  };
-};
+  }
+}
 
 function modeInterlace (mode) {
   switch (mode) {
-    case macadam.bmdModeNTSC:
-    case macadam.bmdModeNTSC2398:
-      return true;
-    case macadam.bmdModeNTSCp:
-      return false;
-    case macadam.bmdModePAL:
-      return true;
-    case macadam.bmdModePALp:
-    case macadam.bmdModeHD720p50:
-    case macadam.bmdModeHD720p5994:
-    case macadam.bmdModeHD720p60:
-    case macadam.bmdModeHD1080p2398:
-    case macadam.bmdModeHD1080p24:
-    case macadam.bmdModeHD1080p25:
-    case macadam.bmdModeHD1080p2997:
-    case macadam.bmdModeHD1080p30:
-      return false;
-    case macadam.bmdModeHD1080i50:
-    case macadam.bmdModeHD1080i5994:
-    case macadam.bmdModeHD1080i6000:
-      return true;
-    case macadam.bmdModeHD1080p50:
-    case macadam.bmdModeHD1080p5994:
-    case macadam.bmdModeHD1080p6000:
-    case macadam.bmdMode2k2398:
-    case macadam.bmdMode2k24:
-    case macadam.bmdMode2k25:
-    case macadam.bmdMode2kDCI2398:
-    case macadam.bmdMode2kDCI24:
-    case macadam.bmdMode2kDCI25:
-    case macadam.bmdMode4K2160p2398:
-    case macadam.bmdMode4K2160p24:
-    case macadam.bmdMode4K2160p25:
-    case macadam.bmdMode4K2160p2997:
-    case macadam.bmdMode4K2160p30:
-    case macadam.bmdMode4K2160p50:
-    case macadam.bmdMode4K2160p5994:
-    case macadam.bmdMode4K2160p60:
-    case macadam.bmdMode4kDCI2398:
-    case macadam.bmdMode4kDCI24:
-    case macadam.bmdMode4kDCI25:
-      return false;
-    default:
-      return false;
+  case macadam.bmdModeNTSC:
+  case macadam.bmdModeNTSC2398:
+    return true;
+  case macadam.bmdModeNTSCp:
+    return false;
+  case macadam.bmdModePAL:
+    return true;
+  case macadam.bmdModePALp:
+  case macadam.bmdModeHD720p50:
+  case macadam.bmdModeHD720p5994:
+  case macadam.bmdModeHD720p60:
+  case macadam.bmdModeHD1080p2398:
+  case macadam.bmdModeHD1080p24:
+  case macadam.bmdModeHD1080p25:
+  case macadam.bmdModeHD1080p2997:
+  case macadam.bmdModeHD1080p30:
+    return false;
+  case macadam.bmdModeHD1080i50:
+  case macadam.bmdModeHD1080i5994:
+  case macadam.bmdModeHD1080i6000:
+    return true;
+  case macadam.bmdModeHD1080p50:
+  case macadam.bmdModeHD1080p5994:
+  case macadam.bmdModeHD1080p6000:
+  case macadam.bmdMode2k2398:
+  case macadam.bmdMode2k24:
+  case macadam.bmdMode2k25:
+  case macadam.bmdMode2kDCI2398:
+  case macadam.bmdMode2kDCI24:
+  case macadam.bmdMode2kDCI25:
+  case macadam.bmdMode4K2160p2398:
+  case macadam.bmdMode4K2160p24:
+  case macadam.bmdMode4K2160p25:
+  case macadam.bmdMode4K2160p2997:
+  case macadam.bmdMode4K2160p30:
+  case macadam.bmdMode4K2160p50:
+  case macadam.bmdMode4K2160p5994:
+  case macadam.bmdMode4K2160p60:
+  case macadam.bmdMode4kDCI2398:
+  case macadam.bmdMode4kDCI24:
+  case macadam.bmdMode4kDCI25:
+    return false;
+  default:
+    return false;
   }
 }
 
 function formatDepth (format) {
- switch (format) {
-    case macadam.bmdFormat8BitYUV:
-      return 8;
-    case macadam.bmdFormat10BitYUV:
-      return 10;
-    case macadam.bmdFormat8BitARGB:
-    case macadam.bmdFormat8BitBGRA:
-      return 8;
-    case macadam.bmdFormat10BitRGB:
-      return 10;
-    case macadam.bmdFormat12BitRGB:
-    case macadam.bmdFormat12BitRGBLE:
-      return 12;
-    case macadam.bmdFormat10BitRGBXLE:
-    case macadam.bmdFormat10BitRGBX:
-      return 10;
-    default:
-      return 0;
-  };
-};
+  switch (format) {
+  case macadam.bmdFormat8BitYUV:
+    return 8;
+  case macadam.bmdFormat10BitYUV:
+    return 10;
+  case macadam.bmdFormat8BitARGB:
+  case macadam.bmdFormat8BitBGRA:
+    return 8;
+  case macadam.bmdFormat10BitRGB:
+    return 10;
+  case macadam.bmdFormat12BitRGB:
+  case macadam.bmdFormat12BitRGBLE:
+    return 12;
+  case macadam.bmdFormat10BitRGBXLE:
+  case macadam.bmdFormat10BitRGBX:
+    return 10;
+  default:
+    return 0;
+  }
+}
 
 function formatFourCC (format) {
   switch (format) {
-    case macadam.bmdFormat8BitYUV:
-      return 'UYVY';
-    case macadam.bmdFormat10BitYUV:
-     return 'v210';
-    case macadam.bmdFormat8BitARGB:
-      return 'ARGB';
-    case macadam.bmdFormat8BitBGRA:
-      return 'BGRA';
+  case macadam.bmdFormat8BitYUV:
+    return 'UYVY';
+  case macadam.bmdFormat10BitYUV:
+    return 'v210';
+  case macadam.bmdFormat8BitARGB:
+    return 'ARGB';
+  case macadam.bmdFormat8BitBGRA:
+    return 'BGRA';
   // Big-endian RGB 10-bit per component with SMPTE video levels (64-960). Packed as 2:10:10:10
-    case macadam.bmdFormat10BitRGB:
-      return 'r210';
+  case macadam.bmdFormat10BitRGB:
+    return 'r210';
   // Big-endian RGB 12-bit per component with full range (0-4095). Packed as 12-bit per component
-    case macadam.bmdFormat12BitRGB:
-      return 'R12B';
+  case macadam.bmdFormat12BitRGB:
+    return 'R12B';
   // Little-endian RGB 12-bit per component with full range (0-4095). Packed as 12-bit per component
-    case macadam.bmdFormat12BitRGBLE:
-      return 'R12L';
+  case macadam.bmdFormat12BitRGBLE:
+    return 'R12L';
   // Little-endian 10-bit RGB with SMPTE video levels (64-940)
-    case macadam.bmdFormat10BitRGBXLE:
-      return 'R10l';
+  case macadam.bmdFormat10BitRGBXLE:
+    return 'R10l';
   // Big-endian 10-bit RGB with SMPTE video levels (64-940)
-    case macadam.bmdFormat10BitRGBX:
-      return 'R10b';
-  };
-};
+  case macadam.bmdFormat10BitRGBX:
+    return 'R10b';
+  }
+}
 
 function fourCCFormat(fourCC) {
   switch (fourCC) {
-    case 'UYVY':
-      return macadam.bmdFormat8BitYUV;
-    case 'v210':
-    case 'pgroup':
-      return macadam.bmdFormat10BitYUV;
-    case 'ARGB':
-      return macadam.bmdFormat8BitARGB;
-    case 'BGRA':
-      return macadam.bmdFormat8BitBGRA;
+  case 'UYVY':
+    return macadam.bmdFormat8BitYUV;
+  case 'v210':
+  case 'pgroup':
+    return macadam.bmdFormat10BitYUV;
+  case 'ARGB':
+    return macadam.bmdFormat8BitARGB;
+  case 'BGRA':
+    return macadam.bmdFormat8BitBGRA;
   // Big-endian RGB 10-bit per component with SMPTE video levels (64-960). Packed as 2:10:10:10
-    case 'r210':
-      return macadam.bmdFormat10BitRGB;
+  case 'r210':
+    return macadam.bmdFormat10BitRGB;
   // Big-endian RGB 12-bit per component with full range (0-4095). Packed as 12-bit per component
-    case 'R12B':
-      return macadam.bmdFormat12BitRGB;
+  case 'R12B':
+    return macadam.bmdFormat12BitRGB;
   // Little-endian RGB 12-bit per component with full range (0-4095). Packed as 12-bit per component
-    case 'R12L':
-      return macadam.bmdFormat12BitRGBLE;
+  case 'R12L':
+    return macadam.bmdFormat12BitRGBLE;
   // Little-endian 10-bit RGB with SMPTE video levels (64-940)
-    case 'R10l':
-      return macadam.bmdFormat10BitRGBXLE;
+  case 'R10l':
+    return macadam.bmdFormat10BitRGBXLE;
   // Big-endian 10-bit RGB with SMPTE video levels (64-940)
-    case 'R10b':
-      return macadam.bmdFormat10BitRGBX;
+  case 'R10b':
+    return macadam.bmdFormat10BitRGBX;
   }
 }
 
 function formatSampling (format) {
   switch (format) {
-    case macadam.bmdFormat8BitYUV:
-      return 'YCbCr-4:2:2';
-    case macadam.bmdFormat10BitYUV:
-      return 'YCbCr-4:2:2';
-    case macadam.bmdFormat8BitARGB:
-      return 'ARGB';
-    case macadam.bmdFormat8BitBGRA:
-      return 'BGRA';
+  case macadam.bmdFormat8BitYUV:
+    return 'YCbCr-4:2:2';
+  case macadam.bmdFormat10BitYUV:
+    return 'YCbCr-4:2:2';
+  case macadam.bmdFormat8BitARGB:
+    return 'ARGB';
+  case macadam.bmdFormat8BitBGRA:
+    return 'BGRA';
   // Big-endian RGB 10-bit per component with SMPTE video levels (64-960). Packed as 2:10:10:10
-    case macadam.bmdFormat10BitRGB:
-      return 'RGB';
+  case macadam.bmdFormat10BitRGB:
+    return 'RGB';
   // Big-endian RGB 12-bit per component with full range (0-4095). Packed as 12-bit per component
-    case macadam.bmdFormat12BitRGB:
-      return 'RGB'
+  case macadam.bmdFormat12BitRGB:
+    return 'RGB';
   // Little-endian RGB 12-bit per component with full range (0-4095). Packed as 12-bit per component
-    case macadam.bmdFormat12BitRGBLE:
-      return 'RGB';
+  case macadam.bmdFormat12BitRGBLE:
+    return 'RGB';
   // Little-endian 10-bit RGB with SMPTE video levels (64-940)
-    case macadam.bmdFormat10BitRGBXLE:
-      return 'RGB';
+  case macadam.bmdFormat10BitRGBXLE:
+    return 'RGB';
   // Big-endian 10-bit RGB with SMPTE video levels (64-940)
-    case macadam.bmdFormat10BitRGBX:
-      return 'RGB';
-    default:
-      return '';
-  };
-};
+  case macadam.bmdFormat10BitRGBX:
+    return 'RGB';
+  default:
+    return '';
+  }
+}
 
 function formatColorimetry (format) {
   switch (format) {
-    case macadam.bmdFormat8BitYUV:
-      return 'BT601-5';
-    case macadam.bmdFormat10BitYUV:
-      return 'BT709-2';
-    case macadam.bmdFormat8BitARGB:
-      return 'FULL';
-    case macadam.bmdFormat8BitBGRA:
-      return 'FULL';
+  case macadam.bmdFormat8BitYUV:
+    return 'BT601-5';
+  case macadam.bmdFormat10BitYUV:
+    return 'BT709-2';
+  case macadam.bmdFormat8BitARGB:
+    return 'FULL';
+  case macadam.bmdFormat8BitBGRA:
+    return 'FULL';
   // Big-endian RGB 10-bit per component with SMPTE video levels (64-960). Packed as 2:10:10:10
-    case macadam.bmdFormat10BitRGB:
-      return 'SMPTE240M';
+  case macadam.bmdFormat10BitRGB:
+    return 'SMPTE240M';
   // Big-endian RGB 12-bit per component with full range (0-4095). Packed as 12-bit per component
-    case macadam.bmdFormat12BitRGB:
-      return 'FULL';
+  case macadam.bmdFormat12BitRGB:
+    return 'FULL';
   // Little-endian RGB 12-bit per component with full range (0-4095). Packed as 12-bit per component
-    case macadam.bmdFormat12BitRGBLE:
-      return 'FULL';
+  case macadam.bmdFormat12BitRGBLE:
+    return 'FULL';
   // Little-endian 10-bit RGB with SMPTE video levels (64-940)
-    case macadam.bmdFormat10BitRGBXLE:
-      return 'SMPTE240M';
+  case macadam.bmdFormat10BitRGBXLE:
+    return 'SMPTE240M';
   // Big-endian 10-bit RGB with SMPTE video levels (64-940)
-    case macadam.bmdFormat10BitRGBX:
-      return 'SMPTE240M';
-    default:
-      return '';
-  };
+  case macadam.bmdFormat10BitRGBX:
+    return 'SMPTE240M';
+  default:
+    return '';
+  }
 }
 
 var macadam = {
   /* Enum BMDDisplayMode - Video display modes */
-      /* SD Modes */
+  /* SD Modes */
   bmdModeNTSC                     : bmCodeToInt('ntsc'),
   bmdModeNTSC2398                 : bmCodeToInt('nt23'),	// 3:2 pulldown
   bmdModePAL                      : bmCodeToInt('pal '),
   bmdModeNTSCp                    : bmCodeToInt('ntsp'),
   bmdModePALp                     : bmCodeToInt('palp'),
-      /* HD 1080 Modes */
+  /* HD 1080 Modes */
   bmdModeHD1080p2398              : bmCodeToInt('23ps'),
   bmdModeHD1080p24                : bmCodeToInt('24ps'),
   bmdModeHD1080p25                : bmCodeToInt('Hp25'),
@@ -606,19 +606,19 @@ var macadam = {
   bmdModeHD1080p50                : bmCodeToInt('Hp50'),
   bmdModeHD1080p5994              : bmCodeToInt('Hp59'),
   bmdModeHD1080p6000              : bmCodeToInt('Hp60'),	// N.B. This _really_ is 60.00 Hz.
-      /* HD 720 Modes */
+  /* HD 720 Modes */
   bmdModeHD720p50                 : bmCodeToInt('hp50'),
   bmdModeHD720p5994               : bmCodeToInt('hp59'),
   bmdModeHD720p60                 : bmCodeToInt('hp60'),
-      /* 2k Modes */
+  /* 2k Modes */
   bmdMode2k2398                   : bmCodeToInt('2k23'),
   bmdMode2k24                     : bmCodeToInt('2k24'),
   bmdMode2k25                     : bmCodeToInt('2k25'),
-      /* DCI Modes (output only) */
+  /* DCI Modes (output only) */
   bmdMode2kDCI2398                : bmCodeToInt('2d23'),
   bmdMode2kDCI24                  : bmCodeToInt('2d24'),
   bmdMode2kDCI25                  : bmCodeToInt('2d25'),
-      /* 4k Modes */
+  /* 4k Modes */
   bmdMode4K2160p2398              : bmCodeToInt('4k23'),
   bmdMode4K2160p24                : bmCodeToInt('4k24'),
   bmdMode4K2160p25                : bmCodeToInt('4k25'),
@@ -627,11 +627,11 @@ var macadam = {
   bmdMode4K2160p50                : bmCodeToInt('4k50'),
   bmdMode4K2160p5994              : bmCodeToInt('4k59'),
   bmdMode4K2160p60                : bmCodeToInt('4k60'),
-      /* DCI Modes (output only) */
+  /* DCI Modes (output only) */
   bmdMode4kDCI2398                : bmCodeToInt('4d23'),
   bmdMode4kDCI24                  : bmCodeToInt('4d24'),
   bmdMode4kDCI25                  : bmCodeToInt('4d25'),
-      /* Special Modes */
+  /* Special Modes */
   bmdModeUnknown                  : bmCodeToInt('iunk'),
   /* Enum BMDFieldDominance - Video field dominance */
   bmdUnknownFieldDominance        : 0,

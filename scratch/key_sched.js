@@ -14,16 +14,16 @@
 */
 
 const macadam = require('../');
-const fs = require('fs');
-const util = require('util');
-const readFile = util.promisify(fs.readFile);
+// const fs = require('fs');
+// const util = require('util');
+// const readFile = util.promisify(fs.readFile);
 
-function timer(t) {
+/* function timer(t) {
   console.log(`Waiting ${t}`);
   return new Promise((f, r) => {
     setTimeout(f, t);
   });
-}
+} */
 
 function shift(b, rowBytes) {
   return Buffer.concat([b.slice(-rowBytes), b.slice(0, -rowBytes)], b.length);
@@ -47,7 +47,7 @@ async function run() {
     frame[y+3] = y%256;
   }
   console.log(playback);
-  process.on('SIGINT', function () {
+  process.on('SIGINT', () => {
     console.log('Received SIGINT.');
     playback.stop();
     process.exit();
@@ -55,7 +55,7 @@ async function run() {
   console.log(playback.referenceStatus(), playback.scheduledTime());
   for ( let x = 0 ; x < 4000 ; x++ ) {
     // console.log('Scheduling', x * 1000);
-    let start = process.hrtime();
+    // let start = process.hrtime();
     playback.schedule({ video: frame, time: x * 1000 });
     // console.log(process.hrtime(start)[1]);
     // playback.schedule({ video: frame2, time: x * 2000 + 1000 });
