@@ -1336,20 +1336,6 @@ napi_value startPlayback(napi_env env, napi_callback_info info) {
     if (hresult != S_OK) NAPI_THROW_ERROR("Failed to end audio preroll.\n");
   }
 
-  /* if (pbts->enableKeying) {
-    hresult = pbts->deckLinkKeyer->Enable(pbts->isExternal);
-    if (hresult != S_OK) {
-      NAPI_THROW_ERROR("Failed to enable keying.");
-    }
-
-    hresult = pbts->deckLinkKeyer->SetLevel(pbts->keyLevel);
-    if (hresult != S_OK) {
-      NAPI_THROW_ERROR("Failed to set key level.");
-    }
-    printf("Enabled decklink %s keying at level %i.\n",
-      pbts->isExternal ? "external" : "internal", pbts->keyLevel);
-  } */
-
   hresult = pbts->deckLinkOutput->StartScheduledPlayback(
     startTime, pbts->timeScale, playbackSpeed);
   if (hresult != S_OK) NAPI_THROW_ERROR("Failed to start scheduled playback.");
@@ -1643,6 +1629,9 @@ napi_value stopPlayback(napi_env env, napi_callback_info info) {
   status = napi_set_named_property(env, playback, "deckLinkOutput", value);
   CHECK_STATUS;
 
+  pbts->deckLinkOutput->Release();
+  pbts->deckLinkOutput = nullptr;
+
   return value;
 }
 
@@ -1912,7 +1901,8 @@ napi_value getTimcodeUserbits(napi_env env, napi_callback_info info) {
 }
 
 void playbackTsFnFinalize(napi_env env, void* data, void* hint) {
-  printf("Threadsafe playback finalizer called with data %p and hint %p.\n", data, hint);
+  // Decided to let the garbage collector clear this up.
+  /* printf("Threadsafe playback finalizer called with data %p and hint %p.\n", data, hint);
   playbackThreadsafe* pbts = (playbackThreadsafe*) hint;
-  delete pbts;
+  delete pbts; */
 }
