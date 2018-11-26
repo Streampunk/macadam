@@ -1,4 +1,4 @@
-/* Copyright 2018 Streampunk Media Ltd.
+ /* Copyright 2018 Streampunk Media Ltd.
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -449,6 +449,26 @@ void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
     REJECT_STATUS;
   }
 
+  if (c->timecode != nullptr) {
+    const char* tcstr;
+    hresult = c->timecode->formatTimecodeString(&tcstr, true);
+    if (hresult != S_OK) {
+      c->status = MACADAM_CALL_FAILURE;
+      c->errorMsg = "Unable to format timecode string.";
+      REJECT_STATUS;
+    }
+    c->status = napi_create_string_utf8(env, tcstr, NAPI_AUTO_LENGTH, &param);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "timecode", param);
+    REJECT_STATUS;
+  }
+  else {
+    c->status = napi_get_undefined(env, &param);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "timecode", param);
+    REJECT_STATUS;
+  }
+
   playbackThreadsafe* pbts = new playbackThreadsafe;
   pbts->deckLinkOutput = c->deckLinkOutput;
   c->deckLinkOutput = nullptr;
@@ -474,6 +494,8 @@ void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
     pbts->deckLinkKeyer = c->deckLinkKeyer;
     c->deckLinkKeyer = nullptr;
   }
+  pbts->timecode = c->timecode;
+  c->timecode = nullptr;
 
   printf("Address of %s keyer at level %i in pbts is %p.\n",
     pbts->isExternal ? "external" : "internal", pbts->keyLevel,
@@ -546,7 +568,7 @@ void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
   c->status = napi_set_named_property(env, result, "bufferedAudioFrames", param);
   REJECT_STATUS;
 
-  if (c->enableKeying) {
+  if (pbts->enableKeying) {
     c->status = napi_create_function(env, "rampUp", NAPI_AUTO_LENGTH,
       rampUp, nullptr, &param);
     REJECT_STATUS;
@@ -563,6 +585,32 @@ void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
       setLevel, nullptr, &param);
     REJECT_STATUS;
     c->status = napi_set_named_property(env, result, "setLevel", param);
+    REJECT_STATUS;
+  }
+
+  if (pbts->timecode != nullptr) {
+    c->status = napi_create_function(env, "setTimecode", NAPI_AUTO_LENGTH,
+      setTimecode, nullptr, &param);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "setTimecode", param);
+    REJECT_STATUS;
+
+    c->status = napi_create_function(env, "getTimecode", NAPI_AUTO_LENGTH,
+      getTimecode, nullptr, &param);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "getTimecode", param);
+    REJECT_STATUS;
+
+    c->status = napi_create_function(env, "setTimecodeUserbits", NAPI_AUTO_LENGTH,
+      setTimecodeUserbits, nullptr, &param);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "setTimecodeUserbits", param);
+    REJECT_STATUS;
+
+    c->status = napi_create_function(env, "getTimecodeUserbits", NAPI_AUTO_LENGTH,
+      getTimecodeUserbits, nullptr, &param);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "getTimecodeUserbits", param);
     REJECT_STATUS;
   }
 
@@ -587,11 +635,15 @@ void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
 }
 
 napi_value playback(napi_env env, napi_callback_info info) {
+  napi_status status;
   napi_value promise, resourceName, options, param;
   napi_valuetype type;
   bool isArray;
   playbackCarrier* c = new playbackCarrier;
   int32_t keyLevel = 255;
+  HRESULT hresult;
+  char tcstr[14];
+  size_t tclen;
 
   c->status = napi_create_promise(env, &c->_deferred, &promise);
   REJECT_RETURN;
@@ -750,6 +802,75 @@ napi_value playback(napi_env env, napi_callback_info info) {
     c->keyLevel = (uint8_t) keyLevel;
   }
 
+  c->status = napi_get_named_property(env, options, "startTimecode", &param);
+  REJECT_RETURN;
+  c->status = napi_typeof(env, param, &type);
+  REJECT_RETURN;
+  if (type != napi_undefined) {
+    if (type != napi_string) REJECT_ERROR_RETURN(
+      "Start timecode must be provided as a string value.", MACADAM_INVALID_ARGS);
+    status = napi_get_value_string_utf8(env, param, tcstr, 13, &tclen);
+    REJECT_RETURN;
+    uint16_t fps = 25;
+    switch (c->requestedDisplayMode) {
+      case bmdModeHD1080p2398:
+      case bmdModeHD1080p24:
+      case bmdMode2k2398:
+      case bmdMode2k24:
+      case bmdMode2kDCI2398:
+      case bmdMode4K2160p2398:
+      case bmdMode4K2160p24:
+      case bmdMode2kDCI24:
+      case bmdMode4kDCI2398:
+      case bmdMode4kDCI24:
+        fps = 24;
+        break;
+      case bmdModePAL:
+      case bmdModeHD1080p25:
+      case bmdModeHD1080i50:
+      case bmdMode2k25:
+      case bmdMode2kDCI25:
+      case bmdMode4K2160p25:
+      case bmdMode4kDCI25:
+        fps = 25;
+        break;
+      case bmdModeNTSC:
+      case bmdModeNTSC2398: // 3:2 pulldown applied on card
+      case bmdModeHD1080p30:
+      case bmdModeHD1080p2997:
+      case bmdMode4K2160p2997:
+      case bmdMode4K2160p30:
+        fps = 30;
+        break;
+      case bmdModePALp:
+      case bmdModeHD720p50:
+      case bmdModeHD1080p50:
+      case bmdMode4K2160p50:
+        fps = 50;
+        break;
+      case bmdModeNTSCp:
+      case bmdModeHD720p5994:
+      case bmdModeHD720p60:
+      case bmdModeHD1080i5994:
+      case bmdModeHD1080i6000:
+      case bmdModeHD1080p5994:
+      case bmdModeHD1080p6000:
+      case bmdMode4K2160p5994:
+      case bmdMode4K2160p60:
+        fps = 60;
+        break;
+      default:
+        REJECT_ERROR_RETURN("Unrecognised mode for establishing timecode FPS.",
+          MACADAM_INVALID_ARGS);
+    }
+    hresult = parseTimecode(fps, tcstr, &c->timecode);
+    if (hresult != S_OK) {
+      c->timecode = nullptr;
+      REJECT_ERROR_RETURN("Incorrectly formatted timecode. Should be HH:MM:SS:FF.f or HH:MM:SS;FF etc..",
+        MACADAM_INVALID_ARGS);
+    }
+  }
+
   c->status = napi_create_string_utf8(env, "CreatePlayback", NAPI_AUTO_LENGTH, &resourceName);
   REJECT_RETURN;
   c->status = napi_create_async_work(env, NULL, resourceName, playbackExecute,
@@ -874,23 +995,6 @@ void displayFrameExecute(napi_env env, void* data) {
   uint32_t sampleFramesWritten;
   HRESULT hresult;
 
-  //void* testBytes;
-  //c->GetBytes(&testBytes);
-  //printf("Test bytes %p and pixel format %i=%i.\n", testBytes, c->GetPixelFormat(), bmdFormat10BitYUV);
-
-  /* IDeckLinkMutableVideoFrame* frame;
-  hresult = c->deckLinkOutput->CreateVideoFrame(c->width, c->height, c->rowBytes,
-    c->pixelFormat, bmdFrameFlagDefault, &frame);
-  if (hresult != S_OK) {
-    printf("Problem creating frame.\n");
-  }
-  void* frameBytes;
-  frame->GetBytes(&frameBytes);
-  memcpy(frameBytes, c->data, c->dataSize); */
-
-  //printf("Some data %02x %02x %02x %02x\n", ((uint8_t*) testBytes)[0],
-    // ((uint8_t*) testBytes)[1], ((uint8_t*) testBytes)[2], ((uint8_t*) testBytes)[3]);
-
   // This call may block - make sure thread pool is large enough
   hresult = c->deckLinkOutput->DisplayVideoFrameSync(c);
   switch (hresult) {
@@ -940,6 +1044,10 @@ void displayFrameComplete(napi_env env, napi_status asyncStatus, void* data) {
   if (c->audioRef != nullptr) {
     c->status = napi_delete_reference(env, c->audioRef);
     REJECT_STATUS;
+  }
+
+  if (c->tc != nullptr) {
+    c->tc->Update();
   }
 
   napi_status status;
@@ -1018,6 +1126,9 @@ napi_value displayFrame(napi_env env, napi_callback_info info) {
     pbts->deckLinkOutput->EndAudioPreroll();
   }
 
+  if (pbts->timecode != nullptr) {
+    c->tc = pbts->timecode;
+  }
 
   c->status = napi_create_string_utf8(env, "DisplayFrame", NAPI_AUTO_LENGTH, &resourceName);
   REJECT_RETURN;
@@ -1664,7 +1775,7 @@ napi_value setLevel(napi_env env, napi_callback_info info) {
   return value;
 }
 
-napi_value resetTimecode(napi_env env, napi_callback_info info) {
+napi_value setTimecode(napi_env env, napi_callback_info info) {
   napi_status status;
   napi_value result, playback, param;
   napi_valuetype type;
@@ -1686,11 +1797,11 @@ napi_value resetTimecode(napi_env env, napi_callback_info info) {
   if (status == napi_invalid_arg) NAPI_THROW_ERROR("Already stopped.");
   CHECK_STATUS;
 
-  if (argc < 1) NAPI_THROW_ERROR("Reset timecode must be provided with at least one argument, a string value.");
+  if (argc < 1) NAPI_THROW_ERROR("Setting timecode must be provided with at least one argument, a string value.");
 
   status = napi_typeof(env, argv[0], &type);
   CHECK_STATUS;
-  if (type != napi_string) NAPI_THROW_ERROR("Reset timecode must be provided with a string value.");
+  if (type != napi_string) NAPI_THROW_ERROR("Setting timecode must be provided with a string value.");
 
   status = napi_get_value_string_utf8(env, argv[0], tcstr, 13, &tclen);
   CHECK_STATUS;
@@ -1700,12 +1811,103 @@ napi_value resetTimecode(napi_env env, napi_callback_info info) {
   if (pbts->timecode != nullptr) { delete pbts->timecode; }
   pbts->timecode = timecode;
 
-  pbts->timecode->formatTimecodeString(&ftc, true);
+  pbts->timecode->formatTimecodeString(&ftc, pbts->timecode->fps > 30);
   status = napi_create_string_utf8(env, ftc, NAPI_AUTO_LENGTH, &result);
   CHECK_STATUS;
   status = napi_set_named_property(env, playback, "timecode", result);
   CHECK_STATUS;
 
+  return result;
+}
+
+napi_value getTimecode(napi_env env, napi_callback_info info) {
+  napi_status status;
+  napi_value result, playback, param;
+  playbackThreadsafe* pbts;
+  HRESULT hresult;
+  const char* ftc;
+
+  size_t argc = 0;
+  status = napi_get_cb_info(env, info, &argc, nullptr, &playback, nullptr);
+  CHECK_STATUS;
+
+  status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
+  CHECK_STATUS;
+  status = napi_get_value_external(env, param, (void**) &pbts);
+  if (status == napi_invalid_arg) NAPI_THROW_ERROR("Already stopped.");
+  CHECK_STATUS;
+
+  if (pbts->timecode == nullptr) {
+    status = napi_get_undefined(env, &result);
+    CHECK_STATUS;
+    return result;
+  }
+
+  hresult = pbts->timecode->formatTimecodeString(&ftc, pbts->timecode->fps > 30);
+  if (hresult != S_OK) NAPI_THROW_ERROR("Error parsing timecode.");
+  status = napi_create_string_utf8(env, ftc, NAPI_AUTO_LENGTH, &result);
+  CHECK_STATUS;
+  return result;
+}
+
+napi_value setTimecodeUserbits(napi_env env, napi_callback_info info) {
+  napi_status status;
+  napi_value result, playback, param;
+  napi_valuetype type;
+  playbackThreadsafe* pbts;
+  HRESULT hresult;
+  BMDTimecodeUserBits userBits;
+
+  size_t argc = 1;
+  napi_value argv[1];
+  status = napi_get_cb_info(env, info, &argc, argv, &playback, nullptr);
+  CHECK_STATUS;
+
+  status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
+  CHECK_STATUS;
+  status = napi_get_value_external(env, param, (void**) &pbts);
+  if (status == napi_invalid_arg) NAPI_THROW_ERROR("Already stopped.");
+  CHECK_STATUS;
+
+  if (argc < 1) NAPI_THROW_ERROR("Setting timecode user bits must be provided with at least one value, an integer bit field.");
+
+  status = napi_typeof(env, argv[0], &type);
+  CHECK_STATUS;
+  if (type != napi_number) NAPI_THROW_ERROR("Setting timecode user bits must be provided with an 32-bit integer value.");
+
+  status = napi_get_value_uint32(env, argv[0], &userBits);
+  CHECK_STATUS;
+  hresult = pbts->timecode->SetTimecodeUserBits(userBits);
+  if (hresult != S_OK) NAPI_THROW_ERROR("Failed to set user bits.");
+
+  status = napi_get_undefined(env, &result);
+  CHECK_STATUS;
+  return result;
+}
+
+napi_value getTimcodeUserbits(napi_env env, napi_callback_info info) {
+  napi_status status;
+  napi_value result, playback, param;
+  playbackThreadsafe* pbts;
+  HRESULT hresult;
+  BMDTimecodeUserBits userBits;
+
+  size_t argc = 0;
+  napi_value argv[1];
+  status = napi_get_cb_info(env, info, &argc, argv, &playback, nullptr);
+  CHECK_STATUS;
+
+  status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
+  CHECK_STATUS;
+  status = napi_get_value_external(env, param, (void**) &pbts);
+  if (status == napi_invalid_arg) NAPI_THROW_ERROR("Already stopped.");
+  CHECK_STATUS;
+
+  hresult = pbts->timecode->GetTimecodeUserBits(&userBits);
+  if (hresult != S_OK) NAPI_THROW_ERROR("Cannot retrieve timecode user bits.");
+
+  status = napi_create_uint32(env, userBits, &result);
+  CHECK_STATUS;
   return result;
 }
 

@@ -74,7 +74,10 @@ napi_value bufferedAudioSampleFrameCount(napi_env env, napi_callback_info info);
 napi_value rampUp(napi_env env, napi_callback_info info);
 napi_value rampDown(napi_env env, napi_callback_info info);
 napi_value setLevel(napi_env env, napi_callback_info info);
-napi_value resetTimecode(napi_env env, napi_callback_info info);
+napi_value setTimecode(napi_env env, napi_callback_info info);
+napi_value getTimecode(napi_env env, napi_callback_info info);
+napi_value getTimecodeUserbits(napi_env env, napi_callback_info info);
+napi_value setTimecodeUserbits(napi_env env, napi_callback_info info);
 
 struct playbackCarrier : carrier {
   IDeckLinkOutput* deckLinkOutput = nullptr;
@@ -112,6 +115,7 @@ struct macadamFrame : IDeckLinkVideoFrame {
   BMDTimeValue completionTimestamp;
   IDeckLinkOutput* deckLinkOutput = nullptr;
   napi_ref sourceBufferRef = nullptr;
+  macadamTimecode* tc = nullptr;
   BMDOutputFrameCompletionResult result;
   long GetWidth (void) { return width; };
   long GetHeight (void) { return height; };
@@ -119,7 +123,11 @@ struct macadamFrame : IDeckLinkVideoFrame {
   BMDPixelFormat GetPixelFormat (void) { return pixelFormat; };
   BMDFrameFlags GetFlags (void) { /* printf("Get flags called.\n"); */ return bmdVideoOutputRP188; };
   HRESULT GetTimecode (/* in */BMDTimecodeFormat format, /* out */ IDeckLinkTimecode **timecode) {
-    /* printf("Get timecode called %p!\n", *timecode); */
+    printf("Get timecode called %p!\n", tc);
+    if (tc != nullptr) {
+      *timecode = tc;
+      return S_OK;
+    }
     return S_FALSE;
   };
   HRESULT GetAncillaryData (/* out */ IDeckLinkVideoFrameAncillary **ancillary) {
