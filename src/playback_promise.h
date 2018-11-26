@@ -74,6 +74,7 @@ napi_value bufferedAudioSampleFrameCount(napi_env env, napi_callback_info info);
 napi_value rampUp(napi_env env, napi_callback_info info);
 napi_value rampDown(napi_env env, napi_callback_info info);
 napi_value setLevel(napi_env env, napi_callback_info info);
+napi_value resetTimecode(napi_env env, napi_callback_info info);
 
 struct playbackCarrier : carrier {
   IDeckLinkOutput* deckLinkOutput = nullptr;
@@ -89,10 +90,12 @@ struct playbackCarrier : carrier {
   bool enableKeying = false;
   bool isExternal = false;
   uint8_t keyLevel = 255;
+  macadamTimecode* timecode = nullptr;
   ~playbackCarrier() {
     if (deckLinkOutput != nullptr) { deckLinkOutput->Release(); }
     if (deckLinkKeyer != nullptr) { deckLinkKeyer->Release(); }
     if (selectedDisplayMode != nullptr) { selectedDisplayMode->Release(); }
+    if (timecode != nullptr) { delete timecode; }
   }
 };
 
@@ -171,10 +174,12 @@ struct playbackThreadsafe : IDeckLinkVideoOutputCallback {
   bool enableKeying = false;
   bool isExternal = false;
   uint8_t keyLevel = 255;
+  macadamTimecode* timecode = nullptr;
   ~playbackThreadsafe() {
     if (deckLinkOutput != nullptr) { deckLinkOutput->Release(); }
     if (deckLinkKeyer != nullptr) { deckLinkKeyer->Release(); }
     if (displayMode != nullptr) { displayMode->Release(); }
+    if (timecode == nullptr) { delete timecode; }
   }
 };
 

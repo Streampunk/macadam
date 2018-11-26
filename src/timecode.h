@@ -44,11 +44,13 @@
 #define TIMECODE_H
 
 #include <cstring>
+#include <regex>
 #include "macadam_util.h"
 #include "node_api.h"
 #include "DeckLinkAPI.h"
 
 napi_value timecodeTest(napi_env env, napi_callback_info info);
+
 
 struct frameTable {
   uint32_t dropFpMin;
@@ -103,7 +105,7 @@ struct macadamTimecode : IDeckLinkTimecode {
   #else
   HRESULT GetString (/* out */ const char** timecode);
   #endif
-  HRESULT formatTimecodeString(const char** timecode);
+  HRESULT formatTimecodeString(const char** timecode, bool fieldFlag = false);
   BMDTimecodeFlags GetFlags (void);
   HRESULT GetTimecodeUserBits (/* out */ BMDTimecodeUserBits *userBits);
   HRESULT SetTimecodeUserBits (BMDTimecodeUserBits userBits);
@@ -115,5 +117,7 @@ struct macadamTimecode : IDeckLinkTimecode {
     if (frameTab != nullptr) { delete frameTab; }
   }
 };
+
+HRESULT parseTimecode(uint16_t fps, const char* tcstr, macadamTimecode** timecode);
 
 #endif // TIMECODE_H

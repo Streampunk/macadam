@@ -1664,6 +1664,51 @@ napi_value setLevel(napi_env env, napi_callback_info info) {
   return value;
 }
 
+napi_value resetTimecode(napi_env env, napi_callback_info info) {
+  napi_status status;
+  napi_value result, playback, param;
+  napi_valuetype type;
+  macadamTimecode* timecode;
+  playbackThreadsafe* pbts;
+  HRESULT hresult;
+  char tcstr[13];
+  const char* ftc;
+  size_t tclen;
+
+  size_t argc = 1;
+  napi_value argv[1];
+  status = napi_get_cb_info(env, info, &argc, argv, &playback, nullptr);
+  CHECK_STATUS;
+
+  status = napi_get_named_property(env, playback, "deckLinkOutput", &param);
+  CHECK_STATUS;
+  status = napi_get_value_external(env, param, (void**) &pbts);
+  if (status == napi_invalid_arg) NAPI_THROW_ERROR("Already stopped.");
+  CHECK_STATUS;
+
+  if (argc < 1) NAPI_THROW_ERROR("Reset timecode must be provided with at least one argument, a string value.");
+
+  status = napi_typeof(env, argv[0], &type);
+  CHECK_STATUS;
+  if (type != napi_string) NAPI_THROW_ERROR("Reset timecode must be provided with a string value.");
+
+  status = napi_get_value_string_utf8(env, argv[0], tcstr, 13, &tclen);
+  CHECK_STATUS;
+  hresult = parseTimecode(pbts->timeScale / 1000, tcstr, &timecode);
+  if (hresult != S_OK) NAPI_THROW_ERROR("Error parsing timecode.");
+
+  if (pbts->timecode != nullptr) { delete pbts->timecode; }
+  pbts->timecode = timecode;
+
+  pbts->timecode->formatTimecodeString(&ftc, true);
+  status = napi_create_string_utf8(env, ftc, NAPI_AUTO_LENGTH, &result);
+  CHECK_STATUS;
+  status = napi_set_named_property(env, playback, "timecode", result);
+  CHECK_STATUS;
+
+  return result;
+}
+
 void playbackTsFnFinalize(napi_env env, void* data, void* hint) {
   printf("Threadsafe playback finalizer called with data %p and hint %p.\n", data, hint);
   playbackThreadsafe* pbts = (playbackThreadsafe*) hint;

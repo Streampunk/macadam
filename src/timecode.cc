@@ -157,7 +157,7 @@ HRESULT macadamTimecode::SetComponents (
   return S_OK;
 }
 
-HRESULT macadamTimecode::formatTimecodeString(const char** timecode) {
+HRESULT macadamTimecode::formatTimecodeString(const char** timecode, bool fieldFlag) {
   uint8_t hours;
   uint8_t minutes;
   uint8_t seconds;
@@ -166,10 +166,20 @@ HRESULT macadamTimecode::formatTimecodeString(const char** timecode) {
 
   hresult = GetComponents(&hours, &minutes, &seconds, &frames);
 
-  char* tcstr = (char *) malloc(12 * sizeof(char));
-  sprintf(tcstr, "%2i:%2i:%2i%c%2i", hours, minutes, seconds,
-    ((flags & bmdTimecodeIsDropFrame) != 0) ? ';' : ':', frames);
-  tcstr[11] = '\0';
+  char* tcstr;
+  if (fieldFlag) {
+    tcstr = (char *) malloc(14 * sizeof(char));
+    sprintf(tcstr, "%2i:%2i:%2i%c%2i%s", hours, minutes, seconds,
+      ((flags & bmdTimecodeIsDropFrame) != 0) ? ';' : ':', frames,
+      ((flags & bmdTimecodeFieldMark) == 0) ? ".0" : ".1");
+    tcstr[13] = '\0';
+  }
+  else {
+    tcstr = (char *) malloc(12 * sizeof(char));
+    sprintf(tcstr, "%2i:%2i:%2i%c%2i", hours, minutes, seconds,
+      ((flags & bmdTimecodeIsDropFrame) != 0) ? ';' : ':', frames);
+    tcstr[11] = '\0';
+  }
   *timecode = (const char*) tcstr;
 
   return hresult;
@@ -228,6 +238,32 @@ void macadamTimecode::Update(void) {
     flags = flags & ~bmdTimecodeFieldMark;
     if ((value % 2) == 1) flags = flags | bmdTimecodeFieldMark;
   }
+}
+
+HRESULT parseTimecode(uint16_t fps, const char* tcstr, macadamTimecode** timecode) {
+  std::regex tcRe(
+    "([0-9][0-9])[:;\\.,]([0-5][0-9])[:;\\.]([0-5][0-9])([:;\\.,])([0-5][0-9])(\\.[01])?",
+    std::regex_constants::ECMAScript);
+  std::cmatch match;
+
+  std::regex_match(tcstr, match, tcRe);
+  if ((match.empty() == true) || (match.size() < 6)) {
+    return E_INVALIDARG;
+  }
+
+  printf("Size is %i.\n", match.str(6).size());
+
+  *timecode = new macadamTimecode(
+    fps,
+    (match.str(4).compare(";") == 0) || (match.str(4).compare(",") == 0),
+    (uint8_t) std::stoi(match.str(1)),
+    (uint8_t) std::stoi(match.str(2)),
+    (uint8_t) std::stoi(match.str(3)),
+    (uint8_t) std::stoi(match.str(5)),
+    (match.str(6).size() == 0) ? 0 : std::stoi(match.str(6).substr(1))
+  );
+
+  return S_OK;
 }
 
 napi_value timecodeTest(napi_env env, napi_callback_info info) {
@@ -315,6 +351,16 @@ napi_value timecodeTest(napi_env env, napi_callback_info info) {
   pass = pass && (tc != nullptr);
   tc->formatTimecodeString(&tcstr);
   pass = pass && (strcmp(tcstr, "10:11:12:13") == 0); // Zero is no difference
+  delete tc;
+
+  printf("Parse result %i\n", parseTimecode(30, "10:11:12:13", &tc));
+  tc->formatTimecodeString(&tcstr, false);
+  printf("Returned timecode is %s %i\n", tcstr, tc->GetFlags() & bmdTimecodeFieldMark);
+  delete tc;
+
+  printf("Parse result %i\n", parseTimecode(60, "10:11:12;13.1", &tc));
+  tc->formatTimecodeString(&tcstr);
+  printf("Returned timecode is %s %i\n", tcstr, tc->GetFlags() & bmdTimecodeFieldMark );
   delete tc;
 
   status = napi_get_boolean(env, pass, &result);
