@@ -464,6 +464,7 @@ void captureComplete(napi_env env, napi_status asyncStatus, void* data) {
   c->selectedDisplayMode = nullptr;
   crts->timeScale = frameRateScale;
   crts->pixelFormat = c->requestedPixelFormat;
+  crts->roughFps = (uint16_t) (frameRateScale / frameRateDuration); // Used for timecode formatting
   crts->channels = c->channels;
   if (c->channels > 0) {
     crts->sampleRate = c->requestedSampleRate;
@@ -657,6 +658,7 @@ void frameResolver(napi_env env, napi_value jsCb, void* context, void* data) {
   BMDTimeValue frameTime;
   BMDTimeValue frameDuration;
   BMDFrameFlags videoFlags;
+  BMDTimecodeUserBits userBits;
   int32_t rowBytes, height, sampleFrameCount;
   int64_t externalMemory;
   void* bytes;
@@ -774,6 +776,9 @@ void frameResolver(napi_env env, napi_value jsCb, void* context, void* data) {
         hresult = timecode->GetString(&timecodeBSTR);
         if (hresult == S_OK) {
           _bstr_t timecodeString(timecodeBSTR, false);
+          if (crts->roughFps > 30) {
+            timecodeString += ((timecode->GetFlags() & bmdTimecodeFieldMark) == 0) ? ".0" : ".1";
+          }
           c->status = napi_create_string_utf8(env, (char*) timecodeString, NAPI_AUTO_LENGTH, &param);
           REJECT_BAIL;
         }
@@ -784,20 +789,42 @@ void frameResolver(napi_env env, napi_value jsCb, void* context, void* data) {
           char timecodeString[64];
           CFStringGetCString(timecodeCFString, timecodeString, sizeof(timecodeString), kCFStringEncodingMacRoman);
           CFRelease(timecodeCFString);
+          if (crts->roughFps > 30) {
+            timecodeString[11] = '.';
+            timecodeString[12] = ((timecode->GetFlags() & bmdTimecodeFieldMark) == 0) ? '0' : '1';
+            timecodeString[13] = '\0';
+          }
           c->status = napi_create_string_utf8(env, timecodeString, NAPI_AUTO_LENGTH, &param);
           REJECT_BAIL;
         }
         #else
-        char* timcodeString;
+        char timcodeString[14];
         hresult = timecode->GetString((const char **) &timcodeString);
         if (hresult == S_OK) {
+          if (crts->roughFps > 30) {
+            timecodeString[11] = '.';
+            timecodeString[12] = ((timecode->GetFlags() & bmdTimecodeFieldMark) == 0) ? '0' : '1';
+            timecodeString[13] = '\0';
+          }
           c->status = napi_create_string_utf8(env, timcodeString, NAPI_AUTO_LENGTH, &param);
           free(timcodeString);
-          REJECT_STATUS;
+          REJECT_BAIL;
         }
         #endif
 
         c->status = napi_set_named_property(env, obj, "timecode", param);
+        REJECT_BAIL;
+
+        hresult = timecode->GetTimecodeUserBits(&userBits);
+        if (hresult == S_OK) {
+          c->status = napi_create_uint32(env, userBits, &param);
+          REJECT_BAIL;
+        }
+        else {
+          c->status = napi_get_undefined(env, &param);
+          REJECT_BAIL;
+        }
+        c->status = napi_set_named_property(env, obj, "userbits", param);
         REJECT_BAIL;
         break;
     } // switch GetTimecode

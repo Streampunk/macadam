@@ -97,6 +97,7 @@ struct captureThreadsafe : IDeckLinkInputCallback {
   IDeckLinkDisplayMode* displayMode = nullptr;
   BMDPixelFormat pixelFormat;
   BMDTimeScale timeScale;
+  uint16_t roughFps = 25; // Used for timecode formatting
   BMDAudioSampleRate sampleRate;
   BMDAudioSampleType sampleType;
   uint32_t sampleByteFactor;

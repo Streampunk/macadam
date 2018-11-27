@@ -40,34 +40,6 @@
  ** -LICENSE-END-
  */
 
-/* API sketch
-
-let p = await mac.playback({
-
-});
-
-// Scheduled playback
-
-p.scheduleVideo(data, time[o+0]);
-p.scheduleAudio(data, time[o+0]);
-p.scheduleVideo(data, time[0+1]);
-p.scheduleAudio(data, time[o+1]);
-p.scheduleVideo(data, time[o+2]);
-p.scheduleAudio(data, time[o+2]);
-
-lwt c = 0;
-while (more) {
-  let status = await p.played(time[c]);
-  p.scheduleVideo(data, time[3+c]);
-  p.scheduleAudio(data, time[3+c++]);
-}
-
-// Sync playback API
-
-let f = await p.play(data);
-
-*/
-
 #include "playback_promise.h"
 
 HRESULT playbackThreadsafe::ScheduledFrameCompleted(
@@ -85,6 +57,10 @@ HRESULT playbackThreadsafe::ScheduledFrameCompleted(
   frame->deckLinkOutput->GetFrameCompletionReferenceTimestamp(frame, frame->timeScale,
     &frame->completionTimestamp);
   frame->result = result;
+
+  if (frame->tc != nullptr) {
+    frame->tc->Update();
+  }
 
   hangover = napi_call_threadsafe_function(tsFn, frame, napi_tsfn_nonblocking);
   if (hangover != napi_ok) {
@@ -119,6 +95,7 @@ void playbackExecute(napi_env env, void* data) {
   IDeckLink* deckLink;
   IDeckLinkOutput* deckLinkOutput;
   IDeckLinkKeyer* deckLinkKeyer = nullptr;
+  BMDVideoOutputFlags outputFlags = bmdVideoOutputFlagDefault;
   HRESULT hresult;
 
   #ifdef WIN32
@@ -185,8 +162,22 @@ void playbackExecute(napi_env env, void* data) {
       return;
   }
 
-  hresult = deckLinkOutput->EnableVideoOutput(
-    c->requestedDisplayMode, bmdVideoOutputRP188);
+  if (c->timecode != nullptr) {
+    switch (c->selectedDisplayMode->GetDisplayMode()) {
+      case bmdModePAL:
+      case bmdModePALp:
+      case bmdModeNTSC:
+      case bmdModeNTSCp:
+      case bmdModeNTSC2398:
+        outputFlags = outputFlags | bmdVideoOutputVITC;
+        break;
+      default:
+        outputFlags = outputFlags | bmdVideoOutputRP188;
+        break;
+    }
+  }
+
+  hresult = deckLinkOutput->EnableVideoOutput(c->requestedDisplayMode, outputFlags);
   switch (hresult) {
     case E_INVALIDARG: // Should have been picked up by DoesSupportVideoMode
       c->status = MACADAM_INVALID_ARGS;
@@ -1874,7 +1865,7 @@ napi_value setTimecodeUserbits(napi_env env, napi_callback_info info) {
   return result;
 }
 
-napi_value getTimcodeUserbits(napi_env env, napi_callback_info info) {
+napi_value getTimecodeUserbits(napi_env env, napi_callback_info info) {
   napi_status status;
   napi_value result, playback, param;
   playbackThreadsafe* pbts;

@@ -251,8 +251,6 @@ HRESULT parseTimecode(uint16_t fps, const char* tcstr, macadamTimecode** timecod
     return E_INVALIDARG;
   }
 
-  printf("Size is %i.\n", match.str(6).size());
-
   *timecode = new macadamTimecode(
     fps,
     (match.str(4).compare(";") == 0) || (match.str(4).compare(",") == 0),
@@ -353,14 +351,20 @@ napi_value timecodeTest(napi_env env, napi_callback_info info) {
   pass = pass && (strcmp(tcstr, "10:11:12:13") == 0); // Zero is no difference
   delete tc;
 
-  printf("Parse result %i\n", parseTimecode(30, "10:11:12:13", &tc));
-  tc->formatTimecodeString(&tcstr, false);
-  printf("Returned timecode is %s %i\n", tcstr, tc->GetFlags() & bmdTimecodeFieldMark);
+  pass = pass && (parseTimecode(30, "10:11:12:13", &tc) == S_OK);
+  pass = pass && (tc != nullptr);
+  tc->GetComponents(&hours, &minutes, &seconds, &frames);
+  pass = pass && (hours == 10) && (minutes == 11) && (seconds == 12) && (frames == 13);
+  pass = pass && ((tc->GetFlags() & bmdTimecodeFieldMark) == 0);
+  pass = pass && ((tc->GetFlags() & bmdTimecodeIsDropFrame) == 0);
   delete tc;
 
-  printf("Parse result %i\n", parseTimecode(60, "10:11:12;13.1", &tc));
-  tc->formatTimecodeString(&tcstr);
-  printf("Returned timecode is %s %i\n", tcstr, tc->GetFlags() & bmdTimecodeFieldMark );
+  pass = pass & (parseTimecode(60, "10:11:12;13.1", &tc) == S_OK);
+  pass = pass && (tc != nullptr);
+  tc->GetComponents(&hours, &minutes, &seconds, &frames);
+  pass = pass && (hours == 10) && (minutes == 11) && (seconds == 12) && (frames == 13);
+  pass = pass && ((tc->GetFlags() & bmdTimecodeFieldMark) != 0);
+  pass = pass && ((tc->GetFlags() & bmdTimecodeIsDropFrame) != 0);
   delete tc;
 
   status = napi_get_boolean(env, pass, &result);
