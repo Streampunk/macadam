@@ -471,23 +471,23 @@ In summary, there are:
 
 ### Timecode
 
-On capture with devices that have timecode support, if timecode is available in the incoming stream then it is also made available values in the resolved `frame` object.
+On capture with devices that have timecode support, timecode is available in the incoming stream as values in the resolved `frame` object.
 
-    frame.video.timecode // a string
+    frame.video.timecode // a string, or 'false' if not available
     frame.video.userBits // a number - C-type `uint32_t`
 
-Non-drop frame timecode is formatted as `HH:MM:SS:FF.f`, where `HH` is the hour, `MM` is the minute, `SS` is the second, `FF` is the frame, or pair of frames for rates above 30fps. The `.f` extension is the optional frame pair indicator, once again only with a value of `.0` for the first frame in a pair and `.1` for the second. If no timecode is available, the value is set to boolean value `false` (not string `'false'`). For drop frame timecode, the format is the same except that the last colon (`:`) is changes to a semi-colon (`;`), as so `HH:MM:SS;FF.f`.
+Non-drop frame timecode is formatted as `HH:MM:SS:FF.f`, where `HH` is the hour, `MM` is the minute, `SS` is the second, `FF` is the frame, or represents a pair of frames for rates above 30fps. The `.f` extension is the optional frame pair indicator, once again only for rates above 30fps. A value of `.0` indicates the first frame in a pair and `.1` for the second. If no timecode is available, the value is set to boolean value `false` (not string `'false'`). For drop frame timecode, the format is the same except that the last colon (`:`) is changes to a semi-colon (`;`), as shown: `HH:MM:SS;FF.f`.
 
-For playout devices that support timecode insertion, to enable timecode output, set the `startTimecode` property on the options object passed to `macadam.playout({ ... })`. The format of the string is the same as for capture. This timecode will be used for the first frame, whether using scheduled of synchronous playback, and then is incremented for each subsequent frame. The timecode's internal frames-per-second is derived from the display mode, as is the timecode type (VITC/SMPTE RP188).
+For playout devices that support timecode insertion, to enable timecode output, set the `startTimecode` property on the options object passed to `macadam.playout({ ... })`. The format of the string is the same as for capture. This timecode will be used for the first frame, whether using scheduled or synchronous playback, and is then incremented for each subsequent frame. The timecode's internal frames-per-second is derived from the display mode, as is the timecode type (VITC/SMPTE RP188).
 
 Make sure to use a colon to set non-drop frame and a semi-colon to set drop frame. Get this wrong and timecode output is suppressed.
 
 The playout object has four utility methods for managing timecode:
 
 * `playout.getTimecode()` - gets the current timecode value - the one to be used for the next frame to be output - as a string.
-* `playout.setTimecode(`_timecode_`)` - sets a new timecode value based on the given string to be used from the next frame onwards.
-* `playout.getTimecodeUserbits()` - gets the current timecode user bits represented as a 32-bit integer that are to be sent with the next frame.
-* `playout.setTimecodeUserbits(`_userbits_`)` - sets the timecode user bits field from a 32-bit integer that will be sent with the next frame.
+* `playout.setTimecode(`_timecode_`)` - sets a new timecode value based on the given string to be used. Used from the next frame onwards.
+* `playout.getTimecodeUserbits()` - gets the current timecode user bits represented as a 32-bit integer. These are the user bits to be sent with the next frame.
+* `playout.setTimecodeUserbits(`_userbits_`)` - sets the timecode user bits field from a 32-bit integer. These become the user bits to be sent with the next frame.
 
 ## Status, support and further development
 
