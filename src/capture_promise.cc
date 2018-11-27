@@ -807,7 +807,6 @@ void frameResolver(napi_env env, napi_value jsCb, void* context, void* data) {
             timecodeString[13] = '\0';
           }
           c->status = napi_create_string_utf8(env, timecodeString, NAPI_AUTO_LENGTH, &param);
-          free(timecodeString);
           REJECT_BAIL;
         }
         #endif

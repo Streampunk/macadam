@@ -66,6 +66,9 @@ BMDTimecodeBCD macadamTimecode::GetBCD() {
   HRESULT hresult;
 
   hresult = GetComponents(&hours, &minutes, &seconds, &frames);
+  if (hresult != S_OK) {
+    return (BMDTimecodeBCD) 0;
+  }
 
   bcdtc = ((hours / 10) << 28) | ((hours % 10) << 24) |
     ((minutes / 10) << 20) | ((minutes % 10) << 16) |
@@ -166,6 +169,11 @@ HRESULT macadamTimecode::formatTimecodeString(const char** timecode, bool fieldF
 
   hresult = GetComponents(&hours, &minutes, &seconds, &frames);
 
+  hours = hours & 0x3f;
+  minutes = minutes & 0x3f;
+  seconds = seconds & 0x3f;
+  frames = frames & 0x3f;
+  
   char* tcstr;
   if (fieldFlag) {
     tcstr = (char *) malloc(14 * sizeof(char));
