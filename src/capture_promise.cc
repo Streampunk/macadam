@@ -798,16 +798,16 @@ void frameResolver(napi_env env, napi_value jsCb, void* context, void* data) {
           REJECT_BAIL;
         }
         #else
-        char timcodeString[14];
-        hresult = timecode->GetString((const char **) &timcodeString);
+        char timecodeString[14];
+        hresult = timecode->GetString((const char **) &timecodeString);
         if (hresult == S_OK) {
           if (crts->roughFps > 30) {
             timecodeString[11] = '.';
             timecodeString[12] = ((timecode->GetFlags() & bmdTimecodeFieldMark) == 0) ? '0' : '1';
             timecodeString[13] = '\0';
           }
-          c->status = napi_create_string_utf8(env, timcodeString, NAPI_AUTO_LENGTH, &param);
-          free(timcodeString);
+          c->status = napi_create_string_utf8(env, timecodeString, NAPI_AUTO_LENGTH, &param);
+          free(timecodeString);
           REJECT_BAIL;
         }
         #endif
