@@ -169,14 +169,14 @@ HRESULT macadamTimecode::formatTimecodeString(const char** timecode, bool fieldF
   char* tcstr;
   if (fieldFlag) {
     tcstr = (char *) malloc(14 * sizeof(char));
-    sprintf(tcstr, "%2i:%2i:%2i%c%2i%s", hours, minutes, seconds,
+    sprintf(tcstr, "%02i:%02i:%02i%c%02i%s", hours, minutes, seconds,
       ((flags & bmdTimecodeIsDropFrame) != 0) ? ';' : ':', frames,
       ((flags & bmdTimecodeFieldMark) == 0) ? ".0" : ".1");
     tcstr[13] = '\0';
   }
   else {
     tcstr = (char *) malloc(12 * sizeof(char));
-    sprintf(tcstr, "%2i:%2i:%2i%c%2i", hours, minutes, seconds,
+    sprintf(tcstr, "%02i:%02i:%02i%c%02i", hours, minutes, seconds,
       ((flags & bmdTimecodeIsDropFrame) != 0) ? ';' : ':', frames);
     tcstr[11] = '\0';
   }
@@ -365,6 +365,47 @@ napi_value timecodeTest(napi_env env, napi_callback_info info) {
   pass = pass && (hours == 10) && (minutes == 11) && (seconds == 12) && (frames == 13);
   pass = pass && ((tc->GetFlags() & bmdTimecodeFieldMark) != 0);
   pass = pass && ((tc->GetFlags() & bmdTimecodeIsDropFrame) != 0);
+  delete tc;
+
+  tc = new macadamTimecode(60, true, 10, 11, 59, 29);
+  pass = pass && (tc != nullptr);
+  tc->GetComponents(&hours, &minutes, &seconds, &frames);
+  pass = pass && (hours == 10) && (minutes == 11) && (seconds == 59) && (frames == 29);
+  pass = pass && ((tc->GetFlags() & bmdTimecodeFieldMark) == 0);
+  tc->Update();
+  tc->GetComponents(&hours, &minutes, &seconds, &frames);
+  pass = pass && (hours == 10) && (minutes == 11) && (seconds == 59) && (frames == 29);
+  pass = pass && ((tc->GetFlags() & bmdTimecodeFieldMark) != 0);
+  tc->Update();
+  tc->GetComponents(&hours, &minutes, &seconds, &frames);
+  pass = pass && (hours == 10) && (minutes == 12) && (seconds == 00) && (frames == 2);
+  pass = pass && ((tc->GetFlags() & bmdTimecodeFieldMark) == 0);
+  tc->Update();
+  tc->GetComponents(&hours, &minutes, &seconds, &frames);
+  pass = pass && (hours == 10) && (minutes == 12) && (seconds == 00) && (frames == 02);
+  pass = pass && ((tc->GetFlags() & bmdTimecodeFieldMark) != 0);
+  delete tc;
+
+  tc = new macadamTimecode(30, true, 10, 11, 59, 29);
+  pass = pass && (tc != nullptr);
+  tc->GetComponents(&hours, &minutes, &seconds, &frames);
+  pass = pass && (hours == 10) && (minutes == 11) && (seconds == 59) && (frames == 29);
+  pass = pass && ((tc->GetFlags() & bmdTimecodeFieldMark) == 0);
+  tc->Update();
+  tc->GetComponents(&hours, &minutes, &seconds, &frames);
+  pass = pass && (hours == 10) && (minutes == 12) && (seconds == 00) && (frames == 2);
+  pass = pass && ((tc->GetFlags() & bmdTimecodeFieldMark) == 0);
+  delete tc;
+
+  tc = new macadamTimecode(30, true, 10, 9, 59, 29);
+  pass = pass && (tc != nullptr);
+  tc->GetComponents(&hours, &minutes, &seconds, &frames);
+  pass = pass && (hours == 10) && (minutes == 9) && (seconds == 59) && (frames == 29);
+  pass = pass && ((tc->GetFlags() & bmdTimecodeFieldMark) == 0);
+  tc->Update();
+  tc->GetComponents(&hours, &minutes, &seconds, &frames);
+  pass = pass && (hours == 10) && (minutes == 10) && (seconds == 00) && (frames == 0);
+  pass = pass && ((tc->GetFlags() & bmdTimecodeFieldMark) == 0);
   delete tc;
 
   status = napi_get_boolean(env, pass, &result);
