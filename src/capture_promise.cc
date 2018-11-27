@@ -42,44 +42,6 @@
 
 #include "capture_promise.h"
 
-/*
-Interface sketch:
-
-let macadam = require('macadam');
-let capture = { await? } macadam.capture({
-  deviceIndex: 0, // default 0
-  displayMode: macamdam.bmdModeHD1080i50, // Default is bmdModeHD1080i50
-  pixelFormat: macadam.bmdFormat10BitYUV, // Default is bmdFormat10BitYUV
-  // Set the following to enable audio, otherwise omit
-  sampleRate: macadam.bmdAudioSampleRate48kHz, // Default is bmdAudioSampleRate48kHz
-  sampleType: bmdAudioSampleType16bitInteger, // Default is bmdAudioSampleType16bitInteger
-  channels: 2 // Default is 2
-});
-
-let frame = await capture.frame();
-
-... where frame is ...
-
-{
-  video: {
-    streamTime: <tbc>,
-    hardwareReferenceTimestamp: <tbc>,
-    width: 1920,
-    height: 1080,
-    rowBytes: 3840,
-    pixelFormat: macadam.bmdFormat8BitYUV,
-    bytes: Buffer < ... >,
-    timecode: '10:11:12:13',
-    // ancillaryData: to follow
-  },
-  audio: { // if present
-    sampleFrameCount: 1920,
-    bytes: Buffer < ... >,
-    packaetTime: <tbc>
-  }
-}
-*/
-
 HRESULT captureThreadsafe::VideoInputFrameArrived(
   IDeckLinkVideoInputFrame *videoFrame,
   IDeckLinkAudioInputPacket *audioPacket) {
@@ -179,6 +141,9 @@ napi_value stopStreams(napi_env env, napi_callback_info info) {
 
   status = napi_set_named_property(env, capture, "deckLinkInput", value);
   CHECK_STATUS;
+
+  crts->deckLinkInput->Release();
+  crts->deckLinkInput = nullptr;
 
   return value;
 }
@@ -798,15 +763,18 @@ void frameResolver(napi_env env, napi_value jsCb, void* context, void* data) {
           REJECT_BAIL;
         }
         #else
-        char timecodeString[14];
+        char* timecodeString;
         hresult = timecode->GetString((const char **) &timecodeString);
+        char tcstr[14];
+        for ( uint32_t x = 0; x < 12 ; x++) tcstr[x] = timecodeString[x];
+        free(timecodeString);
         if (hresult == S_OK) {
           if (crts->roughFps > 30) {
-            timecodeString[11] = '.';
-            timecodeString[12] = ((timecode->GetFlags() & bmdTimecodeFieldMark) == 0) ? '0' : '1';
-            timecodeString[13] = '\0';
+            tcstr[11] = '.';
+            tcstr[12] = ((timecode->GetFlags() & bmdTimecodeFieldMark) == 0) ? '0' : '1';
+            tcstr[13] = '\0';
           }
-          c->status = napi_create_string_utf8(env, timecodeString, NAPI_AUTO_LENGTH, &param);
+          c->status = napi_create_string_utf8(env, tcstr, NAPI_AUTO_LENGTH, &param);
           REJECT_BAIL;
         }
         #endif
@@ -893,7 +861,7 @@ bail:
 }
 
 void captureTsFnFinalize(napi_env env, void* data, void* hint) {
-  printf("Threadsafe capture finalizer called with data %p and hint %p.\n", data, hint);
+  /* printf("Threadsafe capture finalizer called with data %p and hint %p.\n", data, hint);
   captureThreadsafe* cpts = (captureThreadsafe*) hint;
-  delete cpts;
+  delete cpts; */
 }
