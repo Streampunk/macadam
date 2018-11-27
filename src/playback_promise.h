@@ -123,7 +123,6 @@ struct macadamFrame : IDeckLinkVideoFrame {
   BMDPixelFormat GetPixelFormat (void) { return pixelFormat; };
   BMDFrameFlags GetFlags (void) { /* printf("Get flags called.\n"); */ return bmdVideoOutputRP188; };
   HRESULT GetTimecode (/* in */BMDTimecodeFormat format, /* out */ IDeckLinkTimecode **timecode) {
-    printf("Get timecode called %p!\n", tc);
     if (tc != nullptr) {
       *timecode = tc;
       return S_OK;
