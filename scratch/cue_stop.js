@@ -15,16 +15,31 @@
 
 const macadam = require('../index.js');
 
+function timer(t) {
+  console.log(`Waiting ${t}`);
+  return new Promise((f) => {
+    setTimeout(f, t);
+  });
+}
+
 async function run() {
 
   let bmdPlayback = await macadam.playback({
     deviceIndex: 0,
     displayMode: macadam.bmdModeHD1080i50,
-    pixelFormat: macadam.bmdFormat8BitARGB,
-    isExternal: true,
-    enableKeying: true
+    pixelFormat: macadam.bmdFormat10ButYUV,
   });
 
+  await timer(1000);
+  bmdPlayback.stop();
+  await timer(1000);
+  global.gc();
+  bmdPlayback = await macadam.playback({
+    deviceIndex: 0,
+    displayMode: macadam.bmdModeHD720p60,
+    pixelFormat: macadam.bmdFormat10ButYUV,
+  });
+  await timer(1000);
   bmdPlayback.stop();
 }
 
