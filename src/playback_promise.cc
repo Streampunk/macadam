@@ -169,10 +169,10 @@ void playbackExecute(napi_env env, void* data) {
       case bmdModeNTSC:
       case bmdModeNTSCp:
       case bmdModeNTSC2398:
-        outputFlags = outputFlags | bmdVideoOutputVITC;
+        outputFlags = (BMDVideoOutputFlags) (outputFlags | bmdVideoOutputVITC);
         break;
       default:
-        outputFlags = outputFlags | bmdVideoOutputRP188;
+        outputFlags = (BMDVideoOutputFlags) (outputFlags | bmdVideoOutputRP188);
         break;
     }
   }
