@@ -248,6 +248,11 @@ function modeWidth (mode) {
   case macadam.bmdMode2kDCI2398:
   case macadam.bmdMode2kDCI24:
   case macadam.bmdMode2kDCI25:
+  case macadam.bmdMode2kDCI2997:
+  case macadam.bmdMode2kDCI30:
+  case macadam.bmdMode2kDCI50:
+  case macadam.bmdMode2kDCI5994:
+  case macadam.bmdMode2kDCI60:
     return 2048;
   case macadam.bmdMode4K2160p2398:
   case macadam.bmdMode4K2160p24:
@@ -261,7 +266,30 @@ function modeWidth (mode) {
   case macadam.bmdMode4kDCI2398:
   case macadam.bmdMode4kDCI24:
   case macadam.bmdMode4kDCI25:
+  case macadam.bmdMode4kDCI2997:
+  case macadam.bmdMode4kDCI30:
+  case macadam.bmdMode4kDCI50:
+  case macadam.bmdMode4kDCI5994:
+  case macadam.bmdMode4kDCI60:
     return 4096;
+  case macadam.bmdMode8K4320p2398:
+  case macadam.bmdMode8K4320p24:
+  case macadam.bmdMode8K4320p25:
+  case macadam.bmdMode8K4320p2997:
+  case macadam.bmdMode8K4320p30:
+  case macadam.bmdMode8K4320p50:
+  case macadam.bmdMode8K4320p5994:
+  case macadam.bmdMode8K4320p60:
+    return 7680;
+  case macadam.bmdMode8kDCI2398:
+  case macadam.bmdMode8kDCI24:
+  case macadam.bmdMode8kDCI25:
+  case macadam.bmdMode8kDCI2997:
+  case macadam.bmdMode8kDCI30:
+  case macadam.bmdMode8kDCI50:
+  case macadam.bmdMode8kDCI5994:
+  case macadam.bmdMode8kDCI60:
+    return 8192;
   default:
     return 0;
   }
@@ -299,6 +327,11 @@ function modeHeight (mode) {
   case macadam.bmdMode2kDCI2398:
   case macadam.bmdMode2kDCI24:
   case macadam.bmdMode2kDCI25:
+  case macadam.bmdMode2kDCI2997:
+  case macadam.bmdMode2kDCI30:
+  case macadam.bmdMode2kDCI50:
+  case macadam.bmdMode2kDCI5994:
+  case macadam.bmdMode2kDCI60:
     return 1080;
   case macadam.bmdMode4K2160p2398:
   case macadam.bmdMode4K2160p24:
@@ -311,7 +344,29 @@ function modeHeight (mode) {
   case macadam.bmdMode4kDCI2398:
   case macadam.bmdMode4kDCI24:
   case macadam.bmdMode4kDCI25:
+  case macadam.bmdMode4kDCI2997:
+  case macadam.bmdMode4kDCI30:
+  case macadam.bmdMode4kDCI50:
+  case macadam.bmdMode4kDCI5994:
+  case macadam.bmdMode4kDCI60:
     return 2160;
+  case macadam.bmdMode8K4320p2398:
+  case macadam.bmdMode8K4320p24:
+  case macadam.bmdMode8K4320p25:
+  case macadam.bmdMode8K4320p2997:
+  case macadam.bmdMode8K4320p30:
+  case macadam.bmdMode8K4320p50:
+  case macadam.bmdMode8K4320p5994:
+  case macadam.bmdMode8K4320p60:
+  case macadam.bmdMode8kDCI2398:
+  case macadam.bmdMode8kDCI24:
+  case macadam.bmdMode8kDCI25:
+  case macadam.bmdMode8kDCI2997:
+  case macadam.bmdMode8kDCI30:
+  case macadam.bmdMode8kDCI50:
+  case macadam.bmdMode8kDCI5994:
+  case macadam.bmdMode8kDCI60:
+    return 4320;
   default:
     return 0;
   }
@@ -371,6 +426,16 @@ function modeGrainDuration (mode) {
     return [1000, 24000];
   case macadam.bmdMode2kDCI25:
     return [1000, 25000];
+  case macadam.bmdMode2kDCI2997:
+    return [1001, 30000];
+  case macadam.bmdMode2kDCI30:
+    return [1000, 30000];
+  case macadam.bmdMode2kDCI50:
+    return [1000, 50000];
+  case macadam.bmdMode2kDCI5994:
+    return [1001, 60000];
+  case macadam.bmdMode2kDCI60:
+    return [1000, 60000];
   case macadam.bmdMode4K2160p2398:
     return [1001, 24000];
   case macadam.bmdMode4K2160p24:
@@ -393,6 +458,48 @@ function modeGrainDuration (mode) {
     return [1000, 24000];
   case macadam.bmdMode4kDCI25:
     return [1000, 25000];
+  case macadam.bmdMode4KDCI2997:
+    return [1001, 30000];
+  case macadam.bmdMode4KDCI30:
+    return [1000, 30000];
+  case macadam.bmdMode4KDCI50:
+    return [1000, 50000];
+  case macadam.bmdMode4KDCI5994:
+    return [1001, 60000];
+  case macadam.bmdMode4KDCI60:
+    return [1000, 60000];
+  case macadam.bmdMode8K4320p2398:
+    return [1001, 24000];
+  case macadam.bmdMode8K4320p24:
+    return [1000, 24000];
+  case macadam.bmdMode8K4320p25:
+    return [1000, 25000];
+  case macadam.bmdMode8K4320p2997:
+    return [1001, 30000];
+  case macadam.bmdMode8K4320p30:
+    return [1000, 30000];
+  case macadam.bmdMode8K4320p50:
+    return [1000, 50000];
+  case macadam.bmdMode8K4320p5994:
+    return [1001, 60000];
+  case macadam.bmdMode8K4320p60:
+    return [1000, 60000];
+  case macadam.bmdMode8kDCI2398:
+    return [1001, 24000];
+  case macadam.bmdMode8kDCI24:
+    return [1000, 24000];
+  case macadam.bmdMode8kDCI25:
+    return [1000, 25000];
+  case macadam.bmdMode8kDCI2997:
+    return [1001, 30000];
+  case macadam.bmdMode8kDCI30:
+    return [1000, 30000];
+  case macadam.bmdMode8kDCI50:
+    return [1000, 50000];
+  case macadam.bmdMode8kDCI5994:
+    return [1001, 60000];
+  case macadam.bmdMode8kDCI60:
+    return [1000, 60000];
   default:
     return [0, 1];
   }
@@ -402,46 +509,11 @@ function modeInterlace (mode) {
   switch (mode) {
   case macadam.bmdModeNTSC:
   case macadam.bmdModeNTSC2398:
-    return true;
-  case macadam.bmdModeNTSCp:
-    return false;
   case macadam.bmdModePAL:
-    return true;
-  case macadam.bmdModePALp:
-  case macadam.bmdModeHD720p50:
-  case macadam.bmdModeHD720p5994:
-  case macadam.bmdModeHD720p60:
-  case macadam.bmdModeHD1080p2398:
-  case macadam.bmdModeHD1080p24:
-  case macadam.bmdModeHD1080p25:
-  case macadam.bmdModeHD1080p2997:
-  case macadam.bmdModeHD1080p30:
-    return false;
   case macadam.bmdModeHD1080i50:
   case macadam.bmdModeHD1080i5994:
   case macadam.bmdModeHD1080i6000:
     return true;
-  case macadam.bmdModeHD1080p50:
-  case macadam.bmdModeHD1080p5994:
-  case macadam.bmdModeHD1080p6000:
-  case macadam.bmdMode2k2398:
-  case macadam.bmdMode2k24:
-  case macadam.bmdMode2k25:
-  case macadam.bmdMode2kDCI2398:
-  case macadam.bmdMode2kDCI24:
-  case macadam.bmdMode2kDCI25:
-  case macadam.bmdMode4K2160p2398:
-  case macadam.bmdMode4K2160p24:
-  case macadam.bmdMode4K2160p25:
-  case macadam.bmdMode4K2160p2997:
-  case macadam.bmdMode4K2160p30:
-  case macadam.bmdMode4K2160p50:
-  case macadam.bmdMode4K2160p5994:
-  case macadam.bmdMode4K2160p60:
-  case macadam.bmdMode4kDCI2398:
-  case macadam.bmdMode4kDCI24:
-  case macadam.bmdMode4kDCI25:
-    return false;
   default:
     return false;
   }
@@ -614,11 +686,16 @@ var macadam = {
   bmdMode2k2398                   : bmCodeToInt('2k23'),
   bmdMode2k24                     : bmCodeToInt('2k24'),
   bmdMode2k25                     : bmCodeToInt('2k25'),
-  /* DCI Modes (output only) */
+  /* 2k DCI modes */
   bmdMode2kDCI2398                : bmCodeToInt('2d23'),
   bmdMode2kDCI24                  : bmCodeToInt('2d24'),
   bmdMode2kDCI25                  : bmCodeToInt('2d25'),
-  /* 4k Modes */
+  bmdMode2kDCI2997                : bmCodeToInt('2d29'),
+  bmdMode2kDCI30                  : bmCodeToInt('2d30'),
+  bmdMode2kDCI50                  : bmCodeToInt('2d50'),
+  bmdMode2kDCI5994                : bmCodeToInt('2d59'),
+  bmdMode2kDCI60                  : bmCodeToInt('2d60'),
+  /* 4k UHD Modes */
   bmdMode4K2160p2398              : bmCodeToInt('4k23'),
   bmdMode4K2160p24                : bmCodeToInt('4k24'),
   bmdMode4K2160p25                : bmCodeToInt('4k25'),
@@ -627,10 +704,33 @@ var macadam = {
   bmdMode4K2160p50                : bmCodeToInt('4k50'),
   bmdMode4K2160p5994              : bmCodeToInt('4k59'),
   bmdMode4K2160p60                : bmCodeToInt('4k60'),
-  /* DCI Modes (output only) */
+  /* 4k DCI modes  */
   bmdMode4kDCI2398                : bmCodeToInt('4d23'),
   bmdMode4kDCI24                  : bmCodeToInt('4d24'),
   bmdMode4kDCI25                  : bmCodeToInt('4d25'),
+  bmdMode4kDCI2997                : bmCodeToInt('4d29'),
+  bmdMode4kDCI30                  : bmCodeToInt('4d30'),
+  bmdMode4kDCI50                  : bmCodeToInt('4d50'),
+  bmdMode4kDCI5994                : bmCodeToInt('4d59'),
+  bmdMode4kDCI60                  : bmCodeToInt('4d60'),
+  /* 8K UHD Modes */
+  bmdMode8K4320p2398              : bmCodeToInt('8k23'),
+  bmdMode8K4320p24                : bmCodeToInt('8k24'),
+  bmdMode8K4320p25                : bmCodeToInt('8k25'),
+  bmdMode8K4320p2997              : bmCodeToInt('8k29'),
+  bmdMode8K4320p30                : bmCodeToInt('8k30'),
+  bmdMode8K4320p50                : bmCodeToInt('8k50'),
+  bmdMode8K4320p5994              : bmCodeToInt('8k59'),
+  bmdMode8K4320p60                : bmCodeToInt('8k60'),
+  /* 8K DCI Modes */
+  bmdMode8kDCI2398                : bmCodeToInt('8d23'),
+  bmdMode8kDCI24                  : bmCodeToInt('8d24'),
+  bmdMode8kDCI25                  : bmCodeToInt('8d25'),
+  bmdMode8kDCI2997                : bmCodeToInt('8d29'),
+  bmdMode8kDCI30                  : bmCodeToInt('8d30'),
+  bmdMode8kDCI50                  : bmCodeToInt('8d50'),
+  bmdMode8kDCI5994                : bmCodeToInt('8d59'),
+  bmdMode8kDCI60                  : bmCodeToInt('8d60'),
   /* Special Modes */
   bmdModeUnknown                  : bmCodeToInt('iunk'),
   /* Enum BMDFieldDominance - Video field dominance */
