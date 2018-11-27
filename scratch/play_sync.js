@@ -31,7 +31,8 @@ async function run() {
   let frame2 = Buffer.alloc(frame.length, 0xf7);
   let playback = await macadam.playback({
     displayMode: macadam.bmdModeHD720p5994,
-    pixelFormat: macadam.bmdFormat10BitYUV
+    pixelFormat: macadam.bmdFormat10BitYUV,
+    startTimecode: '10:11:12:13.0'
   });
   console.log(playback);
   process.on('SIGINT', () => {
@@ -49,9 +50,11 @@ async function run() {
     await playback.displayFrame(frame2).catch(console.error);
     await timer(16);
   }
-  playback.displayFrame(frame2).catch(console.error);
+  // playback.displayFrame(frame2).catch(console.error);
   playback.stop();
-  playback.displayFrame(frame2).catch(console.error);
+  // playback.displayFrame(frame2).catch(console.error);
+  global.gc();
+  await timer(1000);
 }
 
 run();

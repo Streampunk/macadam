@@ -450,13 +450,13 @@ void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
     }
     c->status = napi_create_string_utf8(env, tcstr, NAPI_AUTO_LENGTH, &param);
     REJECT_STATUS;
-    c->status = napi_set_named_property(env, result, "timecode", param);
+    c->status = napi_set_named_property(env, result, "startTimecode", param);
     REJECT_STATUS;
   }
   else {
     c->status = napi_get_undefined(env, &param);
     REJECT_STATUS;
-    c->status = napi_set_named_property(env, result, "timecode", param);
+    c->status = napi_set_named_property(env, result, "startTimecode", param);
     REJECT_STATUS;
   }
 
@@ -800,7 +800,7 @@ napi_value playback(napi_env env, napi_callback_info info) {
   if (type != napi_undefined) {
     if (type != napi_string) REJECT_ERROR_RETURN(
       "Start timecode must be provided as a string value.", MACADAM_INVALID_ARGS);
-    status = napi_get_value_string_utf8(env, param, tcstr, 13, &tclen);
+    status = napi_get_value_string_utf8(env, param, tcstr, 14, &tclen);
     REJECT_RETURN;
     uint16_t fps = 25;
     switch (c->requestedDisplayMode) {
@@ -1226,6 +1226,10 @@ napi_value schedule(napi_env env, napi_callback_info info) {
   frame->pixelFormat = pbts->pixelFormat;
   frame->timeScale = pbts->timeScale;
   frame->deckLinkOutput = pbts->deckLinkOutput;
+
+  if (pbts->timecode != nullptr) {
+    frame->tc = pbts->timecode;
+  }
 
   hresult = pbts->deckLinkOutput->ScheduleVideoFrame(frame, frame->scheduledTime,
     pbts->frameDuration, pbts->timeScale);
@@ -1762,7 +1766,7 @@ napi_value setTimecode(napi_env env, napi_callback_info info) {
   macadamTimecode* timecode;
   playbackThreadsafe* pbts;
   HRESULT hresult;
-  char tcstr[13];
+  char tcstr[14];
   const char* ftc;
   size_t tclen;
 
@@ -1783,7 +1787,7 @@ napi_value setTimecode(napi_env env, napi_callback_info info) {
   CHECK_STATUS;
   if (type != napi_string) NAPI_THROW_ERROR("Setting timecode must be provided with a string value.");
 
-  status = napi_get_value_string_utf8(env, argv[0], tcstr, 13, &tclen);
+  status = napi_get_value_string_utf8(env, argv[0], tcstr, 14, &tclen);
   CHECK_STATUS;
   hresult = parseTimecode(pbts->timeScale / 1000, tcstr, &timecode);
   if (hresult != S_OK) NAPI_THROW_ERROR("Error parsing timecode.");

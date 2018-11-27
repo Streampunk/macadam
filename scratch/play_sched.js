@@ -35,7 +35,8 @@ async function run() {
   // let frame2 = Buffer.alloc(frame.length, 0x7f);
   let playback = await macadam.playback({
     displayMode: macadam.bmdModeHD1080i50,
-    pixelFormat: macadam.bmdFormat10BitYUV
+    pixelFormat: macadam.bmdFormat10BitYUV,
+    startTimecode: '10:11:12:13'
   });
   console.log(playback);
   process.on('SIGINT', () => {

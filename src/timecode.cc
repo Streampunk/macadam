@@ -74,6 +74,8 @@ BMDTimecodeBCD macadamTimecode::GetBCD() {
     ((minutes / 10) << 20) | ((minutes % 10) << 16) |
     ((seconds / 10) << 12) | ((seconds % 10) << 8) |
     ((frames / 10) << 4) | frames % 10;
+
+  printf("Getting BCD %08x\n", bcdtc);
   return bcdtc;
 }
 
@@ -96,6 +98,7 @@ HRESULT macadamTimecode::GetComponents (
       flags = flags & ~bmdTimecodeFieldMark;
       if ((value % 2) == 1) flags = flags | bmdTimecodeFieldMark;
     }
+    printf("Get components result %i %i %i %i\n", *hours, *minutes, *seconds, *frames);
     return S_OK;
   }
   uint32_t baseTimecode = (fps > 30) ? value / 2 : value;
@@ -128,6 +131,8 @@ HRESULT macadamTimecode::GetComponents (
     flags = flags & ~bmdTimecodeFieldMark;
     if ((value % 2) == 1) flags = flags | bmdTimecodeFieldMark;
   }
+
+  printf("Get components result %i %i %i %i\n", *hours, *minutes, *seconds, *frames);
 
   return S_OK;
 }
@@ -225,11 +230,13 @@ HRESULT macadamTimecode::GetString (/* out */ const char** timecode) {
 #endif
 
 BMDTimecodeFlags macadamTimecode::GetFlags (void) {
+  printf("Returning flags %i\n", flags);
   return flags;
 }
 
 HRESULT macadamTimecode::GetTimecodeUserBits (/* out */ BMDTimecodeUserBits *userBits) {
   *userBits = usrBts;
+  printf("Returning user bits %i\n", *userBits);
   return S_OK;
 }
 
@@ -249,6 +256,7 @@ void macadamTimecode::Update(void) {
 }
 
 HRESULT parseTimecode(uint16_t fps, const char* tcstr, macadamTimecode** timecode) {
+  printf("Parsing string '%s'\n", tcstr);
   std::regex tcRe(
     "([0-9][0-9])[:;\\.,]([0-5][0-9])[:;\\.]([0-5][0-9])([:;\\.,])([0-5][0-9])(\\.[01])?",
     std::regex_constants::ECMAScript);
