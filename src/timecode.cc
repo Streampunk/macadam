@@ -169,11 +169,11 @@ HRESULT macadamTimecode::formatTimecodeString(const char** timecode, bool fieldF
 
   hresult = GetComponents(&hours, &minutes, &seconds, &frames);
 
-  hours = hours & 0x3f;
-  minutes = minutes & 0x3f;
-  seconds = seconds & 0x3f;
-  frames = frames & 0x3f;
-  
+  hours = hours & 0x3fU;
+  minutes = minutes & 0x3fU;
+  seconds = seconds & 0x3fU;
+  frames = frames & 0x3fU;
+
   char* tcstr;
   if (fieldFlag) {
     tcstr = (char *) malloc(14 * sizeof(char));
