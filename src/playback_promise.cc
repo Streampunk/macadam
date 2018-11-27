@@ -626,7 +626,6 @@ void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
 }
 
 napi_value playback(napi_env env, napi_callback_info info) {
-  napi_status status;
   napi_value promise, resourceName, options, param;
   napi_valuetype type;
   bool isArray;
@@ -800,7 +799,7 @@ napi_value playback(napi_env env, napi_callback_info info) {
   if (type != napi_undefined) {
     if (type != napi_string) REJECT_ERROR_RETURN(
       "Start timecode must be provided as a string value.", MACADAM_INVALID_ARGS);
-    status = napi_get_value_string_utf8(env, param, tcstr, 14, &tclen);
+    c->status = napi_get_value_string_utf8(env, param, tcstr, 14, &tclen);
     REJECT_RETURN;
     uint16_t fps = 25;
     switch (c->requestedDisplayMode) {
