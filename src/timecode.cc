@@ -101,7 +101,7 @@ HRESULT macadamTimecode::GetComponents (
   uint32_t majorMinutes = remainingFrames / frameTab->dropFpMin10;
   remainingFrames = remainingFrames % frameTab->dropFpMin10;
 
-  if (remainingFrames < (frameTab->scaledFps * 60)) {
+  if (remainingFrames < (uint32_t) (frameTab->scaledFps * 60)) {
     *minutes = majorMinutes * 10;
     *seconds = remainingFrames / frameTab->scaledFps;
     *frames = remainingFrames % frameTab->scaledFps;
@@ -110,7 +110,7 @@ HRESULT macadamTimecode::GetComponents (
     remainingFrames = remainingFrames - (frameTab->scaledFps * 60);
     *minutes = majorMinutes * 10 + remainingFrames / frameTab->dropFpMin + 1;
     remainingFrames = remainingFrames % frameTab->dropFpMin;
-    if (remainingFrames < (frameTab->scaledFps - 2)) { // Only the first second of a minute is short
+    if (remainingFrames < (uint32_t) (frameTab->scaledFps - 2)) { // Only the first second of a minute is short
       *seconds = 0;
       *frames = remainingFrames + 2;
     }
@@ -191,7 +191,7 @@ HRESULT macadamTimecode::GetString (/* out */ BSTR *timecode) {
   HRESULT hresult;
 
   hresult = formatTimecodeString(&tcstr);
-  bstr_t btcstr(tcstre);
+  _bstr_t btcstr(tcstr);
   *timecode = btcstr;
   return hresult;
 }
@@ -349,6 +349,18 @@ napi_value timecodeTest(napi_env env, napi_callback_info info) {
   pass = pass && (tc != nullptr);
   tc->formatTimecodeString(&tcstr);
   pass = pass && (strcmp(tcstr, "10:11:12:13") == 0); // Zero is no difference
+  delete tc;
+
+  tc = new macadamTimecode(50, false, 10, 11, 12, 13);
+  pass = pass && (tc != nullptr);
+  tc->formatTimecodeString(&tcstr, true);
+  pass = pass && (strcmp(tcstr, "10:11:12:13.0") == 0); // Zero is no difference
+  delete tc;
+
+  tc = new macadamTimecode(50, false, 10, 11, 12, 13, 1);
+  pass = pass && (tc != nullptr);
+  tc->formatTimecodeString(&tcstr, true);
+  pass = pass && (strcmp(tcstr, "10:11:12:13.1") == 0); // Zero is no difference
   delete tc;
 
   pass = pass && (parseTimecode(30, "10:11:12:13", &tc) == S_OK);

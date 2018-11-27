@@ -43,6 +43,13 @@
 #ifndef TIMECODE_H
 #define TIMECODE_H
 
+#ifdef WIN32
+#include <tchar.h>
+#include <conio.h>
+#include <objbase.h>		// Necessary for COM
+#include <comdef.h>
+#endif
+
 #include <cstring>
 #include <regex>
 #include "macadam_util.h"
