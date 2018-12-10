@@ -121,7 +121,7 @@ struct macadamFrame : IDeckLinkVideoFrame {
   long GetHeight (void) { return height; };
   long GetRowBytes (void) { return rowBytes; };
   BMDPixelFormat GetPixelFormat (void) { return pixelFormat; };
-  BMDFrameFlags GetFlags (void) { /* printf("Get flags called.\n"); */ return bmdVideoOutputRP188; };
+  BMDFrameFlags GetFlags (void) { return bmdVideoOutputRP188; };
   HRESULT GetTimecode (/* in */BMDTimecodeFormat format, /* out */ IDeckLinkTimecode **timecode) {
     if (tc != nullptr) {
       *timecode = tc;
@@ -149,9 +149,7 @@ struct displayFrameCarrier : carrier, macadamFrame {
 
 struct scheduleCarrier : carrier {
   BMDTimeValue scheduledTime;
-  ~scheduleCarrier () {
-    // printf("Bye bye schedule carrier.\n");
-  };
+  ~scheduleCarrier () { };
 };
 
 struct playbackThreadsafe : IDeckLinkVideoOutputCallback {

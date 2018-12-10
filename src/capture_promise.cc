@@ -83,7 +83,7 @@ HRESULT captureThreadsafe::VideoInputFormatChanged(
 }
 
 void finalizeCaptureCarrier(napi_env env, void* finalize_data, void* finalize_hint) {
-  printf("Finalizing capture threadsafe.\n");
+  // printf("Finalizing capture threadsafe.\n");
   captureThreadsafe* c = (captureThreadsafe*) finalize_data;
   delete c;
 }
@@ -850,7 +850,7 @@ void frameResolver(napi_env env, napi_value jsCb, void* context, void* data) {
     tidyCarrier(env, c);
   }
   else {
-    printf("No promise to receive frame.\n");
+    printf("DEBUG: No promise to receive frame.\n");
   }
 
 bail:

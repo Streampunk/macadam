@@ -1,8 +1,8 @@
 # Macadam
 
-Prototype bindings to link [Node.js](http://nodejs.org/) and the Blackmagic Desktop Video SDK, enabling asynchronous capture and playback to and from [Blackmagic Design](https://www.blackmagicdesign.com/) devices via a simple Javascript API. Keying is supported where it is available on the device.
+Bindings to link [Node.js](http://nodejs.org/) and the Blackmagic Desktop Video devices, enabling asynchronous capture and playback to and from [Blackmagic Design](https://www.blackmagicdesign.com/) devices via a simple Javascript API. Keying is supported where it is available on the device.
 
-This is prototype software and is not yet suitable for production use. Linux is now a fully supported platform. However, please note that Blackmagic USB3 devices are not supported under Linux.
+Linux, Windows and MacOSX are all supported by this release. Please note that Blackmagic USB3 devices are not supported under Linux.
 
 Why _macadam_? _Tarmacadam_ is the black stuff that magically makes roads, so it seemed appropriate as a name for a steampunk-style Blackmagic binding.
 
@@ -30,7 +30,7 @@ To use macadam, `require` the module. Capture and playback operations are illust
 
 To get the name of the first device connected to the system, use `getFirstDevice()`. If the result is _undefined_ then no Blackmagic devices are connected to the system. Use tools like the _Blackmagic Desktop Video Setup_ utility to track down any issues.
 
-In depth information about the BlackMagic devices currently connected to the system can be found by calling `getDeviceInfo()`.
+In depth information about the Blackmagic devices currently connected to the system can be found by calling `getDeviceInfo()`.
 
 ```javascript
 const macadam = require('macadam');
@@ -143,9 +143,9 @@ The index of a device in this array is used as the `deviceIndex` in calls to cap
 
 ### Device configuration
 
-Device configuration can be carried out either using the _Blackmagic Desktop Video Setup_ utility before running macadam or by using the `getDeviceConfig()` and `setDeviceConfig()` functions.
+Device configuration can be carried out either by using the _Blackmagic Desktop Video Setup_ utility before running macadam, or by using the `getDeviceConfig()` and `setDeviceConfig()` functions.
 
-Use `getDeviceInfo()` to work out the index of the DeckLink device that you would like to configure. To find out the current configuration of that device, call the get function with the device index as an arguemnt (defaults to `0`). For example, for the third device at index `2`:
+Use `getDeviceInfo()` to work out the index of the DeckLink device that you would like to configure. To find out the current configuration of that device, call the get function with the device index as an argument (defaults to `0`). For example, for the third device at index `2`:
 
 ```javascript
 const macadam = require('macadam');
@@ -171,7 +171,7 @@ The returned configuration object has the known configruration parameters of a D
 
 Many more properties are shown as the object contains a list of all the current known properties for all DeckLink hardware.
 
-Some properties are _undefined_ meaning that a call to get the configuration parameter failed for this device. Others are _null_ which means that the configuration parameter is understood but not implemented for this hardware. Other properties include integer and floating point numbers, multi-part flags, strings and enumerations.
+Some properties are _undefined_ meaning that a call to get the configuration parameter failed for this device. Others are _null_ which means that the configuration parameter is understood but not implemented for this hardware. Other properties include values that are integer and floating point numbers, multi-part flags, strings and enumerations.
 
 The enumerations tend to appear as a large integer value, e.g. `videoOutputMode` has value `1853125475`. In this example, the enumeration value is defined as a constant in macadam [index.js](./index.js) called `bmdModeNTSC`. The number is a representation of a four character ASCII string that can be printed using function `intToBMCode()`, for example in the REPL:
 
@@ -183,7 +183,7 @@ The enumerations tend to appear as a large integer value, e.g. `videoOutputMode`
 
 For details of what the configuration parameters are, see the description in the Blackmagic SDK Documentation (section 2.7.1 _DeckLink Configuration ID_, page 226, June 2018 edition). The names have been altered to make them suitable for use as Javascript object properties but the relationship between the SDK enumeration names and Javascript names should be obvious.
 
-Multiple configuration parameters can be set at once. Using the same configuration parameter names as returned by the get request, create an object with property names and values. To specify the device to be configured, add in a `deviceIndex` property. For example, to set _field flicker removal_ to on and _video output idle operation_ to display the last frame (rather than black), try:
+Multiple configuration parameters can be set at one time. Using the same configuration parameter names as returned by the get request, create an object with property names and values. To specify the device to be configured, add in a `deviceIndex` property. For example, to set _field flicker removal_ to on and _video output idle operation_ to display the last frame (rather than black), try:
 
 ```javascript
 macadam.setDeviceConfig({
@@ -279,7 +279,7 @@ For the previous event-based version of playback, please see the description of 
 
 #### Scheduled playback
 
-To playback data using the scheduler, you need to place the frames onto a virtual timeline and then start the scheduled clock. You must keep the queue of frames to be played ahead of the current playback position by at least a couple of frames. The best way to do this is to create a promise that waits for a specific frame to be played and use the promise resolution as a trigger to show the next.
+To playback data using the scheduler, you need to place the frames onto a virtual timeline and then start the scheduler's clock. You must keep the queue of frames to be played ahead of the current playback position by at least a couple of frames. The best way to do this is to create a promise that waits for a specific frame to be played and use the promise resolution as a trigger to show the next one.
 
 Playback starts by creating a playback object inside an `async` function.
 
@@ -418,11 +418,11 @@ Once playback if finished, call `playback.stop()` to release the associated reso
 
 ### Keying
 
-Keying is implemented as an extension of the playback functionality and can be used with both the scheduled and synchronous mode. Keying allows the combination of a provided graphics overlay with a video source, either within the the Blackmagic card (_internal keying_) or by outputting a _key and fill_ signal on two separate SDI outputs (_external keying_).
+Keying is implemented as an extension of the playback functionality and can be used with both the scheduled and synchronous mode. Keying allows the combination of a provided graphics overlay with a video source, either within the Blackmagic card (_internal keying_) or by outputting a _key and fill_ signal on two separate SDI outputs (_external keying_).
 
 Not all Blackmagic devices support keying. Use the `macadam.getDeviceInfo()` call to check the `supportsExternalKeying` and `supportsInternalKeying`. Also, for HD keying support, check `supportsHDKeying`.
 
-Keys must be provided as 8-bit BGRA or ARGB uncompressed images, with the 8-bit alpha channel providing a variable key determining whether the graphic's fill pixel is transparent (`0`) or opaque (`255`). Any conversions required to or from YCbCr are done by the Blackmagic hardware. For internal keying, the pixel format must match that of the expected input. In this mode, the configured pixel format is that of the graphic key and fill (either `bmdFormat8BitARGB` or `bmdFormat8BitBGRA`) but the output format is based on the input format.
+Keys must be provided as 8-bit BGRA or ARGB uncompressed images, with the 8-bit alpha channel providing a variable key defining whether the graphic's fill pixel is transparent (`0`) or opaque (`255`). Any conversions required to or from YCbCr are done by the Blackmagic hardware. For internal keying, the pixel format must match that of the expected input. In this mode, the configured pixel format is that of the graphic key and fill (either `bmdFormat8BitARGB` or `bmdFormat8BitBGRA`) but the output format is based on the input format.
 
 To set up keying, set playback property `enableKeying` to `true`. Use the `isExternal` property to switch on _external keying_ by setting the value to `true` or leave as the default value of `false` for internal keying. You can also set an overall key level, with a range between `0` (fully translucent) and `255` (opaque) and a default value of `255`. The alpha level in the image key is reduced according to overall level set for the keyer.
 
@@ -476,11 +476,11 @@ On capture with devices that have timecode support, timecode is available in the
     frame.video.timecode // a string, or 'false' if not available
     frame.video.userBits // a number - C-type `uint32_t`
 
-Non-drop frame timecode is formatted as `HH:MM:SS:FF.f`, where `HH` is the hour, `MM` is the minute, `SS` is the second, `FF` is the frame, or represents a pair of frames for rates above 30fps. The `.f` extension is the optional frame pair indicator, once again only for rates above 30fps. A value of `.0` indicates the first frame in a pair and `.1` for the second. If no timecode is available, the value is set to boolean value `false` (not string `'false'`). For drop frame timecode, the format is the same except that the last colon (`:`) is changes to a semi-colon (`;`), as shown: `HH:MM:SS;FF.f`.
+Non-drop frame timecode is formatted as `HH:MM:SS:FF.f`, where `HH` is the hour, `MM` is the minute, `SS` is the second, `FF` is the frame, or represents a pair of frames for rates above 30fps. The `.f` extension is the optional frame pair indicator, used only for rates above 30fps. A value of `.0` indicates the first frame in a pair and `.1` for the second. If no timecode is available, the value is set to Boolean value `false` (not string `'false'`). For drop frame timecode, the format is the same except that the last colon (`:`) is changes to a semi-colon (`;`), as shown: `HH:MM:SS;FF.f`.
 
-For playout devices that support timecode insertion, to enable timecode output, set the `startTimecode` property on the options object passed to `macadam.playout({ ... })`. The format of the string is the same as for capture. This timecode will be used for the first frame, whether using scheduled or synchronous playback, and is then incremented for each subsequent frame. The timecode's internal frames-per-second is derived from the display mode, as is the timecode type (VITC/SMPTE RP188).
+For playout devices that support timecode insertion, to enable timecode output, set the `startTimecode` property on the options object passed to `macadam.playout({ ... })`. The format of the string is the same as for capture. This timecode will be used for the first frame, whether using scheduled or synchronous playback, and the timecode value is then incremented for each subsequent frame. The timecode's internal frames-per-second is derived from the display mode, as is the timecode type (VITC/SMPTE RP188).
 
-Make sure to use a colon to set non-drop frame and a semi-colon to set drop frame. Get this wrong and timecode output is suppressed.
+Make sure to use a colon to set non-drop frame and a semi-colon to set drop frame. Get this wrong and timecode output will be suppressed.
 
 The playout object has four utility methods for managing timecode:
 
@@ -491,7 +491,7 @@ The playout object has four utility methods for managing timecode:
 
 ## Status, support and further development
 
-This is prototype software that is not yet suitable for production use. The software is being actively tested and developed. Note that some of the asynchronous features of the N-API used by this software are marked as _experimental_.
+The software is being actively tested and developed. Please note that some of the asynchronous features of the N-API used by this software are marked as _experimental_ in Node v10 LTS.
 
 Contributions can be made via pull requests and will be considered by the author on their merits. Enhancement requests and bug reports should be raised as github issues. For support, please contact [Streampunk Media](https://www.streampunk.media/). For updates follow [@StrmPunkd](https://twitter.com/StrmPunkd) on Twitter.
 

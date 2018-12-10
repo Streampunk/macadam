@@ -83,7 +83,7 @@ HRESULT playbackThreadsafe::ScheduledPlaybackHasStopped() {
 }
 
 void finalizePlaybackCarrier(napi_env env, void* finalize_data, void* finalize_hint) {
-  printf("Finalizing playback threadsafe.\n");
+  // printf("Finalizing playback threadsafe.\n");
   playbackThreadsafe* c = (playbackThreadsafe*) finalize_data;
   delete c;
 }
@@ -107,7 +107,6 @@ void playbackExecute(napi_env env, void* data) {
 
   for ( uint32_t x = 0 ; x <= c->deviceIndex ; x++ ) {
     if (deckLinkIterator->Next(&deckLink) != S_OK) {
-      printf("Falling out of device index iterator.\n");
       deckLinkIterator->Release();
       c->status = MACADAM_OUT_OF_BOUNDS;
       c->errorMsg = "Device index exceeds the number of installed devices.";
@@ -131,7 +130,6 @@ void playbackExecute(napi_env env, void* data) {
       c->errorMsg = "Unable to retrieve the requested keyer. Is keying supported?";
       return;
     }
-    printf("Address of keyer is %p.\n", deckLinkKeyer);
     deckLinkKeyer->AddRef();
   }
 
@@ -202,7 +200,6 @@ void playbackExecute(napi_env env, void* data) {
   if (c->channels > 0) {
     hresult = deckLinkOutput->EnableAudioOutput(c->requestedSampleRate,
       c->requestedSampleType, c->channels, bmdAudioOutputStreamTimestamped);
-    printf("Enabling audio %i.\n", hresult);
     switch (hresult)  {
       case E_INVALIDARG:
         c->status = MACADAM_INVALID_ARGS;
@@ -224,7 +221,6 @@ void playbackExecute(napi_env env, void* data) {
         break;
     }
     hresult = deckLinkOutput->BeginAudioPreroll();
-    printf("Begin audio preroll %i.\n", hresult);
   }
 
   if (c->enableKeying) {
@@ -241,8 +237,8 @@ void playbackExecute(napi_env env, void* data) {
       c->errorMsg = "Failed to set key level.";
       return;
     }
-    printf("Enabled decklink %s keying at level %i.\n",
-      c->isExternal ? "external" : "internal", c->keyLevel);
+    // printf("Enabled decklink %s keying at level %i.\n",
+    //   c->isExternal ? "external" : "internal", c->keyLevel);
   }
 }
 
@@ -488,9 +484,9 @@ void playbackComplete(napi_env env, napi_status asyncStatus, void* data) {
   pbts->timecode = c->timecode;
   c->timecode = nullptr;
 
-  printf("Address of %s keyer at level %i in pbts is %p.\n",
-    pbts->isExternal ? "external" : "internal", pbts->keyLevel,
-    pbts->deckLinkKeyer);
+  // printf("Address of %s keyer at level %i in pbts is %p.\n",
+  //   pbts->isExternal ? "external" : "internal", pbts->keyLevel,
+  //   pbts->deckLinkKeyer);
 
   hresult = pbts->deckLinkOutput->SetScheduledFrameCompletionCallback(pbts);
   if (hresult != S_OK) {
@@ -1009,8 +1005,8 @@ void displayFrameExecute(napi_env env, void* data) {
   if ((c->audioRef != nullptr) && (c->status == napi_ok)) {
     hresult = c->deckLinkOutput->WriteAudioSamplesSync(c->audioData,
       c->sampleFrameCount, &sampleFramesWritten);
-    printf("Sample frame count %i and samples written %i.\n", c->sampleFrameCount,
-      sampleFramesWritten);
+    // printf("Sample frame count %i and samples written %i.\n", c->sampleFrameCount,
+    //   sampleFramesWritten);
     if (hresult != S_OK) {
       c->status = MACADAM_CALL_FAILURE;
       c->errorMsg = "Failed to write audio samples synchronously.";
