@@ -1,14 +1,16 @@
 {
   "name": "macadam",
-  "version": "2.0.8",
+  "version": "2.0.9",
   "description": "Async node.js interface to Blackmagic Design capture and playback devices.",
   "main": "index.js",
-  "keyqords": [
+  "keywords": [
     "blackmagic",
     "SDI",
     "playback",
     "capture",
-    "decklink"
+    "decklink",
+    "video",
+    "sound"
   ],
   "scripts": {
     "install": "node-gyp rebuild",
