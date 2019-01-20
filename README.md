@@ -210,7 +210,7 @@ let capture = await macadam.capture({
   pixelFormat: macadam.bmdFormat8BitYUV,
   channels: 2, // enables audio - omit if audio is not required
   sampleRate: macadam.bmdAudioSampleRate48kHz,
-  stampleType: macadam.bmdAudioSampleType16bitInteger
+  sampleType: macadam.bmdAudioSampleType16bitInteger
 });
 ```
 
@@ -290,7 +290,7 @@ let playback = await macadam.playback({
   pixelFormat: macadam.bmdFormat10BitYUV,
   channels: 2, // omit the channels property if no audio
   sampleRate: macadam.bmdAudioSampleRate48kHz,
-  stampleType: macadam.bmdAudioSampleType16bitInteger,
+  sampleType: macadam.bmdAudioSampleType16bitInteger,
   startTimecode: '10:11:12:13' // Leave unset or set to undefined for no timecode
 });
 ```
