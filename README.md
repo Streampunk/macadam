@@ -205,7 +205,7 @@ To capture frames of video and any related audio, inside an `async` function cre
 
 ```javascript
 let capture = await macadam.capture({
-  deviceInfo: 0, // Index relative to the 'macadam.getDeviceInfo()' array
+  deviceIndex: 0, // Index relative to the 'macadam.getDeviceInfo()' array
   displayMode: macadam.bmdModeHD1080i50,
   pixelFormat: macadam.bmdFormat8BitYUV,
   channels: 2, // enables audio - omit if audio is not required
