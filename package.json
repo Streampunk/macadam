@@ -1,8 +1,9 @@
 {
   "name": "macadam",
-  "version": "2.0.11",
+  "version": "2.0.12",
   "description": "Async node.js interface to Blackmagic Design capture and playback devices.",
   "main": "index.js",
+  "types": "index.d.ts",
   "keywords": [
     "blackmagic",
     "SDI",
