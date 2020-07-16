@@ -259,7 +259,8 @@ export interface CaptureFrame {
   }
   audio: {
     type: 'audioPacket',
-    sampleFrameTime: number,
+    packetTime: number,
+    sampleFrameCount: number,
     data: Buffer
   }
 }

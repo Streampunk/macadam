@@ -622,6 +622,7 @@ void frameResolver(napi_env env, napi_value jsCb, void* context, void* data) {
   frameCarrier* c = nullptr;
   BMDTimeValue frameTime;
   BMDTimeValue frameDuration;
+  BMDTimeValue packetTime;
   BMDFrameFlags videoFlags;
   BMDTimecodeUserBits userBits;
   int32_t rowBytes, height, sampleFrameCount;
@@ -817,6 +818,20 @@ void frameResolver(napi_env env, napi_value jsCb, void* context, void* data) {
       c->status = napi_create_string_utf8(env, "audioPacket", NAPI_AUTO_LENGTH, &param);
       REJECT_BAIL;
       c->status = napi_set_named_property(env, obj, "type", param);
+      REJECT_BAIL;
+
+      hresult = frame->audioPacket->GetPacketTime(&packetTime, crts->sampleRate);
+      if (hresult == S_OK) {
+        c->status = napi_create_int64(env, packetTime, &param);
+        REJECT_BAIL;
+        c->status = napi_set_named_property(env, obj, "packetTime", param);
+        REJECT_BAIL;
+      }
+
+      sampleFrameCount = frame->audioPacket->GetSampleFrameCount();
+      c->status = napi_create_int32(env, sampleFrameCount, &param);
+      REJECT_BAIL;
+      c->status = napi_set_named_property(env, obj, "sampleFrameCount", param);
       REJECT_BAIL;
 
       sampleFrameCount = frame->audioPacket->GetSampleFrameCount();
