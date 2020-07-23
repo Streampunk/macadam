@@ -8,7 +8,6 @@
                 "C:/Program Files (x86)/Windows Kits/10/Include/10.0.10240.0/ucrt",
                 "C:/Program Files (x86)/Windows Kits/8.1/Include/shared",
                 "C:/Program Files (x86)/Windows Kits/8.1/Include/winrt",
-                "${workspaceFolder}/**",
                 "${workspaceFolder}/decklink/Win/include/**",
                 "${env:USERPROFILE}/AppData/Local/node-gyp/Cache/12.16.1/include/node"
             ],

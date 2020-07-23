@@ -323,9 +323,10 @@ export interface PlaybackChannel {
    * It is up to the user of the synchronous API to make sure that frame data is
    * replaced at a suitable frequency to ensure smooth playback.
    * The `playback.hardwareTime()` method can be used to help with this.
-   * @param frame A Node.js Buffer containing frame data
+   * @param video A Node.js Buffer containing video data
+   * @param audio Optional - a Node.js Buffer containing audio data
    */
-  displayFrame(frame: Buffer): Promise<void>
+  displayFrame(video: Buffer, audio?: Buffer): Promise<void>
 
   /**
    * To playback data using the scheduler, you need to place the frames onto a virtual timeline

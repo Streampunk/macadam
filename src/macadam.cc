@@ -1773,7 +1773,11 @@ napi_value getDeviceConfig(napi_env env, napi_callback_info info) {
         hresult = deckLinkConfig->GetFlag(knownConfigValues[configIndex], &flag);
         switch (hresult) {
           case S_OK:
+            #ifdef WIN32
+            status = napi_get_boolean(env, flag == TRUE ? true : false, &param);
+            #else
             status = napi_get_boolean(env, flag, &param);
+            #endif
             CHECK_BAIL;
             break;
           case E_NOTIMPL:
@@ -1997,7 +2001,13 @@ napi_value setDeviceConfig(napi_env env, napi_callback_info info) {
           CHECK_BAIL;
           configIndex++; continue;
         }
-        status = napi_get_value_bool(env, param, (bool*) &flag);
+        #ifdef WIN32
+        bool cFlag;
+        status = napi_get_value_bool(env, param, &cFlag);
+        flag = cFlag == TRUE ? true : false;
+        #else
+        status = napi_get_value_bool(env, param, flag);
+        #endif
         CHECK_BAIL;
         hresult = deckLinkConfig->SetFlag(knownConfigValues[configIndex], flag);
         break;
