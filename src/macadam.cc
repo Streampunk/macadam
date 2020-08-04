@@ -2006,7 +2006,7 @@ napi_value setDeviceConfig(napi_env env, napi_callback_info info) {
         status = napi_get_value_bool(env, param, &cFlag);
         flag = cFlag == TRUE ? true : false;
         #else
-        status = napi_get_value_bool(env, param, flag);
+        status = napi_get_value_bool(env, param, &flag);
         #endif
         CHECK_BAIL;
         hresult = deckLinkConfig->SetFlag(knownConfigValues[configIndex], flag);
