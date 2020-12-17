@@ -104,6 +104,11 @@ void playbackExecute(napi_env env, void* data) {
   #else
   deckLinkIterator = CreateDeckLinkIteratorInstance();
   #endif
+  if (deckLinkIterator == nullptr) {
+    c->status = MACADAM_ERROR_START;
+    c->errorMsg = "Unable to load DeckLinkAPI.";
+    return;
+  }
 
   for ( uint32_t x = 0 ; x <= c->deviceIndex ; x++ ) {
     if (deckLinkIterator->Next(&deckLink) != S_OK) {

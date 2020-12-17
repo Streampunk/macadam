@@ -24,13 +24,15 @@
         ]
       }],
       ['OS=="linux"', {
-        'sources' : [ "src/macadam_util.cc", "src/macadam.cc",
-          "src/capture_promise.cc", "src/playback_promise.cc",
-          "src/timecode.cc" ],
+        'sources' : [ 
+          "src/macadam_util.cc",
+          "src/macadam.cc",
+          "src/capture_promise.cc",
+          "src/playback_promise.cc",
+          "src/timecode.cc",
+          "decklink/Linux/include/DeckLinkAPIDispatch.cpp"
+        ],
         'link_settings' : {
-          "libraries": [
-            "/usr/lib/libDeckLinkAPI.so"
-          ],
           "ldflags" : [
             "-lm -ldl -lpthread"
 	      ]

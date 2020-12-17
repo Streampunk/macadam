@@ -418,6 +418,7 @@ napi_value deckLinkVersion(napi_env env, napi_callback_info info) {
   #else
   deckLinkIterator = CreateDeckLinkIteratorInstance();
   #endif
+  if (deckLinkIterator == nullptr) NAPI_THROW_ERROR("Unable to load DeckLinkAPI.");
 
   hresult = deckLinkIterator->QueryInterface(IID_IDeckLinkAPIInformation, (void**)&deckLinkAPIInformation);
   if (hresult != S_OK) NAPI_THROW_ERROR("Error connecting to DeckLinkAPI.");
@@ -460,6 +461,8 @@ napi_value getFirstDevice(napi_env env, napi_callback_info info) {
   #else
   deckLinkIterator = CreateDeckLinkIteratorInstance();
   #endif
+  if (deckLinkIterator == nullptr) NAPI_THROW_ERROR("Unable to load DeckLinkAPI.");
+
   if (deckLinkIterator->Next(&deckLink) != S_OK) {
     status = napi_get_undefined(env, &result);
     if (checkStatus(env, status, __FILE__, __LINE__ - 1) != napi_ok) {
@@ -521,6 +524,7 @@ napi_value getDeviceInfo(napi_env env, napi_callback_info info) {
   #else
   deckLinkIterator = CreateDeckLinkIteratorInstance();
   #endif
+  if (deckLinkIterator == nullptr) NAPI_THROW_ERROR("Unable to load DeckLinkAPI.");
 
   uint32_t index = 0;
   while (deckLinkIterator->Next(&deckLink) == S_OK) {
@@ -1738,6 +1742,7 @@ napi_value getDeviceConfig(napi_env env, napi_callback_info info) {
   #else
   deckLinkIterator = CreateDeckLinkIteratorInstance();
   #endif
+  if (deckLinkIterator == nullptr) NAPI_THROW_ERROR("Unable to load DeckLinkAPI.");
 
   for ( uint32_t x = 0 ; x <= deviceIndex ; x++ ) {
     if (deckLinkIterator->Next(&deckLink) != S_OK) {
@@ -1947,6 +1952,7 @@ napi_value setDeviceConfig(napi_env env, napi_callback_info info) {
   #else
   deckLinkIterator = CreateDeckLinkIteratorInstance();
   #endif
+  if (deckLinkIterator == nullptr) NAPI_THROW_ERROR("Unable to load DeckLinkAPI.");
 
   for ( uint32_t x = 0 ; x <= deviceIndex ; x++ ) {
     if (deckLinkIterator->Next(&deckLink) != S_OK) {
