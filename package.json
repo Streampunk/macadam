@@ -15,6 +15,7 @@
   ],
   "scripts": {
     "install": "node-gyp rebuild",
+    "build": "node-gyp rebuild",
     "test": "tape test/*Spec.js",
     "lint": "eslint index.js **/*.js"
   },
