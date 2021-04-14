@@ -181,7 +181,7 @@ void captureExecute(napi_env env, void* data) {
   HRESULT hresult;
 
   #ifdef WIN32
-  hresult = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+  hresult = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
   CoCreateInstance(CLSID_CDeckLinkIterator, NULL, CLSCTX_ALL, IID_IDeckLinkIterator, (void**)&deckLinkIterator);
   #else
   deckLinkIterator = CreateDeckLinkIteratorInstance();

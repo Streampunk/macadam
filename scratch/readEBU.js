@@ -13,18 +13,14 @@
   limitations under the License.
 */
 
-// This example uses the deprecated event-based playback mode
-
 var H = require('highland');
 var fs = require('fs');
-var mac = require('../index.js');
+var macadam = require('../index.js');
 
 var readdir = H.wrapCallback(fs.readdir);
 var readFile = H.wrapCallback(fs.readFile);
 
-var playback = new mac.Playback(0, mac.bmdModeHD1080i50, mac.bmdFormat10BitYUV);
-
-var rootFolder = 'E:/media/EBU_test_sets/filexchange.ebu.ch/EBU test sets - Creative Commons (BY-NC-ND)/HDTV test sequences/1080i25/';
+var rootFolder = 'c:/Users/spark/Documents/media/EBU_test_sets/filexchange.ebu.ch/EBU test sets - Creative Commons (BY-NC-ND)/HDTV test sequences/1080i25/';
 
 var material = {
   crowdrun: rootFolder + 'crowdrun_1080i/crowdrun_1080i_0000',
@@ -54,24 +50,40 @@ var count = 0;
 
 var baseTime = process.hrtime();
 
-H((push, next) => { push(null, baseFolder); next(); })
-  .take((process.argv[3] && !isNaN(+process.argv[3]) && +process.argv[3] > 0) ?
-    +process.argv[3] : 1)
-  .flatMap(x => readdir(x).flatten().filter(y => y.endsWith('v210')).sort())
-  .map(x => baseFolder + '/' + x)
-  .map(x => readFile(x).map(y => ({ name: x, contents: y })))
-  .parallel(10)
-  .consume((err, x, push, next) => {
-    if (err) { push(err); next(); }
-    else if (x === H.nil) { push(null, H.nil); }
-    else {
-      var diffTime = process.hrtime(baseTime);
-      var dtms = diffTime[0] * 1000 + diffTime[1] / 1000000|0;
-      var wait = count * 40 - dtms;
-      // console.log('dtms = ', dtms, 'so waiting', wait, 'at count', count);
-      setTimeout(() => { push(null, x); next(); }, (wait > 0) ? wait : 0); }
-  })
-  .doto(x => { playback.frame(x.contents); })
-  .doto(() => { if (count++ == 4) { playback.start(); } })
-  .errors(H.log)
-  .done(() => { playback.stop(); });
+async function run() {
+	let playback = await macadam.playback({
+		displayMode: macadam.bmdModeHD1080i50,
+		pixelFormat: macadam.bmdFormat10BitYUV,
+		startTimecode: '10:11:12:13.0'
+	});
+	console.log(macadam.setDeviceConfig({ deviveIndex: 0 , fieldFlickerRemoval: false }))
+
+
+	H((push, next) => { push(null, baseFolder); next(); })
+	  .take((process.argv[3] && !isNaN(+process.argv[3]) && +process.argv[3] > 0) ?
+	    +process.argv[3] : 1)
+	  .flatMap(x => readdir(x).flatten().filter(y => y.endsWith('v210')).sort())
+	  .map(x => baseFolder + '/' + x)
+	  .map(x => readFile(x).map(y => ({ name: x, contents: y })))
+	  .parallel(10)
+	  .consume((err, x, push, next) => {
+	    if (err) { push(err); next(); }
+	    else if (x === H.nil) { push(null, H.nil); }
+	    else {
+	      // var diffTime = process.hrtime(baseTime);
+	      // var dtms = diffTime[0] * 1000 + diffTime[1] / 1000000|0;
+	      // var wait = count * 40 - dtms;
+	      // console.log('dtms = ', dtms, 'so waiting', wait, 'at count', count);
+	      // setTimeout(() => { push(null, x); next(); }, (wait > 0) ? wait : 0);
+				let ht = playback.hardwareTime()
+				setTimeout(() => { push(null, x); next(); }, 40 - (ht.timeInFrame / 25));
+			}
+	  })
+	  .doto(x => { console.log(playback.hardwareTime().timeInFrame);
+		 				playback.displayFrame(x.contents)})
+	  .doto(() => { count++ /* if (count++ == 4) { playback.start(); } */ })
+	  .errors(H.log)
+	  .done(() => { playback.stop(); });
+	}
+
+	run().catch(console.error);

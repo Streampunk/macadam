@@ -2144,7 +2144,7 @@ napi_value Init(napi_env env, napi_value exports) {
 
   #ifdef WIN32
   HRESULT result;
-  result = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+  result = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 	if (FAILED(result))
 	{
 		fprintf(stderr, "Initialization of COM failed - result = %08x.\n", result);

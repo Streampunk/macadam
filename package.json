@@ -28,13 +28,13 @@
   },
   "homepage": "https://github.com/Streampunk/macadam#readme",
   "dependencies": {
-    "bindings": "^1.2.1",
-    "highland": "^2.11.1",
+    "bindings": "^1.5.0",
+    "highland": "^2.13.5",
     "segfault-handler": "^1.0.0"
   },
   "gypfile": true,
   "devDependencies": {
-    "eslint": "^5.9.0",
-    "tape": "^4.9.1"
+    "eslint": "^5.16.0",
+    "tape": "^4.13.0"
   }
 }
