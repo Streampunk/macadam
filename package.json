@@ -1,6 +1,6 @@
 {
   "name": "macadam",
-  "version": "2.0.15",
+  "version": "2.0.16",
   "description": "Async node.js interface to Blackmagic Design capture and playback devices.",
   "main": "index.js",
   "types": "index.d.ts",
@@ -36,7 +36,7 @@
   },
   "gypfile": true,
   "devDependencies": {
-    "eslint": "^7.4.0",
-    "tape": "^5.0.1"
+    "eslint": "^8.0.0",
+    "tape": "^5.3.1"
   }
 }
