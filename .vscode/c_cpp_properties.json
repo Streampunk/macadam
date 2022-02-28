@@ -9,9 +9,7 @@
                 "C:/Program Files (x86)/Windows Kits/8.1/Include/shared",
                 "C:/Program Files (x86)/Windows Kits/8.1/Include/winrt",
                 "${workspaceFolder}/decklink/Win/include/**",
-                "${env:USERPROFILE}/AppData/Local/node-gyp/Cache/12.16.1/include/node",
-                "/usr/include/node",
-                "/usr/include/rpc"
+                "${env:USERPROFILE}/AppData/Local/node-gyp/Cache/16.14.0/include/node"
             ],
             "defines": [
                 "_DEBUG",
