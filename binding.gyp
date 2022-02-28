@@ -16,6 +16,7 @@
         },
         "link_settings": {
           "libraries": [
+            '-F/Library/Frameworks',
             '-framework', 'DeckLinkAPI'
           ]
         },
