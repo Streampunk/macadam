@@ -144,7 +144,7 @@ export const bmdDisplayModeColorspaceRec2020 : number
 export const bmdAudioSampleRate48kHz	       : number
 export const bmdAudioSampleType16bitInteger	 : number
 export const bmdAudioSampleType32bitInteger  : number
-  // BMDVideo3DPackingFormat
+// BMDVideo3DPackingFormat
 export const bmdVideo3DPackingSidebySideHalf : number // Frames are packed side-by-side as a single stream.
 export const bmdVideo3DPackingLinebyLine     : number // The two eye frames are packed on alternating lines of the source frame.
 export const bmdVideo3DPackingTopAndBottom   : number // The two eye frames are packed into the top and bottom half of the source frame.
@@ -210,7 +210,7 @@ export const bmdDeckControlConnectionRS422Remote2 : number // Second RS422 deck 
 export const bmdDuplexModeFull : number // Configure this sub-device to use two connectors (full-duplex).
 export const bmdDuplexModeHalf : number // Configure this sub-device to use a single connector (half-duplex).
 
-  // Convert to and from Black Magic codes.
+// Convert to and from Black Magic codes.
 export function intToBMCode(i: number) : string
 export function bmCodeToInt(s: string) : number
 
@@ -298,7 +298,7 @@ export function capture(params: {
   sampleRate?: number,
   /** A bmdAudioSampleType* value to describe the audio sample type */
   sampleType?: number
-}): CaptureChannel
+}): Promise<CaptureChannel>
 
 export type PlayoutResult = { [key: string]: unknown }
 
@@ -449,4 +449,4 @@ export function playback(params: {
   level?: number,
   /** Leave unset or set to undefined for no timecode */
   startTimecode?: string
-}): PlaybackChannel;
+}): Promise<PlaybackChannel>
