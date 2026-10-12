@@ -166,7 +166,7 @@ struct playbackThreadsafe : IDeckLinkVideoOutputCallback {
   BMDPixelFormat pixelFormat;
   BMDAudioSampleRate sampleRate;
   BMDAudioSampleType sampleType;
-  uint32_t sampleByteFactor;
+  uint32_t sampleByteFactor = 0;
   uint32_t channels = 0; // Set to zero for no channels
   BMDTimeScale timeScale;
   BMDTimeValue frameDuration;
