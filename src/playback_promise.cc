@@ -1086,6 +1086,10 @@ napi_value displayFrame(napi_env env, napi_callback_info info) {
     MACADAM_ERROR_START);
 
   if (argc == 2) { // Audio data provided
+    if (pbts->channels == 0) REJECT_ERROR_RETURN(
+      "Audio data was provided but playback was not configured with audio channels.",
+      MACADAM_INVALID_ARGS);
+
     c->status = napi_is_buffer(env, argv[1], &isBuffer);
     REJECT_RETURN;
 
