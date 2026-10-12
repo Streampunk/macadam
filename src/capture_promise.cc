@@ -562,8 +562,13 @@ napi_value capture(napi_env env, napi_callback_info info) {
   if (type != napi_undefined) {
     if (type != napi_number) REJECT_ERROR_RETURN(
       "Audio sample type must be an enumeration value.", MACADAM_INVALID_ARGS);
-    c->status = napi_get_value_uint32(env, param, (uint32_t *) &c->requestedSampleType);
+    uint32_t sampleType = 0;
+    c->status = napi_get_value_uint32(env, param, &sampleType);
     REJECT_RETURN;
+    if ((sampleType != bmdAudioSampleType16bitInteger) &&
+        (sampleType != bmdAudioSampleType32bitInteger)) REJECT_ERROR_RETURN(
+      "Audio sample type must be 16 or 32 bits.", MACADAM_INVALID_ARGS);
+    c->requestedSampleType = (BMDAudioSampleType) sampleType;
   }
 
   c->status = napi_create_string_utf8(env, "CreateCapture", NAPI_AUTO_LENGTH, &resourceName);
